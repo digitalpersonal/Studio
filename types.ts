@@ -114,7 +114,6 @@ export interface Route {
   elevationGain: number;
 }
 
-// Added missing Challenge interface to fix import errors
 export interface Challenge {
   id: string;
   title: string;
@@ -125,11 +124,11 @@ export interface Challenge {
   endDate: string;
 }
 
-// Added missing PersonalizedWorkout interface to fix import errors
 export interface PersonalizedWorkout {
   id: string;
   title: string;
   description: string;
+  type: 'FUNCTIONAL' | 'RUNNING';
   videoUrl?: string;
   studentIds: string[];
   createdAt: string;
@@ -139,15 +138,30 @@ export interface PersonalizedWorkout {
 export interface AcademySettings {
   name: string;
   cnpj: string;
-  address: string;
-  phone: string;
   email: string;
+  phone: string;
   representativeName: string;
+  representativeCpf: string;
+  representativeRg: string;
+  
+  // Endereço Detalhado
+  street: string;
+  number: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+
+  // Mercado Pago
   mercadoPagoPublicKey: string;
   mercadoPagoAccessToken: string;
-  customDomain: string; // Novo campo para domínio próprio
+  webhookUrl: string;
+
+  // Contrato
+  contractTerms: string;
   monthlyFee: number;
   inviteCode: string;
+  customDomain: string;
 }
 
 export interface Post {

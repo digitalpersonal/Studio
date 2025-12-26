@@ -249,6 +249,8 @@ let personalizedWorkouts: PersonalizedWorkout[] = [
         id: 'pw1',
         title: 'Treino de Viagem - Hotel',
         description: "**Aquecimento:**\n30 Polichinelos\n20 Agachamentos Livres\n\n**Circuito (4 Rounds):**\n- 15 Flexões de Braço (Apoio no sofá se precisar)\n- 20 Afundos (cada perna)\n- 30seg Prancha Abdominal\n- 15 Tríceps no Banco/Cadeira\n\n**Descanso:** 1min entre rounds.",
+        // Fix: Add missing type property
+        type: 'FUNCTIONAL',
         videoUrl: 'https://youtube.com/shorts/example',
         studentIds: ['student-1', 'student-6'],
         createdAt: '2024-05-10',
@@ -257,7 +259,9 @@ let personalizedWorkouts: PersonalizedWorkout[] = [
     {
         id: 'pw2',
         title: 'Fortalecimento de Core (Extra)',
-        description: "Realizar 3x na semana após a corrida:\n\n- 3x 15 Abdominal Remador\n- 3x 40seg Prancha Lateral (cada lado)\n- 3x 15 Elevação de Perna\n- 3x 12 Perdigueiro (cada lado)",
+        description: "Realizar 3x na semana após a corrida:\n\n- 3x 15 Abdominal Remador\n- 3x 40seg Prancha Lateral (cada lado)\n- 3x 12 Elevação de Perna\n- 3x 12 Perdigueiro (cada lado)",
+        // Fix: Add missing type property
+        type: 'FUNCTIONAL',
         studentIds: ['student-1', 'student-2', 'student-4'],
         createdAt: '2024-05-12',
         instructorName: 'Treinadora Sarah'
@@ -266,6 +270,8 @@ let personalizedWorkouts: PersonalizedWorkout[] = [
         id: 'pw3',
         title: 'Reabilitação de Joelho',
         description: "Foco: Fortalecimento de Quadríceps sem impacto.\n\n- 3x 10 Extensão de Joelho (Cadeira extensora isométrica 3seg)\n- 3x 12 Elevação Pélvica\n- 3x 15 Abdução de Quadril com elástico",
+        // Fix: Add missing type property
+        type: 'FUNCTIONAL',
         studentIds: ['student-5'],
         createdAt: '2024-06-01',
         instructorName: 'Treinador Alex'

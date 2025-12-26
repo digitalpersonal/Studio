@@ -2,12 +2,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { Assessment } from '../types';
 
-// O SDK do Gemini busca por process.env.API_KEY. 
-// Fixed: Obtained API key exclusively from process.env.API_KEY per guidelines
 const getAiClient = () => {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) return null;
-    return new GoogleGenAI({ apiKey });
+    if (!process.env.API_KEY) return null;
+    return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export const GeminiService = {
@@ -28,7 +25,7 @@ export const GeminiService = {
 
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-3-pro-preview', // Upgrade para análise complexa
         contents: `Você é um Personal Trainer e Especialista em Fisiologia do Exercício de alto nível.
         Analise os dados de avaliação do aluno ${studentName}:\n${dataString}\n
         
@@ -39,7 +36,6 @@ export const GeminiService = {
         
         Mantenha o tom profissional, direto e encorajador. Máximo 200 palavras. Use Português do Brasil.`,
       });
-      // Fixed: response.text is a property, not a method
       return response.text;
     } catch (error) {
         console.error("Gemini Analysis Error:", error);

@@ -7,7 +7,6 @@ export const ContractService = {
   _createContractDoc: (student: User) => {
     const doc = new jsPDF();
     const settings = SettingsService.getSettings(); 
-    const lineHeight = 6;
     let cursorY = 20;
 
     const addText = (text: string, fontSize: number = 10, fontStyle: string = 'normal', align: 'left' | 'center' | 'right' = 'left') => {
@@ -24,11 +23,9 @@ export const ContractService = {
       cursorY += (splitText.length * (fontSize * 0.5)) + 4;
     };
 
-    // Cálculos de datas baseados na recorrência
-    const today = new Date();
+    // Datas
     const joinDate = student.planStartDate ? new Date(student.planStartDate) : new Date(student.joinDate);
     const startDateStr = joinDate.toLocaleDateString('pt-BR');
-    
     const duration = student.planDuration || 12;
     const endDateObj = new Date(joinDate);
     endDateObj.setMonth(endDateObj.getMonth() + duration);
@@ -40,37 +37,33 @@ export const ContractService = {
       ? `${addr.street}, nº ${addr.number}${addr.complement ? ', ' + addr.complement : ''}, ${addr.neighborhood}, ${addr.city}-${addr.state}, CEP: ${addr.zipCode}`
       : 'Não informado';
 
-    // Cabeçalho
-    addText("CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ATIVIDADE FÍSICA", 14, "bold", "center");
+    // Endereço da academia
+    const academyAddrStr = `${settings.street}, ${settings.number}, ${settings.neighborhood}, ${settings.city}-${settings.state}`;
+
+    // Título
+    addText("CONTRATO DE PRESTAÇÃO DE SERVIÇOS FITNESS", 16, "bold", "center");
     cursorY += 5;
 
     addText("1. IDENTIFICAÇÃO DAS PARTES", 11, "bold");
-    
-    const contractorInfo = `CONTRATADA: ${settings.name.toUpperCase()}, CNPJ nº ${settings.cnpj}, com sede em ${settings.address}, representada neste ato por ${settings.representativeName}.`;
+    const contractorInfo = `CONTRATADA: ${settings.name.toUpperCase()}, CNPJ nº ${settings.cnpj}, com sede em ${academyAddrStr}, representada por ${settings.representativeName}, CPF nº ${settings.representativeCpf}.`;
     addText(contractorInfo);
 
-    const studentInfo = `CONTRATANTE: ${student.name.toUpperCase()}, ${student.nationality || 'brasileiro(a)'}, portador(a) do RG nº ${student.rg || '______'} e CPF nº ${student.cpf || '______'}, residente e domiciliado em ${addressStr}.`;
+    const studentInfo = `CONTRATANTE: ${student.name.toUpperCase()}, portador(a) do RG nº ${student.rg || '______'} e CPF nº ${student.cpf || '______'}, residente em ${addressStr}.`;
     addText(studentInfo);
     cursorY += 5;
 
-    addText("2. DO OBJETO E MODALIDADES", 11, "bold");
-    addText("O presente contrato tem como objeto a prestação de serviços de orientação em atividade física nas modalidades oferecidas pela CONTRATADA.");
-
-    addText("3. DA VIGÊNCIA E RECORRÊNCIA", 11, "bold");
-    addText(`Este contrato terá vigência de ${duration} meses, iniciando em ${startDateStr} e encerrando-se em ${endDateStr}.`);
-
-    addText("4. DOS VALORES E FORMA DE PAGAMENTO", 11, "bold");
+    addText("2. VIGÊNCIA E VALORES", 11, "bold");
     const planValue = student.planValue || settings.monthlyFee;
     const formattedFee = planValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    addText(`O CONTRATANTE pagará à CONTRATADA o valor mensal de ${formattedFee}, com vencimento todo dia ${student.billingDay || 5} de cada mês, durante a vigência deste instrumento.`);
+    addText(`O plano contratado possui duração de ${duration} meses, iniciando em ${startDateStr} e encerrando em ${endDateStr}. O valor mensal é de ${formattedFee}, com vencimento todo dia ${student.billingDay || 5}.`);
 
-    addText("5. DAS DISPOSIÇÕES GERAIS", 11, "bold");
-    addText("O CONTRATANTE declara estar em plenas condições de saúde para a prática de exercícios físicos, isentando a CONTRATADA de responsabilidade por eventos decorrentes de omissão de informações de saúde.");
+    addText("3. TERMOS E CONDIÇÕES", 11, "bold");
+    addText(settings.contractTerms);
 
-    cursorY += 15;
-    addText(`${settings.address.split(',')[1] || 'Local'}, ${today.toLocaleDateString('pt-BR')}`, 10, "normal", "right");
+    cursorY += 20;
+    addText(`${settings.city}, ${new Date().toLocaleDateString('pt-BR')}`, 10, "normal", "right");
 
-    cursorY += 25;
+    cursorY += 30;
     doc.line(20, cursorY, 90, cursorY);
     doc.line(110, cursorY, 180, cursorY);
     cursorY += 5;
