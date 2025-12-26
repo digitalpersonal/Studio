@@ -2,11 +2,16 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { User, ClassSession, Assessment, Post, Payment, Anamnesis } from '../types';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || 'https://xdjrrxrepnnkvpdbbtot.supabase.co';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkanJyeHJlcG5ua3ZwZGJidG90Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzMjM3NzgsImV4cCI6MjA4MTg5OTc3OH0.6M4HQAVS0Z6cdvwMJCeOSvCKBkozHwQz3X9tgaZojEk';
+// O Vite exige o prefixo VITE_ para expor variáveis ao cliente.
+// Usamos uma verificação segura para evitar que o app quebre caso import.meta.env não exista.
+const env = (import.meta as any).env || {};
+const SUPABASE_URL = env.VITE_SUPABASE_URL || 'https://xdjrrxrepnnkvpdbbtot.supabase.co';
+const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || '';
 
 let supabase: SupabaseClient | null = null;
-if (SUPABASE_URL && SUPABASE_URL.startsWith('http')) {
+
+// Só inicializa se tivermos uma URL válida e uma chave
+if (SUPABASE_URL && SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY) {
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
