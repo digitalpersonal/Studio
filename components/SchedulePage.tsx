@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClassSession, User, UserRole, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -455,11 +454,9 @@ interface AttendanceModalProps {
 
 const AttendanceModal: React.FC<AttendanceModalProps> = ({ classSession, students, currentAttendance, todayDateStr, onSave, onCancel }) => {
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(() => {
-    const presentIds = new Set<string>();
-    currentAttendance.forEach(record => {
-      if (record.isPresent) {
-        presentIds.add(record.studentId);
-      }
+    // Refactored for better bundler compatibility and conciseness
+    const presentIds = new Set(
+      currentAttendance.filter(record => record.isPresent).map(record => record.studentId)
     );
     return presentIds;
   });
