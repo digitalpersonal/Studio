@@ -1,10 +1,10 @@
 
+
 export enum UserRole {
-  SUPER_ADMIN = 'SUPER_ADMIN',
-  ADMIN = 'ADMIN',
-  TRAINER = 'TRAINER',
-  STUDENT = 'STUDENT',
-  GUEST = 'GUEST'
+  SUPER_ADMIN = 'SUPER_ADMIN', // Administrador Geral
+  ADMIN = 'ADMIN',             // Administrador
+  TRAINER = 'TRAINER',         // Treinador
+  STUDENT = 'STUDENT'          // Aluno
 }
 
 export interface Anamnesis {
@@ -15,6 +15,7 @@ export interface Anamnesis {
   hadSurgery: boolean;
   surgeryDescription?: string;
   hasHeartCondition: boolean;
+  heartConditionDescription?: string; 
   emergencyContactName: string;
   emergencyContactPhone: string;
   bloodType?: string;
@@ -46,9 +47,9 @@ export interface User {
   // Contrato e Documentos
   cpf?: string;
   rg?: string;
-  nationality?: string;
-  maritalStatus?: string;
-  profession?: string;
+  nationality?: string; 
+  maritalStatus?: string; 
+  profession?: string; 
   address?: Address;
   
   // Recorrência e Financeiro
@@ -60,6 +61,8 @@ export interface User {
   anamnesis?: Anamnesis;
   contractUrl?: string;
   contractGeneratedAt?: string;
+
+  profileCompleted?: boolean; // Sinaliza se o perfil do aluno está completo
 }
 
 export interface ClassSession {
@@ -71,19 +74,28 @@ export interface ClassSession {
   durationMinutes: number;
   instructor: string;
   maxCapacity: number;
-  enrolledStudentIds: string[];
-  waitlistStudentIds: string[];
+  enrolledStudentIds: string[]; // JSONB array no Supabase
+  waitlistStudentIds?: string[]; // JSONB array no Supabase
   type: 'FUNCTIONAL' | 'RUNNING';
   isCancelled?: boolean;
-  wod?: string;
-  feedback?: { studentId: string, rating: number }[];
+  wod?: string; // Workout Of the Day
+  workoutDetails?: string; // Detalhes adicionais sobre o treino
+  feedback?: { studentId: string, rating: number, comment?: string }[]; // JSONB array no Supabase
+}
+
+export interface AttendanceRecord {
+  id: string;
+  classId: string;
+  studentId: string;
+  date: string; // YYYY-MM-DD
+  isPresent: boolean;
 }
 
 export interface Assessment {
   id: string;
   studentId: string;
   date: string;
-  status: 'DONE' | 'SCHEDULED';
+  status: 'DONE' | 'SCHEDULED'; // 'Concluído' | 'Agendado'
   notes: string;
   weight: number;
   height: number;
@@ -94,7 +106,7 @@ export interface Assessment {
   hydrationPercentage?: number;
   vo2Max?: number;
   squatMax?: number;
-  circumferences?: {
+  circumferences?: { // Objeto JSONB no Supabase
     chest?: number;
     waist?: number;
     abdomen?: number;
@@ -110,8 +122,8 @@ export interface Route {
   distanceKm: number;
   description: string;
   mapLink: string;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  elevationGain: number;
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD'; // 'FÁCIL' | 'MÉDIA' | 'DIFÍCIL'
+  elevationGain: number; // em metros
 }
 
 export interface Challenge {
@@ -119,49 +131,35 @@ export interface Challenge {
   title: string;
   description: string;
   targetValue: number;
-  unit: string;
-  startDate: string;
-  endDate: string;
+  unit: string; // ex: 'km', 'reps'
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  currentProgress?: number; // Para ser atualizado ou buscado separadamente
 }
 
 export interface PersonalizedWorkout {
   id: string;
   title: string;
   description: string;
-  type: 'FUNCTIONAL' | 'RUNNING';
   videoUrl?: string;
-  studentIds: string[];
-  createdAt: string;
+  studentIds: string[]; // JSONB array no Supabase
+  createdAt: string; // YYYY-MM-DD
   instructorName: string;
 }
 
 export interface AcademySettings {
   name: string;
   cnpj: string;
-  email: string;
+  academyAddress: Address; 
   phone: string;
+  email: string;
   representativeName: string;
-  representativeCpf: string;
-  representativeRg: string;
-  
-  // Endereço Detalhado
-  street: string;
-  number: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  zipCode: string;
-
-  // Mercado Pago
   mercadoPagoPublicKey: string;
   mercadoPagoAccessToken: string;
-  webhookUrl: string;
-
-  // Contrato
-  contractTerms: string;
+  customDomain: string; 
   monthlyFee: number;
   inviteCode: string;
-  customDomain: string;
+  registrationInviteCode: string; // Novo campo para código de convite de cadastro de aluno
 }
 
 export interface Post {
@@ -171,7 +169,7 @@ export interface Post {
   userAvatar: string;
   imageUrl: string;
   caption: string;
-  likes: number;
+  likes: string[]; // IDs dos usuários que curtiram
   timestamp: string;
 }
 
@@ -179,7 +177,7 @@ export interface Payment {
   id: string;
   studentId: string;
   amount: number;
-  status: 'PAID' | 'PENDING' | 'OVERDUE';
+  status: 'PAID' | 'PENDING' | 'OVERDUE'; // 'PAGO' | 'PENDENTE' | 'ATRASADO'
   dueDate: string;
   description: string;
   installmentNumber?: number;
@@ -188,6 +186,8 @@ export interface Payment {
 
 export type ViewState = 
   | 'LOGIN' 
+  | 'REGISTRATION'
+  | 'COMPLETE_PROFILE' 
   | 'DASHBOARD' 
   | 'SCHEDULE' 
   | 'ASSESSMENTS' 
@@ -199,3 +199,8 @@ export type ViewState =
   | 'PERSONAL_WORKOUTS'
   | 'FEED'
   | 'REPORTS';
+
+export interface AppNavParams {
+  studentId?: string;
+  tab?: 'basic' | 'plan' | 'anamnesis';
+}

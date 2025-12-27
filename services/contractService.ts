@@ -1,4 +1,5 @@
 
+
 import { jsPDF } from "jspdf";
 import { User } from "../types";
 import { SettingsService } from "./settingsService";
@@ -23,60 +24,73 @@ export const ContractService = {
       cursorY += (splitText.length * (fontSize * 0.5)) + 4;
     };
 
-    // Datas
+    // Cálculos de datas baseados na recorrência
+    const today = new Date();
     const joinDate = student.planStartDate ? new Date(student.planStartDate) : new Date(student.joinDate);
     const startDateStr = joinDate.toLocaleDateString('pt-BR');
+    
     const duration = student.planDuration || 12;
     const endDateObj = new Date(joinDate);
     endDateObj.setMonth(endDateObj.getMonth() + duration);
     const endDateStr = endDateObj.toLocaleDateString('pt-BR');
     
     // Endereço do aluno
-    const addr = student.address;
-    const addressStr = addr 
-      ? `${addr.street}, nº ${addr.number}${addr.complement ? ', ' + addr.complement : ''}, ${addr.neighborhood}, ${addr.city}-${addr.state}, CEP: ${addr.zipCode}`
+    const studentAddr = student.address;
+    const studentAddressStr = studentAddr 
+      ? `${String(studentAddr.street)}, nº ${String(studentAddr.number)}${studentAddr.complement ? ', ' + String(studentAddr.complement) : ''}, ${String(studentAddr.neighborhood)}, ${String(studentAddr.city)}-${String(studentAddr.state)}, CEP: ${String(studentAddr.zipCode)}`
       : 'Não informado';
 
-    // Endereço da academia
-    const academyAddrStr = `${settings.street}, ${settings.number}, ${settings.neighborhood}, ${settings.city}-${settings.state}`;
+    // Endereço da Academia (Contratada)
+    const academyAddr = settings.academyAddress;
+    const academyAddressStr = academyAddr
+      ? `${String(academyAddr.street)}, nº ${String(academyAddr.number)}${academyAddr.complement ? ', ' + String(academyAddr.complement) : ''}, ${String(academyAddr.neighborhood)}, ${String(academyAddr.city)}-${String(academyAddr.state)}, CEP: ${String(academyAddr.zipCode)}`
+      : 'Não informado';
 
-    // Título
-    addText("CONTRATO DE PRESTAÇÃO DE SERVIÇOS FITNESS", 16, "bold", "center");
+
+    // Cabeçalho
+    addText("CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE ATIVIDADE FÍSICA", 14, "bold", "center");
     cursorY += 5;
 
     addText("1. IDENTIFICAÇÃO DAS PARTES", 11, "bold");
-    const contractorInfo = `CONTRATADA: ${settings.name.toUpperCase()}, CNPJ nº ${settings.cnpj}, com sede em ${academyAddrStr}, representada por ${settings.representativeName}, CPF nº ${settings.representativeCpf}.`;
+    
+    const contractorInfo = `CONTRATADA: ${String(settings.name).toUpperCase()}, CNPJ nº ${String(settings.cnpj)}, com sede em ${academyAddressStr}, representada neste ato por ${String(settings.representativeName)}.`;
     addText(contractorInfo);
 
-    const studentInfo = `CONTRATANTE: ${student.name.toUpperCase()}, portador(a) do RG nº ${student.rg || '______'} e CPF nº ${student.cpf || '______'}, residente em ${addressStr}.`;
+    const studentInfo = `CONTRATANTE: ${String(student.name).toUpperCase()}, ${String(student.nationality || 'brasileiro(a)')}, ${String(student.maritalStatus || 'estado civil não informado')}, portador(a) do RG nº ${String(student.rg || '______')} e CPF nº ${String(student.cpf || '______')}, profissão ${String(student.profession || 'não informada')}, residente e domiciliado em ${studentAddressStr}.`;
     addText(studentInfo);
     cursorY += 5;
 
-    addText("2. VIGÊNCIA E VALORES", 11, "bold");
+    addText("2. DO OBJETO E MODALIDADES", 11, "bold");
+    addText("O presente contrato tem como objeto a prestação de serviços de orientação em atividade física nas modalidades oferecidas pela CONTRATADA.");
+
+    addText("3. DA VIGÊNCIA E RECORRÊNCIA", 11, "bold");
+    addText(`Este contrato terá vigência de ${duration} meses, iniciando em ${startDateStr} e encerrando-se em ${endDateStr}.`);
+
+    addText("4. DOS VALORES E FORMA DE PAGAMENTO", 11, "bold");
     const planValue = student.planValue || settings.monthlyFee;
     const formattedFee = planValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    addText(`O plano contratado possui duração de ${duration} meses, iniciando em ${startDateStr} e encerrando em ${endDateStr}. O valor mensal é de ${formattedFee}, com vencimento todo dia ${student.billingDay || 5}.`);
+    addText(`O CONTRATANTE pagará à CONTRATADA o valor mensal de ${formattedFee}, com vencimento todo dia ${String(student.billingDay || 5)} de cada mês, durante a vigência deste instrumento.`);
 
-    addText("3. TERMOS E CONDIÇÕES", 11, "bold");
-    addText(settings.contractTerms);
+    addText("5. DAS DISPOSIÇÕES GERAIS", 11, "bold");
+    addText("O CONTRATANTE declara estar em plenas condições de saúde para a prática de exercícios físicos, isentando a CONTRATADA de responsabilidade por eventos decorrentes de omissão de informações de saúde.");
 
-    cursorY += 20;
-    addText(`${settings.city}, ${new Date().toLocaleDateString('pt-BR')}`, 10, "normal", "right");
+    cursorY += 15;
+    addText(`${String(academyAddr.city || 'Local')}, ${today.toLocaleDateString('pt-BR')}`, 10, "normal", "right"); // Usar cidade da academia
 
-    cursorY += 30;
+    cursorY += 25;
     doc.line(20, cursorY, 90, cursorY);
     doc.line(110, cursorY, 180, cursorY);
     cursorY += 5;
     
     doc.setFontSize(8);
-    doc.text(settings.name.toUpperCase(), 55, cursorY, { align: "center" });
-    doc.text(student.name.toUpperCase(), 145, cursorY, { align: "center" });
+    doc.text(String(settings.name).toUpperCase(), 55, cursorY, { align: "center" });
+    doc.text(String(student.name).toUpperCase(), 145, cursorY, { align: "center" });
 
     return doc;
   },
 
   generateContract: (student: User) => {
     const doc = ContractService._createContractDoc(student);
-    doc.save(`Contrato_${student.name.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Contrato_${String(student.name).replace(/\s+/g, '_')}.pdf`);
   }
 };

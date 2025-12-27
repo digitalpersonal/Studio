@@ -1,4 +1,5 @@
 
+
 import { UserRole } from './types';
 
 export const APP_NAME = "Studio";
@@ -28,4 +29,9 @@ export const MOCK_USER_ADMIN = {
   address: 'Rua do Studio, 100 - Centro, SP'
 };
 
-export const WORKOUT_TYPES = ['FUNCIONAL', 'CORRIDA', 'FORÇA', 'MOBILIDADE'];
+export const WORKOUT_TYPES = ['FUNCIONAL', 'CORRIDA']; // Traduzido
+// Os tipos 'FORÇA' e 'MOBILIDADE' foram removidos para evitar inconsistência com o enum 'FUNCTIONAL' e 'RUNNING' na ClassSession
+// Se forem necessários, o ClassSession.type deve ser expandido.
+
+// Default for new AcademySettings in SettingsService
+export const DEFAULT_REGISTRATION_INVITE_CODE = 'BEMVINDO2024';

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { User, UserRole, ViewState } from '../types';
 import { 
@@ -47,23 +48,30 @@ export const Layout: React.FC<LayoutProps> = ({
   // Staff roles (Admin, Super Admin e Trainer)
   const isStaff = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.TRAINER;
   const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
+  const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN; 
 
-  const NavItem = ({ view, icon: Icon, label }: { view: ViewState; icon: any; label: string }) => (
-    <button
-      onClick={() => {
-        onNavigate(view);
-        setMobileMenuOpen(false);
-      }}
-      className={`flex items-center w-full px-4 py-3 mb-1 rounded-lg transition-colors ${
-        currentView === view 
-          ? 'bg-brand-600 text-white shadow-md' 
-          : 'text-slate-400 hover:bg-dark-800 hover:text-white'
-      }`}
-    >
-      <Icon size={20} className="mr-3" />
-      <span className="font-medium">{label}</span>
-    </button>
-  );
+  const NavItem = ({ view, icon: Icon, label, roles }: { view: ViewState; icon: any; label: string; roles?: UserRole[] }) => {
+    // Only render if the current user's role is allowed for this NavItem
+    if (roles && !roles.includes(currentUser.role)) {
+      return null;
+    }
+    return (
+      <button
+        onClick={() => {
+          onNavigate(view);
+          setMobileMenuOpen(false);
+        }}
+        className={`flex items-center w-full px-4 py-3 mb-1 rounded-lg transition-colors ${
+          currentView === view 
+            ? 'bg-brand-600 text-white shadow-md' 
+            : 'text-slate-400 hover:bg-dark-800 hover:text-white'
+        }`}
+      >
+        <Icon size={20} className="mr-3" />
+        <span className="font-medium">{label}</span>
+      </button>
+    );
+  };
 
   const getRoleLabel = (role: UserRole) => {
     switch(role) {
@@ -84,47 +92,47 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
         
         <nav className="flex-1 px-4 py-6 overflow-y-auto">
-          <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Visão Geral" />
-          <NavItem view="RANKING" icon={Trophy} label="Ranking" />
-          <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" />
-          <NavItem view="SCHEDULE" icon={Calendar} label="Agenda de Aulas" />
-          <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" />
-          <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" />
-          <NavItem view="FEED" icon={Camera} label="Comunidade" />
+          <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Visão Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="RANKING" icon={Trophy} label="Ranking" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="SCHEDULE" icon={Calendar} label="Agenda de Aulas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="FEED" icon={Camera} label="Comunidade" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           
           {isStaff && (
             <>
               <div className="my-4 border-t border-dark-800 pt-4 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Operação
               </div>
-              <NavItem view="MANAGE_USERS" icon={Users} label="Alunos & Equipe" />
+              <NavItem view="MANAGE_USERS" icon={Users} label="Alunos & Equipe" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} /> 
             </>
           )}
 
-          {isAdmin && (
+          {isAdmin && ( 
             <>
               <div className="my-4 border-t border-dark-800 pt-4 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 Gestão
               </div>
-              <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" />
-              <NavItem view="SETTINGS" icon={Settings} label="Configurações" />
+              <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
+              {isSuperAdmin && <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN]} />} 
             </>
           )}
 
           {currentUser.role === UserRole.STUDENT && (
-            <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro" />
+            <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro" roles={[UserRole.STUDENT]} />
           )}
         </nav>
 
         <div className="p-4 border-t border-dark-800">
           <div className="flex items-center mb-4 px-2">
             <img 
-              src={currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.name}`} 
+              src={String(currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${String(currentUser.name)}`)} 
               alt="Avatar" 
               className="w-8 h-8 rounded-full bg-dark-800 mr-3 border border-brand-500"
             />
             <div className="overflow-hidden">
-              <p className="text-sm font-medium text-white truncate">{currentUser.name}</p>
+              <p className="text-sm font-medium text-white truncate">{String(currentUser.name)}</p>
               <p className="text-xs text-slate-500 truncate">{getRoleLabel(currentUser.role)}</p>
             </div>
           </div>
@@ -165,21 +173,21 @@ export const Layout: React.FC<LayoutProps> = ({
         {mobileMenuOpen && (
           <div className="md:hidden fixed inset-0 z-40 bg-dark-900/95 backdrop-blur-md pt-20 px-4 pb-8 overflow-y-auto">
             <nav className="flex flex-col space-y-2 animate-fade-in-up">
-              <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Visão Geral" />
-              <NavItem view="RANKING" icon={Trophy} label="Ranking" />
-              <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" />
-              <NavItem view="SCHEDULE" icon={Calendar} label="Agenda" />
-              <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" />
-              <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" />
-              <NavItem view="FEED" icon={Camera} label="Comunidade" />
-              {isStaff && <NavItem view="MANAGE_USERS" icon={Users} label="Alunos & Equipe" />}
+              <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Visão Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="RANKING" icon={Trophy} label="Ranking" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="SCHEDULE" icon={Calendar} label="Agenda" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="FEED" icon={Camera} label="Comunidade" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              {isStaff && <NavItem view="MANAGE_USERS" icon={Users} label="Alunos & Equipe" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />}
               {isAdmin && (
                 <>
-                  <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" />
-                  <NavItem view="SETTINGS" icon={Settings} label="Configurações" />
+                  <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
+                  {isSuperAdmin && <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN]} />}
                 </>
               )}
-              {currentUser.role === UserRole.STUDENT && <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro" />}
+              {currentUser.role === UserRole.STUDENT && <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro" roles={[UserRole.STUDENT]} />}
               <div className="h-px bg-dark-800 my-4" />
               <button 
                 onClick={onLogout}
@@ -228,7 +236,7 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* PWA INSTALL INSTRUCTIONS MODAL */}
       {showInstallModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in">
-              <div className="bg-dark-900 border border-dark-700 rounded-2xl w-full max-sm shadow-2xl relative overflow-hidden">
+              <div className="bg-dark-900 border border-dark-700 rounded-2xl w-full max-w-sm shadow-2xl relative overflow-hidden">
                   <div className="bg-brand-600 p-6 text-center">
                       <Smartphone size={48} className="mx-auto text-white mb-2" />
                       <h3 className="text-xl font-bold text-white">Instalar Aplicativo</h3>

@@ -1,4 +1,5 @@
 
+
 import { Payment } from "../types";
 import { SettingsService } from "./settingsService";
 
@@ -23,7 +24,7 @@ export const MercadoPagoService = {
             console.error("Mercado Pago: SDK não carregado.");
             return null;
         }
-        return new window.MercadoPago(settings.mercadoPagoPublicKey, {
+        return new window.MercadoPago(String(settings.mercadoPagoPublicKey), {
             locale: 'pt-BR'
         });
     },
@@ -35,7 +36,7 @@ export const MercadoPagoService = {
         const settings = SettingsService.getSettings();
         const mp = MercadoPagoService.getMPInstance();
         
-        console.log(`[Mercado Pago] Iniciando checkout de R$ ${payment.amount} para fatura: ${payment.description}`);
+        console.log(`[Mercado Pago] Iniciando checkout de R$ ${payment.amount} para fatura: ${String(payment.description)}`);
 
         // Em uma integração real com backend, você enviaria os dados para sua API
         // que criaria uma 'preference' no Mercado Pago usando o Access Token.
@@ -53,7 +54,7 @@ export const MercadoPagoService = {
         const mockPreferenceId = `pref_${Math.random().toString(36).substr(2, 9)}`;
         
         return {
-            status: 'pending', // Status inicial até o usuário pagar
+            status: 'pending', 
             id: mockPreferenceId,
             init_point: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${mockPreferenceId}`
         };
@@ -64,7 +65,7 @@ export const MercadoPagoService = {
      */
     createSubscription: async (studentEmail: string, amount: number, planName: string): Promise<{ status: 'created', init_point: string, id: string }> => {
         const settings = SettingsService.getSettings();
-        console.log(`[Mercado Pago] Criando plano recorrente: ${planName} - R$ ${amount}/mês`);
+        console.log(`[Mercado Pago] Criando plano recorrente: ${String(planName)} - R$ ${amount}/mês`);
 
         await new Promise(resolve => setTimeout(resolve, 2000));
 

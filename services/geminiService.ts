@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI } from "@google/genai";
 import { Assessment } from '../types';
 
@@ -18,27 +19,27 @@ export const GeminiService = {
     if (assessments.length < 1) return "Inicie uma avaliação para análise.";
 
     const dataString = assessments.map(a => 
-      `Data: ${a.date}, Peso: ${a.weight}kg, Gordura: ${a.bodyFatPercentage}%, 
-       Massa Muscular: ${a.skeletalMuscleMass || 'N/A'}kg, Gord. Visceral: ${a.visceralFatLevel || 'N/A'},
-       Cintura: ${a.circumferences?.waist || 'N/A'}cm, Quadril: ${a.circumferences?.hips || 'N/A'}cm`
+      `Data: ${String(a.date)}, Peso: ${a.weight}kg, Gordura: ${a.bodyFatPercentage}%, 
+       Massa Muscular: ${String(a.skeletalMuscleMass || 'N/A')}kg, Gord. Visceral: Nível ${String(a.visceralFatLevel || 'N/A')},
+       Cintura: ${String(a.circumferences?.waist || 'N/A')}cm, Quadril: ${String(a.circumferences?.hips || 'N/A')}cm`
     ).join('\n');
 
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-preview', // Upgrade para análise complexa
         contents: `Você é um Personal Trainer e Especialista em Fisiologia do Exercício de alto nível.
-        Analise os dados de avaliação do aluno ${studentName}:\n${dataString}\n
+        Analise os dados de avaliação do aluno ${String(studentName)}:\n${dataString}\n
         
         Sua tarefa é fornecer um laudo técnico e motivador que aborde:
         1. Composição Corporal: Analise a troca de gordura por músculo (recomposição).
         2. Risco Metabólico: Interprete a gordura visceral e relação cintura/quadril se disponível.
         3. Dica Prática: Dê um conselho de treino ou nutrição focado no resultado atual.
         
-        Mantenha o tom profissional, direto e encorajador. Máximo 200 palavras. Use Português do Brasil.`,
+        Mantenha o tone profissional, direto e encorajador. Máximo 200 palavras. Use Português do Brasil.`,
       });
       return response.text;
-    } catch (error) {
-        console.error("Gemini Analysis Error:", error);
+    } catch (error: any) {
+        console.error("Erro na Análise Gemini:", error.message || JSON.stringify(error));
         return "A IA encontrou um problema ao analisar os dados complexos.";
     }
   }
