@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Payment, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -156,4 +155,62 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                         <div><p className="text-white font-bold">{String(userForPayment.name)}</p><p className="text-[10px] text-slate-500">{String(p.description)}</p></div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-mono text-xs">{
+                    <td className="px-6 py-4 font-mono text-xs">{String(p.dueDate)}</td>
+                    <td className="px-6 py-4 font-bold text-white">R$ {p.amount.toFixed(2)}</td>
+                    <td className="px-6 py-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${
+                            p.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                            p.status === 'OVERDUE' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                        }`}>
+                            {p.status === 'PAID' ? 'Pago' : p.status === 'OVERDUE' ? 'Atrasado' : 'Pendente'}
+                        </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                       <div className="flex justify-end gap-2">
+                          {p.status !== 'PAID' && !isStaff && (
+                             <button 
+                                onClick={() => handlePayWithMP(p)} 
+                                disabled={isProcessing === p.id}
+                                className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-xl hover:bg-brand-500 transition-all text-xs font-bold shadow-lg shadow-brand-500/20"
+                             >
+                                {isProcessing === p.id ? <Loader2 className="animate-spin" size={14}/> : <CreditCard size={14}/>}
+                                Pagar
+                             </button>
+                          )}
+                          {p.status !== 'PAID' && isStaff && (
+                            <>
+                                <button onClick={() => handleMarkPaid(p)} className="p-2 bg-emerald-600/10 text-emerald-500 rounded-lg hover:bg-emerald-600 hover:text-white transition-all" title="Baixa Manual"><Check size={16}/></button>
+                                <button onClick={() => WhatsAppAutomation.sendPaymentReminder(student, p)} className="p-2 bg-brand-600/10 text-brand-500 rounded-lg hover:bg-brand-600 hover:text-white transition-all"><MessageCircle size={16}/></button>
+                            </>
+                          )}
+                          {p.status === 'PAID' && (
+                              <button className="p-2 bg-dark-800 text-slate-500 rounded-lg hover:text-white transition-all" title="Baixar Recibo"><Download size={16}/></button>
+                          )}
+                       </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {showCheckoutModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-6">
+           <div className="bg-dark-900 border border-dark-700 p-10 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center space-y-6">
+              <div className="bg-brand-600 w-24 h-24 rounded-full flex items-center justify-center mx-auto shadow-2xl shadow-brand-500/30">
+                 {isProcessing ? <Loader2 className="text-white animate-spin" size={48}/> : <CheckCheck className="text-white" size={48}/>}
+              </div>
+              <div>
+                <h3 className="text-white font-black text-xl mb-2">Conectando ao Mercado Pago</h3>
+                <p className="text-slate-400 text-sm">Estamos gerando seu link de pagamento seguro para R$ {showCheckoutModal.amount.toFixed(2)}...</p>
+              </div>
+              <button onClick={() => setShowCheckoutModal(null)} className="w-full py-4 text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white">Cancelar</button>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+};

@@ -414,8 +414,8 @@ const FinancialPage = ({ user, selectedStudentId }: { user: User, selectedStuden
             </thead>
             <tbody className="divide-y divide-dark-800">
               {payments.filter(p => filter === 'ALL' || p.status === filter).map(p => {
-                const userForPayment = isStaff ? students.find(s => s.id === p.studentId) : user; 
-                if (!userForPayment) return null; 
+                const userForPayment = students.find(s => s.id === p.studentId) || user;
+                if (!userForPayment) return null;
 
                 const student: User = userForPayment; 
                 
@@ -488,7 +488,7 @@ const FinancialPage = ({ user, selectedStudentId }: { user: User, selectedStuden
 };
 
 // Main App Component
-function App() {
+export function App() { // Changed to named export
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('LOGIN');
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
@@ -675,5 +675,3 @@ function App() {
     </ToastContext.Provider>
   );
 }
-
-export default App;
