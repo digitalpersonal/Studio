@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClassSession, User, UserRole, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList } from 'lucide-react'; 
+import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search } from 'lucide-react'; 
 import { DAYS_OF_WEEK } from '../constants';
 import { WORKOUT_TYPES } from '../constants'; 
 
@@ -24,28 +24,24 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
   const isStaff = currentUser.role !== UserRole.STUDENT;
   const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
 
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      setLoading(true);
-      try {
-        const [classData, userData] = await Promise.all([
-          SupabaseService.getClasses(),
-          isStaff ? SupabaseService.getAllUsers() : Promise.resolve([])
-        ]);
-        setClasses(classData);
-        setStudents(userData);
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+      const [classData, userData] = await Promise.all([
+        SupabaseService.getClasses(),
+        SupabaseService.getAllUsers()
+      ]);
+      setClasses(classData);
+      setStudents(userData);
+      setTodayDateStr(new Date().toISOString().split('T')[0]);
+    } catch (error: any) {
+      addToast(`Erro ao carregar dados: ${error.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // Set today's date for attendance (YYYY-MM-DD)
-        setTodayDateStr(new Date().toISOString().split('T')[0]);
-      } catch (error: any) {
-        console.error("Erro ao carregar dados da agenda:", error.message || JSON.stringify(error));
-        addToast(`Erro ao carregar a agenda: ${error.message || JSON.stringify(error)}`, "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchInitialData();
-  }, [addToast, isStaff]);
+  useEffect(() => { refreshData(); }, []);
 
   const classesGroupedByDay = useMemo(() => {
     return DAYS_OF_WEEK.reduce((acc, day) => {
@@ -63,133 +59,35 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
         await SupabaseService.updateClass({ ...classData as ClassSession, id: editingClass.id });
         addToast("Aula atualizada com sucesso!", "success");
       } else {
-        await SupabaseService.addClass({ ...classData, enrolledStudentIds: [], waitlistStudentIds: [] });
-        addToast("Nova aula criada com sucesso!", "success");
+        await SupabaseService.addClass(classData);
+        addToast("Nova aula criada!", "success");
       }
       setShowForm(false);
       setEditingClass(null);
-      const updatedClasses = await SupabaseService.getClasses();
-      setClasses(updatedClasses);
+      refreshData();
     } catch (error: any) {
-      console.error("Erro ao salvar aula:", error.message || JSON.stringify(error));
-      addToast(`Erro ao salvar aula: ${error.message || JSON.stringify(error)}`, "error");
+      addToast(`Erro ao salvar aula: ${error.message}`, "error");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteClass = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta aula?")) return;
+    if (!confirm("Excluir esta aula permanentemente?")) return;
     setLoading(true);
     try {
       await SupabaseService.deleteClass(id);
-      addToast("Aula excluída com sucesso!", "success");
-      const updatedClasses = await SupabaseService.getClasses();
-      setClasses(updatedClasses);
+      addToast("Aula removida.", "success");
+      refreshData();
     } catch (error: any) {
-      console.error("Erro ao excluir aula:", error.message || JSON.stringify(error));
-      addToast(`Erro ao excluir aula: ${error.message || JSON.stringify(error)}`, "error");
+      addToast(`Erro ao excluir: ${error.message}`, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEnrollment = async (classId: string, studentId: string) => {
-    setLoading(true);
-    try {
-      await SupabaseService.enrollStudent(classId, studentId);
-      addToast("Matrícula realizada com sucesso!", "success");
-      const updatedClasses = await SupabaseService.getClasses();
-      setClasses(updatedClasses);
-    } catch (error: any) {
-      console.error("Erro na matrícula:", error.message || JSON.stringify(error));
-      addToast(`Erro na matrícula: ${error.message || JSON.stringify(error)}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUnenrollment = async (classId: string, studentId: string) => {
-    setLoading(true);
-    try {
-      await SupabaseService.removeStudentFromClass(classId, studentId);
-      addToast("Matrícula cancelada com sucesso!", "info");
-      const updatedClasses = await SupabaseService.getClasses();
-      setClasses(updatedClasses);
-    } catch (error: any) {
-      console.error("Erro ao cancelar matrícula:", error.message || JSON.stringify(error));
-      addToast(`Erro ao cancelar matrícula: ${error.message || JSON.stringify(error)}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleJoinWaitlist = async (classId: string, studentId: string) => {
-    setLoading(true);
-    try {
-      await SupabaseService.joinWaitlist(classId, studentId);
-      addToast("Entrou na lista de espera!", "info");
-      const updatedClasses = await SupabaseService.getClasses();
-      setClasses(updatedClasses);
-    } catch (error: any) {
-      console.error("Erro ao entrar na lista de espera:", error.message || JSON.stringify(error));
-      addToast(`Erro ao entrar na lista de espera: ${error.message || JSON.stringify(error)}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLeaveWaitlist = async (classId: string, studentId: string) => {
-    setLoading(true);
-    try {
-      await SupabaseService.leaveWaitlist(classId, studentId);
-      addToast("Saiu da lista de espera!", "info");
-      const updatedClasses = await SupabaseService.getClasses();
-      setClasses(updatedClasses);
-    } catch (error: any) {
-      console.error("Erro ao sair da lista de espera:", error.message || JSON.stringify(error));
-      addToast(`Erro ao sair da lista de espera: ${error.message || JSON.stringify(error)}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAttendanceOpen = async (classSession: ClassSession) => {
-    setLoading(true);
-    try {
-      const attendance = await SupabaseService.getClassAttendance(classSession.id, todayDateStr);
-      setCurrentAttendance(attendance);
-      setShowAttendanceModal(classSession);
-    } catch (error: any) {
-      console.error("Erro ao carregar presença:", error.message || JSON.stringify(error));
-      addToast(`Erro ao carregar presença: ${error.message || JSON.stringify(error)}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveAttendance = async (classId: string, date: string, presentStudentIds: string[]) => {
-    setLoading(true);
-    try {
-      await SupabaseService.saveAttendance(classId, date, presentStudentIds);
-      addToast("Presença registrada com sucesso!", "success");
-      setShowAttendanceModal(null);
-    } catch (error: any) {
-      console.error("Erro ao salvar presença:", error.message || JSON.stringify(error));
-      addToast(`Erro ao salvar presença: ${error.message || JSON.stringify(error)}`, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStudentName = (id: string) => students.find(s => s.id === id)?.name || 'Desconhecido';
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-full min-h-[500px]">
-        <Loader2 className="animate-spin text-brand-500" size={48} />
-      </div>
-    );
+  if (loading && classes.length === 0) {
+    return <div className="flex justify-center items-center h-full min-h-[500px]"><Loader2 className="animate-spin text-brand-500" size={48} /></div>;
   }
 
   if (showForm) {
@@ -198,20 +96,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
         classSession={editingClass}
         onSave={handleSaveClass}
         onCancel={() => { setShowForm(false); setEditingClass(null); }}
-        instructors={students.filter(s => s.role === UserRole.ADMIN || s.role === UserRole.TRAINER)}
-      />
-    );
-  }
-
-  if (showAttendanceModal) {
-    return (
-      <AttendanceModal
-        classSession={showAttendanceModal}
-        students={students.filter(s => showAttendanceModal.enrolledStudentIds.includes(s.id))}
-        currentAttendance={currentAttendance}
-        todayDateStr={todayDateStr}
-        onSave={handleSaveAttendance}
-        onCancel={() => setShowAttendanceModal(null)}
+        allStudents={students.filter(s => s.role === UserRole.STUDENT)}
+        instructors={students.filter(s => s.role !== UserRole.STUDENT)}
       />
     );
   }
@@ -220,109 +106,54 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
     <div className="space-y-6 animate-fade-in">
       <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white">Agenda de Aulas</h2>
-          <p className="text-slate-400 text-sm">Gerencie suas aulas e matrículas dos alunos.</p>
+          <h2 className="text-2xl font-bold text-white">Agenda Studio</h2>
+          <p className="text-slate-400 text-sm">Cronograma de aulas e eventos.</p>
         </div>
         {isAdmin && (
-          <button
-            onClick={() => { setEditingClass(null); setShowForm(true); }}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center shadow-lg shadow-brand-500/20"
-          >
-            <Plus size={16} className="mr-2" /> Nova Aula
+          <button onClick={() => { setEditingClass(null); setShowForm(true); }} className="bg-brand-600 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center shadow-lg shadow-brand-500/20 hover:bg-brand-500">
+            <Plus size={16} className="mr-2" /> Agendar Aula
           </button>
         )}
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {DAYS_OF_WEEK.map(day => (
-          <div key={day} className="bg-dark-950 p-6 rounded-3xl border border-dark-800 shadow-xl space-y-4">
-            <h3 className="text-xl font-bold text-white mb-4 border-b border-dark-800 pb-3">{day}</h3>
-            {classesGroupedByDay[day] && classesGroupedByDay[day].length > 0 ? (
-              classesGroupedByDay[day].map(cls => (
-                <div key={cls.id} className="bg-dark-900 border border-dark-700 rounded-2xl p-4 space-y-3 relative">
+          <div key={day} className="bg-dark-950 p-6 rounded-[2rem] border border-dark-800 shadow-xl space-y-4">
+            <h3 className="text-lg font-black text-white border-b border-dark-800 pb-3 uppercase tracking-tighter">{day}</h3>
+            <div className="space-y-4">
+              {classesGroupedByDay[day]?.map(cls => (
+                <div key={cls.id} className="bg-dark-900 border border-dark-800 rounded-2xl p-4 space-y-3 relative group hover:border-brand-500/50 transition-all">
                   {isAdmin && (
-                    <div className="absolute top-3 right-3 flex gap-2">
-                      <button onClick={() => { setEditingClass(cls); setShowForm(true); }} className="p-1 bg-dark-800 text-slate-400 rounded-md hover:text-white transition-colors" title="Editar Aula">
-                        <Edit size={14} />
-                      </button>
-                      <button onClick={() => handleDeleteClass(cls.id)} className="p-1 bg-red-500/10 text-red-500 rounded-md hover:bg-red-500 hover:text-white transition-colors" title="Excluir Aula">
-                        <Trash2 size={14} />
-                      </button>
+                    <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => { setEditingClass(cls); setShowForm(true); }} className="p-1.5 bg-dark-800 text-slate-400 rounded-lg hover:text-white transition-colors"><Edit size={12} /></button>
+                      <button onClick={() => handleDeleteClass(cls.id)} className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={12} /></button>
                     </div>
                   )}
-                  <h4 className="text-white font-bold text-lg">{String(cls.title)}</h4>
-                  <p className="text-slate-400 text-sm">{String(cls.description)}</p>
-                  {cls.wod && ( 
-                    <p className="text-slate-500 text-xs flex items-center gap-1">
-                      <ClipboardList size={12} /> WOD: {String(cls.wod)}
-                    </p>
-                  )}
-                  {cls.workoutDetails && ( 
-                    <p className="text-slate-500 text-xs flex items-center gap-1">
-                      <Info size={12} /> Detalhes: {String(cls.workoutDetails)}
-                    </p>
-                  )}
-                  <p className="text-slate-500 text-xs flex items-center gap-1">
-                    <Calendar size={12} /> {String(cls.startTime)} ({String(cls.durationMinutes)}min)
-                  </p>
-                  <p className="text-slate-500 text-xs flex items-center gap-1">
-                    <UserCheck size={12} /> Instrutor: {String(cls.instructor)}
-                  </p>
-                  <p className="text-slate-500 text-xs flex items-center gap-1">
-                    <UserPlus size={12} /> Vagas: {String(cls.enrolledStudentIds.length)}/{String(cls.maxCapacity)}
-                  </p>
-
-                  <div className="mt-4 pt-4 border-t border-dark-800 flex flex-col gap-2">
-                    {currentUser.role === UserRole.STUDENT && (
-                      <>
-                        {cls.enrolledStudentIds.includes(currentUser.id) ? (
-                          <button
-                            onClick={() => handleUnenrollment(cls.id, currentUser.id)}
-                            className="w-full bg-red-500/10 text-red-500 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors"
-                          >
-                            <UserMinus size={14} className="mr-2" /> Desmatricular
-                          </button>
-                        ) : cls.enrolledStudentIds.length < cls.maxCapacity ? (
-                          <button
-                            onClick={() => handleEnrollment(cls.id, currentUser.id)}
-                            className="w-full bg-brand-600 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center shadow-lg shadow-brand-500/20 hover:bg-brand-500 transition-colors"
-                          >
-                            <UserPlus size={14} className="mr-2" /> Matricular
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleJoinWaitlist(cls.id, currentUser.id)}
-                            disabled={cls.waitlistStudentIds?.includes(currentUser.id)}
-                            className="w-full bg-amber-500/10 text-amber-500 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-amber-500 hover:text-white transition-colors"
-                          >
-                            {cls.waitlistStudentIds?.includes(currentUser.id) ? 'Na Fila de Espera' : 'Entrar na Fila de Espera'}
-                          </button>
-                        )}
-                        {cls.waitlistStudentIds?.includes(currentUser.id) && (
-                           <button
-                             onClick={() => handleLeaveWaitlist(cls.id, currentUser.id)}
-                             className="w-full bg-dark-800 text-slate-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center hover:text-white transition-colors"
-                           >
-                             Sair da Fila de Espera
-                           </button>
-                        )}
-                      </>
-                    )}
-
-                    {isStaff && (
-                      <button
-                        onClick={() => handleAttendanceOpen(cls)}
-                        className="w-full bg-dark-800 text-slate-400 px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center hover:text-white transition-colors"
-                      >
-                        <ListOrdered size={14} className="mr-2" /> Registrar Presença
-                      </button>
+                  <div className="pr-12">
+                    <h4 className="text-white font-bold text-sm leading-tight">{cls.title}</h4>
+                    {cls.date && <p className="text-[10px] text-brand-500 font-bold uppercase mt-1">{new Date(cls.date).toLocaleDateString('pt-BR')}</p>}
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 font-bold uppercase">
+                    <span className="flex items-center gap-1"><Calendar size={12}/> {cls.startTime}</span>
+                    <span className="flex items-center gap-1"><UserCheck size={12}/> {cls.instructor.split(' ')[0]}</span>
+                    <span className={`px-2 py-0.5 rounded-md ${cls.type === 'RUNNING' ? 'bg-blue-500/10 text-blue-500' : 'bg-brand-500/10 text-brand-500'}`}>{cls.type}</span>
+                  </div>
+                  <div className="pt-2 flex items-center justify-between border-t border-dark-800">
+                    <span className="text-[10px] text-slate-500 font-bold">Vagas: <span className="text-white">{cls.enrolledStudentIds.length}/{cls.maxCapacity}</span></span>
+                    {cls.enrolledStudentIds.includes(currentUser.id) ? (
+                      <span className="text-[9px] text-emerald-500 font-black uppercase flex items-center gap-1"><Check size={12}/> Inscrito</span>
+                    ) : (
+                      cls.enrolledStudentIds.length < cls.maxCapacity && (
+                        <button onClick={() => isAdmin ? setEditingClass(cls) : null} className="text-[9px] text-brand-500 font-black uppercase hover:underline">Ver Mais</button>
+                      )
                     )}
                   </div>
                 </div>
-              ))
-            ) : (
-              <p className="text-slate-500 italic">Nenhuma aula agendada para este dia.</p>
-            )}
+              ))}
+              {(!classesGroupedByDay[day] || classesGroupedByDay[day].length === 0) && (
+                <p className="text-slate-600 text-xs italic py-4">Vazio</p>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -330,189 +161,104 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
   );
 };
 
-
-// -------------------------------------------------------------------------- //
-//                       ClassForm Component (Inferred)                       //
-// -------------------------------------------------------------------------- //
-interface ClassFormProps {
-  classSession: ClassSession | null;
-  onSave: (classData: Omit<ClassSession, 'id'>) => void;
-  onCancel: () => void;
-  instructors: User[];
-}
-
-const ClassForm: React.FC<ClassFormProps> = ({ classSession, onSave, onCancel, instructors }) => {
-  const [formData, setFormData] = useState<Omit<ClassSession, 'id'>>(
-    classSession || {
-      title: '',
-      description: '',
-      dayOfWeek: DAYS_OF_WEEK[0],
-      startTime: '07:00',
-      durationMinutes: 60,
-      instructor: '',
-      maxCapacity: 15,
-      enrolledStudentIds: [],
-      waitlistStudentIds: [],
-      type: 'FUNCTIONAL',
-      wod: '', 
-      workoutDetails: '', 
-    }
-  );
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave(formData);
-  };
-
-  return (
-    <div className="max-w-xl mx-auto bg-dark-950 p-8 rounded-3xl border border-dark-800 shadow-xl space-y-6 animate-fade-in">
-      <h3 className="text-xl font-bold text-white border-b border-dark-800 pb-4">
-        {classSession ? 'Editar Aula' : 'Nova Aula'}
-      </h3>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Título</label>
-          <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" value={String(formData.title)} onChange={e => setFormData({ ...formData, title: e.target.value })} />
-        </div>
-        <div>
-          <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Descrição</label>
-          <textarea required className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" value={String(formData.description)} onChange={e => setFormData({ ...formData, description: e.target.value })} />
-        </div>
-        <div> 
-          <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Detalhes do Treino (Opcional)</label>
-          <textarea 
-            className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" 
-            placeholder="Informações adicionais sobre o treino, equipamentos, aquecimento, etc."
-            value={String(formData.workoutDetails || '')} 
-            onChange={e => setFormData({ ...formData, workoutDetails: e.target.value })} 
-          />
-        </div>
-        <div> 
-          <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">WOD (Workout of the Day) (Opcional)</label>
-          <textarea 
-            className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" 
-            placeholder="Descreva o treino do dia aqui..."
-            value={String(formData.wod || '')} 
-            onChange={e => setFormData({ ...formData, wod: e.target.value })} 
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Dia da Semana</label>
-            <select required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" value={String(formData.dayOfWeek)} onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}>
-              {DAYS_OF_WEEK.map(day => <option key={day} value={day}>{day}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Horário</label>
-            <input required type="time" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" value={String(formData.startTime)} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
-          </div>
-          <div>
-            <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Duração (min)</label>
-            <input required type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" value={String(formData.durationMinutes)} onChange={e => setFormData({ ...formData, durationMinutes: Number(e.target.value) })} />
-          </div>
-          <div>
-            <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Capacidade Máxima</label>
-            <input required type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" value={String(formData.maxCapacity)} onChange={e => setFormData({ ...formData, maxCapacity: Number(e.target.value) })} />
-          </div>
-          <div className="col-span-2">
-            <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Instrutor</label>
-            <select required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" value={String(formData.instructor)} onChange={e => setFormData({ ...formData, instructor: e.target.value })}>
-              <option value="">Selecione um instrutor</option>
-              {instructors.map(inst => <option key={inst.id} value={String(inst.name)}>{String(inst.name)}</option>)}
-            </select>
-          </div>
-          <div className="col-span-2">
-            <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Tipo de Aula</label>
-            <select required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white" value={String(formData.type)} onChange={e => setFormData({ ...formData, type: e.target.value as 'FUNCTIONAL' | 'RUNNING' })}>
-              {WORKOUT_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-            </select>
-          </div>
-        </div>
-        
-        <div className="flex justify-end gap-3 mt-6">
-          <button type="button" onClick={onCancel} className="px-6 py-3 bg-dark-800 text-white rounded-lg font-bold">Cancelar</button>
-          <button type="submit" className="px-6 py-3 bg-brand-600 text-white rounded-lg font-bold shadow-lg shadow-brand-500/20">Salvar Aula</button>
-        </div>
-      </form>
-    </div>
-  );
-};
-
-
-// -------------------------------------------------------------------------- //
-//                      AttendanceModal Component (Inferred)                  //
-// -------------------------------------------------------------------------- //
-interface AttendanceModalProps {
-  classSession: ClassSession;
-  students: User[];
-  currentAttendance: AttendanceRecord[];
-  todayDateStr: string;
-  onSave: (classId: string, date: string, presentStudentIds: string[]) => Promise<void>;
-  onCancel: () => void;
-}
-
-const AttendanceModal: React.FC<AttendanceModalProps> = ({ classSession, students, currentAttendance, todayDateStr, onSave, onCancel }) => {
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(() => {
-    // Refactored for better bundler compatibility and conciseness
-    const presentIds = new Set(
-      currentAttendance.filter(record => record.isPresent).map(record => record.studentId)
-    );
-    return presentIds;
+const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }: { classSession: ClassSession | null, onSave: (d: any) => void, onCancel: () => void, allStudents: User[], instructors: User[] }) => {
+  const [formData, setFormData] = useState<Partial<ClassSession>>(classSession || {
+    title: '', description: '', dayOfWeek: 'Segunda', date: '', startTime: '07:00',
+    durationMinutes: 60, instructor: '', maxCapacity: 15, enrolledStudentIds: [],
+    type: 'FUNCTIONAL', wod: '', workoutDetails: ''
   });
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleToggleStudent = (studentId: string) => {
-    setSelectedStudents(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(studentId)) {
-        newSet.delete(studentId);
-      } else {
-        newSet.add(studentId);
-      }
-      return newSet;
-    });
-  };
+  const filteredStudents = allStudents.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
-  const handleSave = async () => {
-    await onSave(classSession.id, todayDateStr, Array.from(selectedStudents));
+  const toggleStudent = (id: string) => {
+    const current = formData.enrolledStudentIds || [];
+    if (current.includes(id)) {
+      setFormData({ ...formData, enrolledStudentIds: current.filter(sid => sid !== id) });
+    } else {
+      if (current.length >= (formData.maxCapacity || 15)) return alert("Capacidade máxima atingida!");
+      setFormData({ ...formData, enrolledStudentIds: [...current, id] });
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
-      <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-lg w-full space-y-6">
-        <div className="flex justify-between items-center border-b border-dark-800 pb-4">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <Calendar size={20} className="text-brand-500" /> Presença: {String(classSession.title)}
-          </h3>
-          <button onClick={onCancel} className="text-slate-500 hover:text-white p-2"><X size={24} /></button>
+    <div className="max-w-4xl mx-auto bg-dark-950 p-8 rounded-[2.5rem] border border-dark-800 shadow-2xl space-y-8 animate-fade-in mb-20">
+      <div className="flex justify-between items-center">
+        <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+          {classSession ? 'Editar Aula' : 'Novo Agendamento'}
+        </h3>
+        <button onClick={onCancel} className="text-slate-500 hover:text-white"><X size={24}/></button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <div className="space-y-5">
+           <h4 className="text-brand-500 font-bold text-xs uppercase border-b border-dark-800 pb-2">Informações Básicas</h4>
+           <div>
+             <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Título</label>
+             <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+           </div>
+           <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Dia Principal</label>
+                <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.dayOfWeek} onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}>
+                  {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Data Específica (Opcional)</label>
+                <input type="date" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Início</label>
+                <input type="time" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Vagas</label>
+                <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.maxCapacity} onChange={e => setFormData({ ...formData, maxCapacity: Number(e.target.value) })} />
+              </div>
+           </div>
+           <div>
+             <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Instrutor / Professor</label>
+             <select required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.instructor} onChange={e => setFormData({ ...formData, instructor: e.target.value })}>
+               <option value="">Selecione...</option>
+               {instructors.map(inst => <option key={inst.id} value={inst.name}>{inst.name}</option>)}
+             </select>
+           </div>
+           <div>
+             <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Tipo</label>
+             <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as any })}>
+               {WORKOUT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+             </select>
+           </div>
         </div>
 
-        <p className="text-slate-400 text-sm">Selecione os alunos presentes para a aula de hoje ({String(todayDateStr)}):</p>
-
-        <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
-          {students.length > 0 ? (
-            students.map(student => (
-              <label key={student.id} className="flex items-center gap-3 p-3 bg-dark-950 rounded-xl border border-dark-800 cursor-pointer hover:border-brand-500 transition-colors">
-                <input
-                  type="checkbox"
-                  checked={selectedStudents.has(student.id)}
-                  onChange={() => handleToggleStudent(student.id)}
-                  className="w-5 h-5 accent-brand-500"
-                />
-                <img src={String(student.avatarUrl || `https://ui-avatars.com/api/?name=${String(student.name)}`)} className="w-8 h-8 rounded-full border border-dark-800" alt={String(student.name)} />
-                <span className="text-white font-medium">{String(student.name)}</span>
-              </label>
-            ))
-          ) : (
-            <p className="text-slate-500 italic">Nenhum aluno matriculado nesta aula.</p>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-3 mt-6 border-t border-dark-800 pt-4">
-          <button type="button" onClick={onCancel} className="px-6 py-3 bg-dark-800 text-white rounded-lg font-bold">Cancelar</button>
-          <button type="button" onClick={handleSave} className="px-6 py-3 bg-brand-600 text-white rounded-lg font-bold shadow-lg shadow-brand-500/20">
-            <Check size={16} className="inline mr-2" /> Salvar Presença
-          </button>
+        <div className="space-y-5 flex flex-col h-full">
+           <h4 className="text-brand-500 font-bold text-xs uppercase border-b border-dark-800 pb-2">Matrículas ({formData.enrolledStudentIds?.length || 0})</h4>
+           <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14}/>
+              <input 
+                className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 pl-10 text-white text-xs focus:border-brand-500 outline-none" 
+                placeholder="Buscar aluno..." 
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+           </div>
+           <div className="flex-1 bg-dark-900 border border-dark-800 rounded-2xl overflow-y-auto max-h-[300px] p-2 custom-scrollbar">
+              {filteredStudents.map(s => (
+                <button 
+                  key={s.id} 
+                  onClick={() => toggleStudent(s.id)}
+                  className={`w-full flex items-center justify-between p-3 rounded-xl mb-1 transition-all ${formData.enrolledStudentIds?.includes(s.id) ? 'bg-brand-600 text-white' : 'hover:bg-dark-800 text-slate-400'}`}
+                >
+                  <span className="text-xs font-bold">{s.name}</span>
+                  {formData.enrolledStudentIds?.includes(s.id) ? <Check size={14}/> : <Plus size={14}/>}
+                </button>
+              ))}
+           </div>
+           <div className="pt-4 border-t border-dark-800 space-y-4">
+              <button onClick={() => onSave(formData)} className="w-full bg-brand-600 text-white font-black py-4 rounded-xl uppercase text-xs tracking-widest shadow-xl shadow-brand-600/20">Salvar Agendamento</button>
+              <button onClick={onCancel} className="w-full text-slate-500 font-bold uppercase text-[10px] tracking-widest hover:text-white">Descartar Alterações</button>
+           </div>
         </div>
       </div>
     </div>

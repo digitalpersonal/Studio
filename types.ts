@@ -1,5 +1,4 @@
 
-
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN', // Administrador Geral
   ADMIN = 'ADMIN',             // Administrador
@@ -70,6 +69,7 @@ export interface ClassSession {
   title: string;
   description: string;
   dayOfWeek: string;
+  date?: string; // Data específica (opcional, para aulas não recorrentes ou fixas)
   startTime: string;
   durationMinutes: number;
   instructor: string;
