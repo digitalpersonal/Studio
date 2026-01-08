@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, UserRole, Anamnesis, Address } from '../types';
 import {
-  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff
+  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck
 } from 'lucide-react';
 
 interface UserFormPageProps {
@@ -45,15 +45,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
 
   const isSuperAdmin = currentUserRole === UserRole.SUPER_ADMIN;
 
-  // Filtragem de roles permitidas conforme solicitação
-  const availableRoles = useMemo(() => {
-    if (isSuperAdmin) {
-      return Object.values(UserRole);
-    }
-    // Se não for super admin, só pode lidar com alunos
-    return [UserRole.STUDENT];
-  }, [isSuperAdmin]);
-
   const getRoleLabel = (role: UserRole) => {
     switch(role) {
       case UserRole.SUPER_ADMIN: return 'Administrador Geral';
@@ -87,7 +78,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     e.preventDefault();
     const payload = {
       ...formData,
-      role: formData.role || UserRole.STUDENT,
+      role: isSuperAdmin ? (formData.role || UserRole.STUDENT) : UserRole.STUDENT,
       avatarUrl: formData.avatarUrl || `https://ui-avatars.com/api/?name=${String(formData.name)}`,
       profileCompleted: formData.role === UserRole.STUDENT ? true : formData.profileCompleted
     } as User;
@@ -117,8 +108,8 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
       <div className="flex border-b border-dark-800">
         {[
           { id: 'basic', label: 'Dados Pessoais', icon: Info },
-          { id: 'plan', label: 'Plano Financeiro', icon: Repeat, visible: formData.role === UserRole.STUDENT },
-          { id: 'anamnesis', label: 'Saúde & Ficha', icon: Stethoscope, visible: formData.role === UserRole.STUDENT },
+          { id: 'plan', label: 'Plano Financeiro', icon: Repeat, visible: formData.role === UserRole.STUDENT || !isSuperAdmin },
+          { id: 'anamnesis', label: 'Saúde & Ficha', icon: Stethoscope, visible: formData.role === UserRole.STUDENT || !isSuperAdmin },
         ].filter(tab => tab.visible === undefined || tab.visible).map((tab) => (
           <button
             key={tab.id}
@@ -165,23 +156,27 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
 
                   <div>
                       <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Função / Nível de Acesso</label>
-                      <select
-                        required
-                        className={`w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm ${!isSuperAdmin ? 'opacity-70 cursor-not-allowed' : ''}`}
-                        value={formData.role || UserRole.STUDENT}
-                        onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                        disabled={!isSuperAdmin}
-                      >
-                        {availableRoles.map(role => (
-                          <option key={role} value={role}>{getRoleLabel(role as UserRole)}</option>
-                        ))}
-                      </select>
-                      {!isSuperAdmin && (
-                        <p className="text-[9px] text-slate-600 mt-1 uppercase font-bold">Apenas Administradores Gerais podem alterar funções administrativas.</p>
+                      {isSuperAdmin ? (
+                        <select
+                            required
+                            className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm"
+                            value={formData.role || UserRole.STUDENT}
+                            onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+                        >
+                            {Object.values(UserRole).map(role => (
+                                <option key={role} value={role}>{getRoleLabel(role as UserRole)}</option>
+                            ))}
+                        </select>
+                      ) : (
+                        <div className="flex items-center gap-3 bg-dark-900/50 border border-dark-800 rounded-xl p-3">
+                            <ShieldCheck size={18} className="text-brand-500" />
+                            <span className="text-white text-sm font-bold uppercase">Aluno(a)</span>
+                            <span className="text-[9px] text-slate-600 ml-auto font-black uppercase tracking-tighter">Somente Adm Geral altera funções</span>
+                        </div>
                       )}
                   </div>
 
-                  {formData.role === UserRole.STUDENT && (
+                  {(formData.role === UserRole.STUDENT || !isSuperAdmin) && (
                     <>
                       <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">CPF</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.cpf || ''} onChange={e => setFormData({...formData, cpf: e.target.value})} /></div>
                       <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">RG</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.rg || ''} onChange={e => setFormData({...formData, rg: e.target.value})} /></div>
@@ -189,7 +184,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   )}
               </div>
 
-              {formData.role === UserRole.STUDENT && (
+              {(formData.role === UserRole.STUDENT || !isSuperAdmin) && (
                 <div className="space-y-4 pt-4 border-t border-dark-800">
                   <h4 className="text-white font-bold text-sm flex items-center gap-2"><MapPin size={18} className="text-brand-500"/> Endereço Completo</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -202,7 +197,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
             </div>
           )}
 
-          {activeTab === 'plan' && formData.role === UserRole.STUDENT && (
+          {activeTab === 'plan' && (formData.role === UserRole.STUDENT || !isSuperAdmin) && (
             <div className="space-y-6 animate-fade-in">
               <div className="bg-brand-500/5 p-6 rounded-3xl border border-brand-500/10">
                 <h4 className="text-white font-bold text-sm mb-4 flex items-center gap-2"><HandCoins size={18} className="text-brand-500" /> Configuração do Aluno</h4>
@@ -214,7 +209,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
             </div>
           )}
 
-          {activeTab === 'anamnesis' && formData.role === UserRole.STUDENT && (
+          {activeTab === 'anamnesis' && (formData.role === UserRole.STUDENT || !isSuperAdmin) && (
             <div className="space-y-4 animate-fade-in">
               <label className="flex items-center gap-3 cursor-pointer group bg-dark-900 p-4 rounded-xl border border-dark-800">
                 <input type="checkbox" checked={formData.anamnesis?.hasInjury || false} onChange={(e) => handleAnamnesisChange('hasInjury', e.target.checked)} className="w-5 h-5 accent-brand-500" />

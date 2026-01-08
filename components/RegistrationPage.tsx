@@ -57,7 +57,8 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 phoneNumber,
                 avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`,
                 planValue: 0,
-                planDuration: 0,
+                planDuration: 1,
+                billingDay: 5, // Valor padrão de vencimento
                 profileCompleted: false,
             };
 
