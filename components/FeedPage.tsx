@@ -1,9 +1,8 @@
 
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Post, User } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Camera, Send, Heart, Loader2, MessageCircle, Link } from 'lucide-react';
+import { Camera, Send, Heart, Loader2, MessageCircle, Link, Image as ImageIcon, X, Upload } from 'lucide-react';
 
 interface FeedPageProps {
   currentUser: User;
@@ -13,9 +12,11 @@ interface FeedPageProps {
 export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostCaption, setNewPostCaption] = useState('');
-  const [newPostImageUrl, setNewPostImageUrl] = useState('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [postSubmitting, setPostSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -33,24 +34,89 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
     fetchPosts();
   }, [addToast]);
 
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject("Não foi possível obter contexto do canvas");
+          
+          ctx.drawImage(img, 0, 0, width, height);
+          // 0.6 de qualidade para JPEG garante um tamanho de arquivo muito pequeno
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        addToast("Por favor, selecione apenas arquivos de imagem.", "error");
+        return;
+      }
+      setSelectedImage(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostCaption && !newPostImageUrl) {
+    if (!newPostCaption && !selectedImage) {
       addToast("O post não pode estar vazio!", "info");
       return;
     }
+
     setPostSubmitting(true);
     try {
+      let compressedBase64 = '';
+      if (selectedImage) {
+        compressedBase64 = await compressImage(selectedImage);
+      }
+
       const newPost: Omit<Post, 'id' | 'userName' | 'userAvatar' | 'likes'> & { userId: string } = {
         userId: currentUser.id,
-        imageUrl: newPostImageUrl || '',
+        imageUrl: compressedBase64,
         caption: newPostCaption,
         timestamp: new Date().toISOString(), 
       };
+
       const addedPost = await SupabaseService.addPost(newPost);
       setPosts(prev => [addedPost, ...prev]);
+      
+      // Limpar formulário
       setNewPostCaption('');
-      setNewPostImageUrl('');
+      setSelectedImage(null);
+      setPreviewUrl(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      
       addToast("Post publicado com sucesso!", "success");
     } catch (error: any) {
       console.error("Erro ao criar post:", error.message || JSON.stringify(error));
@@ -113,25 +179,50 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
         <h3 className="text-xl font-bold text-white mb-4">Criar Novo Post</h3>
         <form onSubmit={handleCreatePost} className="space-y-4">
           <textarea
-            className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-3 text-white placeholder-slate-500 focus:border-brand-500 outline-none"
+            className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-3 text-white placeholder-slate-500 focus:border-brand-500 outline-none resize-none"
             placeholder="No que você está pensando? Compartilhe seu treino, conquistas ou dicas..."
             value={newPostCaption}
             onChange={e => setNewPostCaption(e.target.value)}
           ></textarea>
-          <div className="relative">
-            <Link size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"/>
-            <input
-              type="url"
-              className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 pl-10 text-white placeholder-slate-500 focus:border-brand-500 outline-none"
-              placeholder="URL da imagem (opcional)"
-              value={newPostImageUrl}
-              onChange={e => setNewPostImageUrl(e.target.value)}
+          
+          {/* Image Preview and Upload Area */}
+          <div className="space-y-3">
+            {previewUrl ? (
+              <div className="relative w-full max-h-64 rounded-2xl overflow-hidden border border-dark-700 bg-dark-900">
+                <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+                <button 
+                  type="button"
+                  onClick={() => { setSelectedImage(null); setPreviewUrl(null); }}
+                  className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-10 border-2 border-dashed border-dark-800 rounded-2xl flex flex-col items-center justify-center gap-2 text-slate-500 hover:text-brand-500 hover:border-brand-500/50 hover:bg-brand-500/5 transition-all"
+              >
+                <div className="p-3 bg-dark-900 rounded-full">
+                  <Camera size={24} />
+                </div>
+                <span className="text-xs font-bold uppercase tracking-widest">Adicionar Foto</span>
+              </button>
+            )}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleFileChange} 
             />
           </div>
+
           <button
             type="submit"
             disabled={postSubmitting}
-            className="w-full bg-brand-600 text-white px-4 py-3 rounded-lg text-sm font-bold flex items-center justify-center shadow-lg shadow-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-brand-600 text-white px-4 py-3 rounded-lg text-sm font-bold flex items-center justify-center shadow-lg shadow-brand-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {postSubmitting ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Send size={18} className="mr-2" />}
             Publicar Post
@@ -152,7 +243,9 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
                 </div>
               </div>
               {post.imageUrl && (
-                <img src={String(post.imageUrl)} alt="Conteúdo do post" className="w-full h-auto max-h-96 object-cover rounded-2xl mb-4" />
+                <div className="w-full rounded-2xl overflow-hidden mb-4 bg-dark-900 border border-dark-800">
+                  <img src={String(post.imageUrl)} alt="Conteúdo do post" className="w-full h-auto max-h-[500px] object-contain mx-auto" loading="lazy" />
+                </div>
               )}
               <p className="text-slate-300 text-sm whitespace-pre-line">{String(post.caption)}</p>
 
