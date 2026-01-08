@@ -18,6 +18,44 @@ const getSupabaseConfigError = (): Error | null => {
   return null;
 };
 
+// --- Helpers de Mapeamento ---
+
+const mapUserToDb = (user: Partial<User>) => {
+  const dbUser: any = { ...user };
+  
+  // Mapear camelCase para snake_case
+  if (user.avatarUrl !== undefined) { dbUser.avatar_url = user.avatarUrl; delete dbUser.avatarUrl; }
+  if (user.joinDate !== undefined) { dbUser.join_date = user.joinDate; delete dbUser.joinDate; }
+  if (user.phoneNumber !== undefined) { dbUser.phone_number = user.phoneNumber; delete dbUser.phoneNumber; }
+  if (user.birthDate !== undefined) { dbUser.birth_date = user.birthDate; delete dbUser.birthDate; }
+  if (user.planValue !== undefined) { dbUser.plan_value = user.planValue; delete dbUser.planValue; }
+  if (user.planDuration !== undefined) { dbUser.plan_duration = user.planDuration; delete dbUser.planDuration; }
+  if (user.billingDay !== undefined) { dbUser.billing_day = user.billingDay; delete dbUser.billingDay; }
+  if (user.planStartDate !== undefined) { dbUser.plan_start_date = user.planStartDate; delete dbUser.planStartDate; }
+  if (user.contractUrl !== undefined) { dbUser.contract_url = user.contractUrl; delete dbUser.contractUrl; }
+  if (user.contractGeneratedAt !== undefined) { dbUser.contract_generated_at = user.contractGeneratedAt; delete dbUser.contractGeneratedAt; }
+  if (user.profileCompleted !== undefined) { dbUser.profile_completed = user.profileCompleted; delete dbUser.profileCompleted; }
+  
+  return dbUser;
+};
+
+const mapDbToUser = (dbUser: any): User => {
+  return {
+    ...dbUser,
+    avatarUrl: dbUser.avatar_url,
+    joinDate: dbUser.join_date,
+    phoneNumber: dbUser.phone_number,
+    birthDate: dbUser.birth_date,
+    planValue: dbUser.plan_value,
+    planDuration: dbUser.plan_duration,
+    billingDay: dbUser.billing_day,
+    planStartDate: dbUser.plan_start_date,
+    contractUrl: dbUser.contract_url,
+    contractGeneratedAt: dbUser.contract_generated_at,
+    profileCompleted: dbUser.profile_completed
+  } as User;
+};
+
 export const SupabaseService = {
   supabase,
 
@@ -27,29 +65,34 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('users').select('*').order('name');
     if (error) throw error;
-    return data as User[];
+    return (data || []).map(mapDbToUser);
   },
 
   addUser: async (user: Omit<User, 'id'>): Promise<User> => {
     const configError = getSupabaseConfigError();
     if (configError) throw configError;
+    
     const userToInsert = {
       ...user,
       profileCompleted: user.role === UserRole.STUDENT && user.profileCompleted === undefined 
                         ? false 
                         : user.profileCompleted
     };
-    const { data, error } = await supabase!.from('users').insert([userToInsert]).select().single();
+
+    const dbPayload = mapUserToDb(userToInsert);
+    const { data, error } = await supabase!.from('users').insert([dbPayload]).select().single();
     if (error) throw error;
-    return data as User;
+    return mapDbToUser(data);
   },
 
   updateUser: async (updatedUser: User): Promise<User> => {
     const configError = getSupabaseConfigError();
     if (configError) throw configError;
-    const { data, error } = await supabase!.from('users').update(updatedUser).eq('id', updatedUser.id).select().single();
+    
+    const dbPayload = mapUserToDb(updatedUser);
+    const { data, error } = await supabase!.from('users').update(dbPayload).eq('id', updatedUser.id).select().single();
     if (error) throw error;
-    return data as User;
+    return mapDbToUser(data);
   },
 
   deleteUser: async (id: string): Promise<boolean> => {
@@ -65,7 +108,7 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('users').select('*').eq('role', 'STUDENT').order('name');
     if (error) throw error;
-    return data as User[];
+    return (data || []).map(mapDbToUser);
   },
 
   // --- Gestão de Pagamentos ---
@@ -76,7 +119,13 @@ export const SupabaseService = {
     if (userId) query = query.eq('student_id', userId);
     const { data, error } = await query;
     if (error) throw error;
-    return data.map(p => ({ ...p, studentId: p.student_id, dueDate: p.due_date })) as Payment[];
+    return (data || []).map(p => ({ 
+      ...p, 
+      studentId: p.student_id, 
+      dueDate: p.due_date,
+      installmentNumber: p.installment_number,
+      totalInstallments: p.total_installments
+    })) as Payment[];
   },
 
   addPayment: async (payment: Omit<Payment, 'id'>): Promise<Payment> => {
@@ -92,7 +141,13 @@ export const SupabaseService = {
       total_installments: payment.totalInstallments
     }]).select().single();
     if (error) throw error;
-    return { ...data, studentId: data.student_id, dueDate: data.due_date } as Payment;
+    return { 
+      ...data, 
+      studentId: data.student_id, 
+      dueDate: data.due_date,
+      installmentNumber: data.installment_number,
+      totalInstallments: data.total_installments
+    } as Payment;
   },
 
   markPaymentAsPaid: async (id: string): Promise<boolean> => {
@@ -109,7 +164,7 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('classes').select('*').order('day_of_week').order('start_time');
     if (error) throw error;
-    return data.map(c => ({
+    return (data || []).map(c => ({
       ...c,
       dayOfWeek: c.day_of_week,
       startTime: c.start_time,
@@ -255,7 +310,7 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('attendance').select('*').eq('class_id', classId).eq('date', date);
     if (error) throw error;
-    return data.map(record => ({ ...record, classId: record.class_id, studentId: record.student_id, isPresent: record.is_present })) as AttendanceRecord[];
+    return (data || []).map(record => ({ ...record, classId: record.class_id, studentId: record.student_id, isPresent: record.is_present })) as AttendanceRecord[];
   },
 
   hasAttendance: async (classId: string, date: string): Promise<boolean> => {
@@ -276,7 +331,7 @@ export const SupabaseService = {
   
     if (classesError) throw classesError;
   
-    const userEnrolledClassIds = enrolledClasses
+    const userEnrolledClassIds = (enrolledClasses || [])
       .filter(cls => cls.enrolled_student_ids?.includes(userId))
       .map(cls => cls.id);
   
@@ -303,7 +358,7 @@ export const SupabaseService = {
     if (userId) query = query.eq('student_id', userId);
     const { data, error } = await query;
     if (error) throw error;
-    return data.map(assessment => ({ ...assessment, studentId: assessment.student_id })) as Assessment[];
+    return (data || []).map(assessment => ({ ...assessment, studentId: assessment.student_id })) as Assessment[];
   },
 
   addAssessment: async (newAssessment: Omit<Assessment, 'id'>): Promise<Assessment> => {
@@ -342,7 +397,7 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('routes').select('*').order('title');
     if (error) throw error;
-    return data as Route[];
+    return (data || []) as Route[];
   },
 
   addRoute: async (newRoute: Omit<Route, 'id'>): Promise<Route> => {
@@ -374,10 +429,10 @@ export const SupabaseService = {
     const configError = getSupabaseConfigError();
     if (configError) throw configError;
     let query = supabase!.from('personalized_workouts').select('*').order('created_at', { ascending: false });
-    if (userId) query = query.filter('student_ids', 'cs', [userId]);
+    if (userId) query = query.filter('student_ids', 'cs', `{"${userId}"}`);
     const { data, error } = await query;
     if (error) throw error;
-    return data.map(workout => ({ ...workout, studentIds: workout.student_ids, createdAt: workout.created_at })) as PersonalizedWorkout[];
+    return (data || []).map(workout => ({ ...workout, studentIds: workout.student_ids, createdAt: workout.created_at })) as PersonalizedWorkout[];
   },
 
   addPersonalizedWorkout: async (newWorkout: Omit<PersonalizedWorkout, 'id'>): Promise<PersonalizedWorkout> => {
@@ -418,15 +473,16 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('posts').select(`
       *,
-      users(name, avatarUrl)
+      users(name, avatar_url)
     `).order('timestamp', { ascending: false });
 
     if (error) throw error;
-    return data.map(post => ({
+    return (data || []).map(post => ({
       ...post,
       userId: post.user_id,
-      userName: post.users.name,
-      userAvatar: post.users.avatarUrl,
+      userName: post.users?.name,
+      userAvatar: post.users?.avatar_url,
+      imageUrl: post.image_url,
       users: undefined
     })) as Post[];
   },
@@ -442,9 +498,15 @@ export const SupabaseService = {
       timestamp: newPost.timestamp
     }]).select().single();
     if (error) throw error;
-    const { data: user, error: userError } = await supabase!.from('users').select('name, avatarUrl').eq('id', newPost.userId).single();
+    const { data: user, error: userError } = await supabase!.from('users').select('name, avatar_url').eq('id', newPost.userId).single();
     if (userError) throw userError;
-    return { ...data, userId: data.user_id, userName: user.name, userAvatar: user.avatarUrl } as Post;
+    return { 
+      ...data, 
+      userId: data.user_id, 
+      userName: user.name, 
+      userAvatar: user.avatar_url,
+      imageUrl: data.image_url 
+    } as Post;
   },
 
   addLikeToPost: async (postId: string, userId: string): Promise<Post> => {
@@ -463,12 +525,19 @@ export const SupabaseService = {
     
     const { data, error } = await supabase!.from('posts').update({ likes: Array.from(likes) }).eq('id', postId).select().single();
     if (error) throw error;
-    const { data: fullPost, error: fullPostError } = await supabase!.from('posts').select(`*, users(name, avatarUrl)`).eq('id', postId).single();
+    const { data: fullPost, error: fullPostError } = await supabase!.from('posts').select(`*, users(name, avatar_url)`).eq('id', postId).single();
     if (fullPostError) throw fullPostError;
-    return { ...fullPost, userId: fullPost.user_id, userName: fullPost.users.name, userAvatar: fullPost.users.avatarUrl, users: undefined } as Post;
+    return { 
+      ...fullPost, 
+      userId: fullPost.user_id, 
+      userName: fullPost.users?.name, 
+      userAvatar: fullPost.users?.avatar_url,
+      imageUrl: fullPost.image_url,
+      users: undefined 
+    } as Post;
   },
 
-  // --- Desafios & Ranking (Com Fallback para tabelas inexistentes) ---
+  // --- Desafios & Ranking ---
   getGlobalChallengeProgress: async (): Promise<{ challenge: Challenge | null; totalDistance: number; }> => {
     const defaultChallenge: Challenge = {
         id: 'mock-challenge-01',
@@ -484,20 +553,17 @@ export const SupabaseService = {
         const configError = getSupabaseConfigError();
         if (configError) return { challenge: defaultChallenge, totalDistance: 12450 };
 
-        // Buscamos o primeiro desafio ativo
         const { data: challengeData, error: challengeError } = await supabase!
           .from('challenges')
           .select('*')
           .limit(1)
           .maybeSingle();
         
-        // Se houver erro de tabela inexistente ou outro erro grave, retornamos o mock
         if (challengeError) {
-          console.warn("Supabase: Tabela 'challenges' não encontrada ou erro de cache. Usando dados mock para Ranking.");
+          console.warn("Supabase: Tabela 'challenges' não encontrada.");
           return { challenge: defaultChallenge, totalDistance: 12450 };
         }
 
-        // Se a tabela existe mas está vazia, tentamos criar o padrão ou retornamos o mock
         if (!challengeData) {
             try {
                 const { data: newChallenge } = await supabase!.from('challenges').insert([
@@ -510,13 +576,12 @@ export const SupabaseService = {
                     endDate: defaultChallenge.endDate
                   }
                 ]).select().single();
-                if (newChallenge) return { challenge: newChallenge, totalDistance: 0 };
+                if (newChallenge) return { challenge: newChallenge as Challenge, totalDistance: 0 };
             } catch (e) {
                 return { challenge: defaultChallenge, totalDistance: 0 };
             }
         }
 
-        // Cálculo de progresso simulado baseado na data se real_distance não existir no schema
         let totalDistance = 0;
         const startDate = new Date(challengeData.startDate);
         const endDate = new Date(challengeData.endDate);
@@ -526,14 +591,14 @@ export const SupabaseService = {
             const totalDuration = endDate.getTime() - startDate.getTime();
             const elapsedDuration = today.getTime() - startDate.getTime();
             const ratio = elapsedDuration / totalDuration;
-            totalDistance = Math.round(challengeData.targetValue * ratio * 0.85); // 85% do esperado para realismo
+            totalDistance = Math.round(challengeData.targetValue * ratio * 0.85);
         } else if (today > endDate) {
             totalDistance = challengeData.targetValue;
         }
 
         return { challenge: challengeData as Challenge, totalDistance };
     } catch (err) {
-        console.error("SupabaseService: Erro crítico em getGlobalChallengeProgress. Fallback para Mock.", err);
+        console.error("SupabaseService: Erro crítico em getGlobalChallengeProgress.", err);
         return { challenge: defaultChallenge, totalDistance: 12450 };
     }
   },
@@ -554,7 +619,7 @@ export const SupabaseService = {
 
         if (error) throw error;
 
-        payments.forEach(p => {
+        (payments || []).forEach(p => {
            const [y, m, d] = String(p.due_date).split('-').map(Number);
            if (y === year) {
                const idx = m - 1;
@@ -565,7 +630,7 @@ export const SupabaseService = {
            }
         });
     } catch (e) {
-        console.warn("Erro ao gerar relatório financeiro. Verifique a tabela 'payments'.");
+        console.warn("Erro ao gerar relatório financeiro.");
     }
     return monthlyData;
   },
@@ -585,7 +650,7 @@ export const SupabaseService = {
 
         if (attendanceError) throw attendanceError;
 
-        attendanceRecords.forEach(record => {
+        (attendanceRecords || []).forEach(record => {
             const recordDate = new Date(String(record.date));
             const dayIndex = recordDate.getDay();
             if (reportData[dayIndex]) {
@@ -593,7 +658,7 @@ export const SupabaseService = {
             }
         });
     } catch (e) {
-        console.warn("Erro ao gerar relatório de presença. Verifique a tabela 'attendance'.");
+        console.warn("Erro ao gerar relatório de presença.");
     }
 
     return reportData;
