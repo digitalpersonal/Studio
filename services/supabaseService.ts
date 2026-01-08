@@ -19,36 +19,64 @@ const getSupabaseConfigError = (): Error | null => {
 };
 
 // Auxiliares para mapeamento de Usuários (Frontend <-> Banco)
+// mapUserFromDb: Converte do Snake Case do Banco para o Camel Case do App
 const mapUserFromDb = (dbUser: any): User => ({
-  ...dbUser,
+  id: dbUser.id,
+  name: dbUser.name,
+  email: dbUser.email,
+  password: dbUser.password,
+  role: dbUser.role as UserRole,
   avatarUrl: dbUser.avatar_url,
   joinDate: dbUser.join_date,
   phoneNumber: dbUser.phone_number,
   birthDate: dbUser.birth_date,
   maritalStatus: dbUser.marital_status,
+  cpf: dbUser.cpf,
+  rg: dbUser.rg,
+  nationality: dbUser.nationality,
+  profession: dbUser.profession,
   planValue: dbUser.plan_value,
   planDuration: dbUser.plan_duration,
   billingDay: dbUser.billing_day,
   planStartDate: dbUser.plan_start_date,
   contractUrl: dbUser.contract_url,
   contractGeneratedAt: dbUser.contract_generated_at,
-  profileCompleted: dbUser.profile_completed
+  profileCompleted: dbUser.profile_completed,
+  address: dbUser.address, // Supabase JSONB
+  anamnesis: dbUser.anamnesis // Supabase JSONB
 });
 
+// mapUserToDb: Converte do Camel Case do App para o Snake Case do Banco (SEM SPREAD PARA EVITAR COLUNAS INVÁLIDAS)
 const mapUserToDb = (user: Partial<User>) => {
-  const dbObj: any = { ...user };
-  if (user.avatarUrl !== undefined) { dbObj.avatar_url = user.avatarUrl; delete dbObj.avatarUrl; }
-  if (user.joinDate !== undefined) { dbObj.join_date = user.joinDate; delete dbObj.joinDate; }
-  if (user.phoneNumber !== undefined) { dbObj.phone_number = user.phoneNumber; delete dbObj.phoneNumber; }
-  if (user.birthDate !== undefined) { dbObj.birth_date = user.birthDate; delete dbObj.birthDate; }
-  if (user.maritalStatus !== undefined) { dbObj.marital_status = user.maritalStatus; delete dbObj.maritalStatus; }
-  if (user.planValue !== undefined) { dbObj.plan_value = user.planValue; delete dbObj.planValue; }
-  if (user.planDuration !== undefined) { dbObj.plan_duration = user.planDuration; delete dbObj.planDuration; }
-  if (user.billingDay !== undefined) { dbObj.billing_day = user.billingDay; delete dbObj.billingDay; }
-  if (user.planStartDate !== undefined) { dbObj.plan_start_date = user.planStartDate; delete dbObj.planStartDate; }
-  if (user.contractUrl !== undefined) { dbObj.contract_url = user.contractUrl; delete dbObj.contractUrl; }
-  if (user.contractGeneratedAt !== undefined) { dbObj.contract_generated_at = user.contractGeneratedAt; delete dbObj.contractGeneratedAt; }
-  if (user.profileCompleted !== undefined) { dbObj.profile_completed = user.profileCompleted; delete dbObj.profileCompleted; }
+  const dbObj: any = {};
+  
+  // Mapeamento explícito de campos básicos
+  if (user.id) dbObj.id = user.id;
+  if (user.name) dbObj.name = user.name;
+  if (user.email) dbObj.email = user.email;
+  if (user.password) dbObj.password = user.password;
+  if (user.role) dbObj.role = user.role;
+  if (user.address) dbObj.address = user.address;
+  if (user.anamnesis) dbObj.anamnesis = user.anamnesis;
+  if (user.cpf) dbObj.cpf = user.cpf;
+  if (user.rg) dbObj.rg = user.rg;
+  if (user.nationality) dbObj.nationality = user.nationality;
+  if (user.maritalStatus) dbObj.marital_status = user.maritalStatus;
+  if (user.profession) dbObj.profession = user.profession;
+
+  // Mapeamento explícito de campos com Snake Case
+  if (user.avatarUrl !== undefined) dbObj.avatar_url = user.avatarUrl;
+  if (user.joinDate !== undefined) dbObj.join_date = user.joinDate;
+  if (user.phoneNumber !== undefined) dbObj.phone_number = user.phoneNumber;
+  if (user.birthDate !== undefined) dbObj.birth_date = user.birthDate;
+  if (user.planValue !== undefined) dbObj.plan_value = user.planValue;
+  if (user.planDuration !== undefined) dbObj.plan_duration = user.planDuration;
+  if (user.billingDay !== undefined) dbObj.billing_day = user.billingDay;
+  if (user.planStartDate !== undefined) dbObj.plan_start_date = user.planStartDate;
+  if (user.contractUrl !== undefined) dbObj.contract_url = user.contractUrl;
+  if (user.contractGeneratedAt !== undefined) dbObj.contract_generated_at = user.contractGeneratedAt;
+  if (user.profileCompleted !== undefined) dbObj.profile_completed = user.profileCompleted;
+  
   return dbObj;
 };
 
