@@ -18,6 +18,40 @@ const getSupabaseConfigError = (): Error | null => {
   return null;
 };
 
+// Auxiliares para mapeamento de Usuários (Frontend <-> Banco)
+const mapUserFromDb = (dbUser: any): User => ({
+  ...dbUser,
+  avatarUrl: dbUser.avatar_url,
+  joinDate: dbUser.join_date,
+  phoneNumber: dbUser.phone_number,
+  birthDate: dbUser.birth_date,
+  maritalStatus: dbUser.marital_status,
+  planValue: dbUser.plan_value,
+  planDuration: dbUser.plan_duration,
+  billingDay: dbUser.billing_day,
+  planStartDate: dbUser.plan_start_date,
+  contractUrl: dbUser.contract_url,
+  contractGeneratedAt: dbUser.contract_generated_at,
+  profileCompleted: dbUser.profile_completed
+});
+
+const mapUserToDb = (user: Partial<User>) => {
+  const dbObj: any = { ...user };
+  if (user.avatarUrl !== undefined) { dbObj.avatar_url = user.avatarUrl; delete dbObj.avatarUrl; }
+  if (user.joinDate !== undefined) { dbObj.join_date = user.joinDate; delete dbObj.joinDate; }
+  if (user.phoneNumber !== undefined) { dbObj.phone_number = user.phoneNumber; delete dbObj.phoneNumber; }
+  if (user.birthDate !== undefined) { dbObj.birth_date = user.birthDate; delete dbObj.birthDate; }
+  if (user.maritalStatus !== undefined) { dbObj.marital_status = user.maritalStatus; delete dbObj.maritalStatus; }
+  if (user.planValue !== undefined) { dbObj.plan_value = user.planValue; delete dbObj.planValue; }
+  if (user.planDuration !== undefined) { dbObj.plan_duration = user.planDuration; delete dbObj.planDuration; }
+  if (user.billingDay !== undefined) { dbObj.billing_day = user.billingDay; delete dbObj.billingDay; }
+  if (user.planStartDate !== undefined) { dbObj.plan_start_date = user.planStartDate; delete dbObj.planStartDate; }
+  if (user.contractUrl !== undefined) { dbObj.contract_url = user.contractUrl; delete dbObj.contractUrl; }
+  if (user.contractGeneratedAt !== undefined) { dbObj.contract_generated_at = user.contractGeneratedAt; delete dbObj.contractGeneratedAt; }
+  if (user.profileCompleted !== undefined) { dbObj.profile_completed = user.profileCompleted; delete dbObj.profileCompleted; }
+  return dbObj;
+};
+
 export const SupabaseService = {
   supabase,
 
@@ -27,29 +61,34 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('users').select('*').order('name');
     if (error) throw error;
-    return data as User[];
+    return (data as any[]).map(mapUserFromDb);
   },
 
   addUser: async (user: Omit<User, 'id'>): Promise<User> => {
     const configError = getSupabaseConfigError();
     if (configError) throw configError;
+    
     const userToInsert = {
       ...user,
       profileCompleted: user.role === UserRole.STUDENT && user.profileCompleted === undefined 
                         ? false 
                         : user.profileCompleted
     };
-    const { data, error } = await supabase!.from('users').insert([userToInsert]).select().single();
+
+    const dbPayload = mapUserToDb(userToInsert);
+    const { data, error } = await supabase!.from('users').insert([dbPayload]).select().single();
     if (error) throw error;
-    return data as User;
+    return mapUserFromDb(data);
   },
 
   updateUser: async (updatedUser: User): Promise<User> => {
     const configError = getSupabaseConfigError();
     if (configError) throw configError;
-    const { data, error } = await supabase!.from('users').update(updatedUser).eq('id', updatedUser.id).select().single();
+    
+    const dbPayload = mapUserToDb(updatedUser);
+    const { data, error } = await supabase!.from('users').update(dbPayload).eq('id', updatedUser.id).select().single();
     if (error) throw error;
-    return data as User;
+    return mapUserFromDb(data);
   },
 
   deleteUser: async (id: string): Promise<boolean> => {
@@ -65,7 +104,7 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('users').select('*').eq('role', 'STUDENT').order('name');
     if (error) throw error;
-    return data as User[];
+    return (data as any[]).map(mapUserFromDb);
   },
 
   // --- Gestão de Pagamentos ---
@@ -418,7 +457,7 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('posts').select(`
       *,
-      users(name, avatarUrl)
+      users(name, avatar_url)
     `).order('timestamp', { ascending: false });
 
     if (error) throw error;
@@ -426,7 +465,7 @@ export const SupabaseService = {
       ...post,
       userId: post.user_id,
       userName: post.users.name,
-      userAvatar: post.users.avatarUrl,
+      userAvatar: post.users.avatar_url,
       users: undefined
     })) as Post[];
   },
@@ -442,9 +481,9 @@ export const SupabaseService = {
       timestamp: newPost.timestamp
     }]).select().single();
     if (error) throw error;
-    const { data: user, error: userError } = await supabase!.from('users').select('name, avatarUrl').eq('id', newPost.userId).single();
+    const { data: user, error: userError } = await supabase!.from('users').select('name, avatar_url').eq('id', newPost.userId).single();
     if (userError) throw userError;
-    return { ...data, userId: data.user_id, userName: user.name, userAvatar: user.avatarUrl } as Post;
+    return { ...data, userId: data.user_id, userName: user.name, userAvatar: user.avatar_url } as Post;
   },
 
   addLikeToPost: async (postId: string, userId: string): Promise<Post> => {
@@ -463,9 +502,9 @@ export const SupabaseService = {
     
     const { data, error } = await supabase!.from('posts').update({ likes: Array.from(likes) }).eq('id', postId).select().single();
     if (error) throw error;
-    const { data: fullPost, error: fullPostError } = await supabase!.from('posts').select(`*, users(name, avatarUrl)`).eq('id', postId).single();
+    const { data: fullPost, error: fullPostError } = await supabase!.from('posts').select(`*, users(name, avatar_url)`).eq('id', postId).single();
     if (fullPostError) throw fullPostError;
-    return { ...fullPost, userId: fullPost.user_id, userName: fullPost.users.name, userAvatar: fullPost.users.avatarUrl, users: undefined } as Post;
+    return { ...fullPost, userId: fullPost.user_id, userName: fullPost.users.name, userAvatar: fullPost.users.avatar_url, users: undefined } as Post;
   },
 
   // --- Desafios & Ranking (Com Fallback para tabelas inexistentes) ---
