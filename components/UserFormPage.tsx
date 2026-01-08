@@ -1,8 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, UserRole, Anamnesis, Address } from '../types';
 import {
-  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar
+  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff
 } from 'lucide-react';
 
 interface UserFormPageProps {
@@ -41,9 +41,18 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     planStartDate: initialFormData.planStartDate || new Date().toISOString().split('T')[0],
   }));
   const [activeTab, setActiveTab] = useState<'basic' | 'plan' | 'anamnesis'>(initialActiveTab);
-  const formContentRef = useRef<HTMLDivElement>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isSuperAdmin = currentUserRole === UserRole.SUPER_ADMIN;
+
+  // Filtragem de roles permitidas conforme solicitação
+  const availableRoles = useMemo(() => {
+    if (isSuperAdmin) {
+      return Object.values(UserRole);
+    }
+    // Se não for super admin, só pode lidar com alunos
+    return [UserRole.STUDENT];
+  }, [isSuperAdmin]);
 
   const getRoleLabel = (role: UserRole) => {
     switch(role) {
@@ -133,9 +142,24 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">WhatsApp</label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" placeholder="(00) 00000-0000" value={formData.phoneNumber || ''} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} /></div>
                   
                   {!editingUser && (
-                      <div>
+                      <div className="relative group">
                           <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Senha de Acesso</label>
-                          <input required type="password" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.password || ''} onChange={e => setFormData({...formData, password: e.target.value})} />
+                          <div className="relative">
+                              <input 
+                                required 
+                                type={showPassword ? "text" : "password"} 
+                                className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none pr-12" 
+                                value={formData.password || ''} 
+                                onChange={e => setFormData({...formData, password: e.target.value})} 
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
+                              >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                              </button>
+                          </div>
                       </div>
                   )}
 
@@ -143,15 +167,18 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                       <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Função / Nível de Acesso</label>
                       <select
                         required
-                        className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm"
+                        className={`w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm ${!isSuperAdmin ? 'opacity-70 cursor-not-allowed' : ''}`}
                         value={formData.role || UserRole.STUDENT}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
-                        disabled={!isSuperAdmin && editingUser?.id !== formData.id}
+                        disabled={!isSuperAdmin}
                       >
-                        {Object.values(UserRole).map(role => (
+                        {availableRoles.map(role => (
                           <option key={role} value={role}>{getRoleLabel(role as UserRole)}</option>
                         ))}
                       </select>
+                      {!isSuperAdmin && (
+                        <p className="text-[9px] text-slate-600 mt-1 uppercase font-bold">Apenas Administradores Gerais podem alterar funções administrativas.</p>
+                      )}
                   </div>
 
                   {formData.role === UserRole.STUDENT && (

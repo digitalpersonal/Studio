@@ -1,11 +1,10 @@
 
-
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { SettingsService } from '../services/settingsService';
-import { Dumbbell, ArrowLeft, Send, Loader2, CheckCircle2 } from 'lucide-react';
-import { useToast } from '../App'; // Importa useToast do App
+import { Dumbbell, ArrowLeft, Send, Loader2, CheckCircle2, Eye, EyeOff, UserCircle } from 'lucide-react';
+import { useToast } from '../App';
 
 interface RegistrationPageProps {
     onLogin: (user: User) => void;
@@ -21,6 +20,10 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [password, setPassword] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+
+    // Logo URL constante
+    const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
     const handleCodeValidation = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,7 +38,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
             }
         } catch (error: any) {
             console.error("Erro ao validar código:", error.message || JSON.stringify(error));
-            addToast(`Ocorreu um erro ao validar o código: ${error.message || JSON.stringify(error)}. Tente novamente.`, "error");
+            addToast(`Ocorreu um erro ao validar o código. Tente novamente.`, "error");
         } finally {
             setIsLoading(false);
         }
@@ -48,19 +51,18 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
             const newUser: Omit<User, 'id'> = {
                 name,
                 email,
-                password, // Em um app real, senhas seriam hasheadas no backend
-                role: UserRole.STUDENT,
+                password,
+                role: UserRole.STUDENT, // Via registro online é sempre ALUNO
                 joinDate: new Date().toISOString().split('T')[0],
                 phoneNumber,
                 avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`,
-                planValue: 0, // Default to 0, can be set by admin later
-                planDuration: 0, // Default to 0, can be set by admin later
-                profileCompleted: false, // NEW: Mark profile as incomplete on self-registration
+                planValue: 0,
+                planDuration: 0,
+                profileCompleted: false,
             };
 
             const createdUser = await SupabaseService.addUser(newUser);
             addToast("Cadastro realizado com sucesso! Bem-vindo(a) ao Studio!", "success");
-            // Automatically log in the new user
             onLogin(createdUser); 
         } catch (error: any) {
             console.error("Erro ao registrar:", error.message || JSON.stringify(error));
@@ -72,15 +74,19 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
 
     return (
         <div className="min-h-screen bg-dark-950 flex items-center justify-center p-4">
-            <div className="bg-dark-900 p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-dark-800 text-center animate-fade-in">
-                <div className="bg-brand-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-brand-500/20 rotate-12">
-                   <Dumbbell className="text-white" size={40} />
+            <div className="bg-dark-900 p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-dark-800 text-center animate-fade-in relative overflow-hidden">
+                {/* Logo Maximizado sem moldura */}
+                <div className="mb-14 flex justify-center">
+                   <img 
+                     src={LOGO_URL} 
+                     alt="Studio Logo" 
+                     className="w-full max-w-[320px] h-auto object-contain drop-shadow-[0_10px_25px_rgba(249,115,22,0.3)] transform transition-transform duration-700 hover:scale-105" 
+                   />
                 </div>
-                <h1 className="text-5xl font-black text-white tracking-tighter mb-10">Studio</h1>
 
                 {step === 'CODE_INPUT' ? (
                     <form onSubmit={handleCodeValidation} className="space-y-4">
-                        <p className="text-slate-400 text-sm mb-6">Para se cadastrar, insira o código de convite fornecido pelo Studio.</p>
+                        <p className="text-slate-400 text-sm mb-6 uppercase font-bold tracking-widest text-[10px]">Validação de Acesso</p>
                         <input
                             type="text"
                             required
@@ -104,7 +110,11 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                     </form>
                 ) : (
                     <form onSubmit={handleRegister} className="space-y-4">
-                        <p className="text-slate-400 text-sm mb-6">Preencha seus dados para criar sua conta de aluno.</p>
+                        <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-brand-500/10 border border-brand-500/20 rounded-full">
+                            <UserCircle size={16} className="text-brand-500" />
+                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">Cadastro de Aluno</span>
+                        </div>
+                        
                         <input
                             type="text"
                             required
@@ -123,32 +133,45 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                             onChange={e => setEmail(e.target.value)}
                             disabled={isLoading}
                         />
-                        <input
-                            type="password"
-                            required
-                            className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg"
-                            placeholder="Senha"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            disabled={isLoading}
-                        />
+                        <div className="relative group text-left">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                required
+                                className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg pr-14"
+                                placeholder="Crie sua Senha"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                disabled={isLoading}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500 hover:text-white transition-colors"
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
                         <input
                             type="tel"
                             required
                             className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg"
-                            placeholder="WhatsApp (Ex: 5535991234567)"
+                            placeholder="WhatsApp (com DDD)"
                             value={phoneNumber}
                             onChange={e => setPhoneNumber(e.target.value)}
                             disabled={isLoading}
                         />
-                        <button
-                            type="submit"
-                            className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all text-sm flex items-center justify-center"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? <Loader2 size={20} className="animate-spin mr-2" /> : <Send size={20} className="mr-2" />}
-                            Criar Conta
-                        </button>
+                        
+                        <div className="pt-4">
+                            <button
+                                type="submit"
+                                className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all text-sm flex items-center justify-center"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? <Loader2 size={20} className="animate-spin mr-2" /> : <Send size={20} className="mr-2" />}
+                                Finalizar Cadastro
+                            </button>
+                        </div>
+                        
                         <button type="button" onClick={onCancelRegistration} className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white mt-4" disabled={isLoading}>
                            <ArrowLeft size={16} className="inline mr-2" /> Voltar ao Login
                         </button>

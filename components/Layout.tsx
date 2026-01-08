@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { User, UserRole, ViewState } from '../types';
 import { 
@@ -45,6 +44,9 @@ export const Layout: React.FC<LayoutProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [showInstallModal, setShowInstallModal] = React.useState(false);
 
+  // Logo URL constante
+  const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+
   // Staff roles (Admin, Super Admin e Trainer)
   const isStaff = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.TRAINER;
   const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
@@ -86,9 +88,12 @@ export const Layout: React.FC<LayoutProps> = ({
     <div className="min-h-screen bg-dark-900 flex text-slate-200 font-sans">
       {/* Sidebar for Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-dark-950 border-r border-dark-800 h-screen sticky top-0">
-        <div className="p-6 flex flex-col items-center justify-center border-b border-dark-800 text-center">
-          <Dumbbell className="text-brand-500 mb-2" size={32} />
-          <h1 className="text-2xl font-bold tracking-tight text-white leading-tight">Studio</h1>
+        <div className="p-8 flex flex-col items-center justify-center border-b border-dark-800 text-center">
+          <img 
+            src={LOGO_URL} 
+            alt="Studio Logo" 
+            className="w-32 h-auto mb-2 object-contain drop-shadow-[0_5px_15px_rgba(249,115,22,0.3)]"
+          />
         </div>
         
         <nav className="flex-1 px-4 py-6 overflow-y-auto">
@@ -160,9 +165,12 @@ export const Layout: React.FC<LayoutProps> = ({
                 <ArrowLeft size={24} />
               </button>
             ) : (
-              <Dumbbell className="text-brand-500 mr-2 shrink-0" size={24} />
+              <img 
+                src={LOGO_URL} 
+                alt="Studio Logo" 
+                className="w-14 h-auto mr-2 shrink-0 object-contain drop-shadow-[0_2px_10px_rgba(249,115,22,0.2)]"
+              />
             )}
-            <span className="font-bold text-lg text-white truncate max-w-[200px]">Studio</span>
           </div>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-slate-300 p-2">
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -238,9 +246,13 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in">
               <div className="bg-dark-900 border border-dark-700 rounded-2xl w-full max-w-sm shadow-2xl relative overflow-hidden">
                   <div className="bg-brand-600 p-6 text-center">
-                      <Smartphone size={48} className="mx-auto text-white mb-2" />
+                      <img 
+                        src={LOGO_URL} 
+                        alt="Studio Logo" 
+                        className="w-24 h-auto mx-auto mb-2 drop-shadow-xl"
+                      />
                       <h3 className="text-xl font-bold text-white">Instalar Aplicativo</h3>
-                      <p className="text-brand-100 text-sm">Tenha o Studio direto na tela inicial do seu celular.</p>
+                      <p className="text-brand-100 text-sm">Tenha o Studio direto na tela inicial.</p>
                   </div>
                   <button onClick={() => setShowInstallModal(false)} className="absolute top-4 right-4 text-white/70 hover:text-white"><X size={24}/></button>
                   

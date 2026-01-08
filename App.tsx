@@ -35,8 +35,10 @@ import { ReportsPage } from './components/ReportsPage.tsx';
 import { ManageUsersPage } from './components/ManageUsersPage';
 import { RegistrationPage } from './components/RegistrationPage';
 import { CompleteProfilePage } from './components/CompleteProfilePage'; 
-import { FinancialPage } from './components/FinancialPage'; // Import FinancialPage
+import { FinancialPage } from './components/FinancialPage';
 
+// Logo URL oficial conforme solicitado
+const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
 /* -------------------------------------------------------------------------- */
 /*                                   NOTIFICAÇÕES                             */
@@ -287,13 +289,13 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
 
 
 // Main App Component
-export function App() { // Changed to named export
+export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('LOGIN');
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextToastId = useRef(0);
-  const [showPassword, setShowPassword] = useState(false); // New state for password visibility
+  const [showPassword, setShowPassword] = useState(false);
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = nextToastId.current++;
@@ -312,7 +314,6 @@ export function App() { // Changed to named export
     if (storedUser) {
       const user = JSON.parse(storedUser);
       setCurrentUser(user);
-      // If user is a student and profile is not completed, force to complete profile page
       if (user.role === UserRole.STUDENT && user.profileCompleted === false) {
         setCurrentView('COMPLETE_PROFILE');
       } else {
@@ -326,7 +327,6 @@ export function App() { // Changed to named export
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     localStorage.setItem('currentUser', JSON.stringify(user));
-    // Check if the student needs to complete their profile
     if (user.role === UserRole.STUDENT && user.profileCompleted === false) {
       setCurrentView('COMPLETE_PROFILE');
     } else {
@@ -360,12 +360,20 @@ export function App() { // Changed to named export
         return <RegistrationPage onLogin={handleLogin} onCancelRegistration={() => handleNavigate('LOGIN')} />;
       }
       return (
-        <div className="min-h-screen bg-dark-950 flex items-center justify-center p-4">
-          <div className="bg-dark-900 p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-dark-800 text-center animate-fade-in">
-            <div className="bg-brand-600 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-brand-500/20 rotate-12">
-              <Dumbbell className="text-white" size={40} />
+        <div className="min-h-screen bg-dark-950 flex items-center justify-center p-4 relative overflow-hidden">
+          {/* Efeito de iluminação de fundo premium */}
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-600/10 blur-[120px] rounded-full"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/5 blur-[120px] rounded-full"></div>
+
+          <div className="bg-dark-900 p-8 md:p-12 rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] w-full max-w-md border border-dark-800 text-center animate-fade-in relative z-10">
+            {/* Logomarca Principal Maximizado - Sem moldura */}
+            <div className="mb-14 flex justify-center">
+               <img 
+                 src={LOGO_URL} 
+                 alt="Studio Logo Official" 
+                 className="w-full max-w-[360px] h-auto object-contain drop-shadow-[0_10px_30px_rgba(249,115,22,0.4)] transform transition-transform duration-700 hover:scale-105" 
+               />
             </div>
-            <h1 className="text-5xl font-black text-white tracking-tighter mb-10">Studio</h1>
 
             <form onSubmit={async (e) => {
               e.preventDefault();
@@ -378,11 +386,9 @@ export function App() { // Changed to named export
 
               try {
                 let user: User | null = null;
-                // Check against SUPER_ADMIN_CONFIG
                 if (email === SUPER_ADMIN_CONFIG.email && password === SUPER_ADMIN_CONFIG.password) {
                   user = { ...SUPER_ADMIN_CONFIG, profileCompleted: true }; 
                 } else {
-                  // Fetch all users and check for matching credentials
                   const allUsers = await SupabaseService.getAllUsers();
                   user = allUsers.find(u => u.email === email && u.password === password) || null;
                 }
@@ -397,57 +403,60 @@ export function App() { // Changed to named export
                 addToast(`Erro no login: ${error.message || JSON.stringify(error)}. Tente novamente.`, "error");
               }
             }} className="space-y-4">
-              <input
-                type="email"
-                name="email"
-                required
-                className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg"
-                placeholder="Seu E-mail"
-              />
-              <div className="relative">
+              <div className="relative group">
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-base placeholder:text-slate-600 transition-all focus:ring-4 focus:ring-brand-500/10 shadow-inner"
+                  placeholder="Seu E-mail"
+                />
+              </div>
+              <div className="relative group">
                 <input
                   type={showPassword ? "text" : "password"}
                   name="password"
                   required
-                  className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg pr-14"
+                  className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-base placeholder:text-slate-600 pr-14 transition-all focus:ring-4 focus:ring-brand-500/10 shadow-inner"
                   placeholder="Sua Senha"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500 hover:text-white transition-colors"
-                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
+              
               <button
                 type="submit"
-                className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all text-sm"
+                className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/40 hover:bg-brand-500 hover:-translate-y-1 active:translate-y-0 transition-all text-sm mt-6"
               >
-                Entrar
+                Entrar no Studio
               </button>
-              <button 
-                type="button" 
-                onClick={() => handleNavigate('REGISTRATION')} 
-                className="w-full text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white mt-4"
-              >
-                <UserPlus size={16} className="inline mr-2" /> Cadastre-se
-              </button>
+              
+              <div className="pt-8">
+                  <button 
+                    type="button" 
+                    onClick={() => handleNavigate('REGISTRATION')} 
+                    className="w-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-2 group"
+                  >
+                    <UserPlus size={14} className="group-hover:scale-110 transition-transform"/> Cadastre-se
+                  </button>
+              </div>
             </form>
           </div>
         </div>
       );
     }
 
-    // User is logged in, render main layout
     return (
       <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
         {currentView === 'DASHBOARD' && (
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-white">Olá, {String(currentUser.name).split(' ')[0]}! 👋</h2>
             <p className="text-slate-400 text-sm">Bem-vindo ao seu painel de controle.</p>
-            {/* Cards and content for Dashboard */}
           </div>
         )}
         {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}
