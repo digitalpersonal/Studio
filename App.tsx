@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import { Layout } from './components/Layout';
 import { User, UserRole, ViewState, ClassSession, Assessment, Payment, Post, Anamnesis, Route, Challenge, PersonalizedWorkout, Address, AcademySettings, AppNavParams } from './types';
-import { MOCK_USER_ADMIN, DAYS_OF_WEEK, SUPER_ADMIN_CONFIG } from './constants';
+import { MOCK_USER_ADMIN, DAYS_OF_WEEK, SYSTEM_ADMINS } from './constants';
 import { 
   Dumbbell, UserPlus, Lock, ArrowRight, Check, X, Calendar, Camera, 
   Trash2, Edit, Plus, Filter, Download, User as UserIcon, Search,
@@ -37,7 +37,6 @@ import { RegistrationPage } from './components/RegistrationPage';
 import { CompleteProfilePage } from './components/CompleteProfilePage'; 
 import { FinancialPage } from './components/FinancialPage';
 
-// Revertido para URL externa conforme solicitado
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
 /* -------------------------------------------------------------------------- */
@@ -127,17 +126,17 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
     e.preventDefault();
     try {
       SettingsService.saveSettings(settings);
-      addToast("Configurações salvas com sucesso!", "success");
+      addToast("Configurações atualizadas com sucesso!", "success");
     } catch (error: any) {
       console.error("Erro ao salvar configurações:", error.message || JSON.stringify(error));
-      addToast(`Erro ao salvar configurações: ${error.message || JSON.stringify(error)}`, "error");
+      addToast(`Erro ao salvar: ${error.message}`, "error");
     }
   };
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
-    addToast("Link do Webhook copiado!", "info");
+    addToast("Link do Webhook copiado para a área de transferência!", "info");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -155,8 +154,8 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
     <div className="space-y-6 animate-fade-in">
       <header className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-white">Ajustes do Studio</h2>
-          <p className="text-slate-400 text-sm">Controle de identidade visual, dados jurídicos e integrações.</p>
+          <h2 className="text-2xl font-bold text-white">Ajustes da Unidade</h2>
+          <p className="text-slate-400 text-sm">Identidade visual, dados comerciais e integrações de pagamento.</p>
         </div>
       </header>
 
@@ -164,55 +163,55 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
         <form onSubmit={handleSave} className="space-y-10">
           
           <section className="space-y-6">
-            <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4">
-               <Building className="text-brand-500" size={20}/> Dados da Academia
+            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-3 border-b border-dark-800 pb-4">
+               <Building className="text-brand-500" size={20}/> Informações da Academia
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Domínio Próprio (Ex: studiosemovimento.com.br)</label>
+                <label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Domínio Personalizado</label>
                 <div className="relative">
                   <GlobeIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
-                  <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-brand-500 outline-none font-medium" value={String(settings.customDomain || '')} onChange={e => setSettings({...settings, customDomain: e.target.value})} />
+                  <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-brand-500 outline-none font-medium" placeholder="exemplo.com.br" value={String(settings.customDomain || '')} onChange={e => setSettings({...settings, customDomain: e.target.value})} />
                 </div>
               </div>
               <div className="md:col-span-2">
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Nome da Academia / Razão Social</label>
+                <label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Razão Social / Nome da Academia</label>
                 <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none" value={String(settings.name || '')} onChange={e => setSettings({...settings, name: e.target.value})} />
               </div>
               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">CNPJ</label>
+                <label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">CNPJ</label>
                 <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none" value={String(settings.cnpj || '')} onChange={e => setSettings({...settings, cnpj: e.target.value})} />
               </div>
               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Representante Legal</label>
+                <label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Responsável Legal</label>
                 <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none" value={String(settings.representativeName || '')} onChange={e => setSettings({...settings, representativeName: e.target.value})} />
               </div>
               <div className="md:col-span-2 pt-4 border-t border-dark-800">
-                 <h4 className="text-white font-bold text-sm flex items-center gap-2"><MapPin size={18} className="text-brand-500"/> Endereço Completo</h4>
+                 <h4 className="text-white font-bold text-sm flex items-center gap-2 mb-4"><MapPin size={18} className="text-brand-500"/> Localização da Unidade</h4>
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">CEP</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.zipCode || '')} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
-                   <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Rua / Avenida</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.street || '')} onChange={e => handleAddressChange('street', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Número</label><input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.number || '')} onChange={e => handleAddressChange('number', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Complemento</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.complement || '')} onChange={e => handleAddressChange('complement', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Bairro</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.neighborhood || '')} onChange={e => handleAddressChange('neighborhood', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Cidade</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.city || '')} onChange={e => handleAddressChange('city', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Estado</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.state || '')} onChange={e => handleAddressChange('state', e.target.value)} /></div>
+                   <div><label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">CEP</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.zipCode || '')} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
+                   <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Logradouro / Rua</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.street || '')} onChange={e => handleAddressChange('street', e.target.value)} /></div>
+                   <div><label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Número</label><input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.number || '')} onChange={e => handleAddressChange('number', e.target.value)} /></div>
+                   <div><label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Complemento</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.complement || '')} onChange={e => handleAddressChange('complement', e.target.value)} /></div>
+                   <div><label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Bairro</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.neighborhood || '')} onChange={e => handleAddressChange('neighborhood', e.target.value)} /></div>
+                   <div><label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Cidade</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.city || '')} onChange={e => handleAddressChange('city', e.target.value)} /></div>
+                   <div><label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Estado (UF)</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.state || '')} onChange={e => handleAddressChange('state', e.target.value)} /></div>
                  </div>
               </div>
             </div>
           </section>
 
           <section className="space-y-6">
-            <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4">
+            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-3 border-b border-dark-800 pb-4">
                <CardIcon className="text-brand-500" size={20}/> Gateway Mercado Pago
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Public Key</label>
+                <label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Public Key (Produção)</label>
                 <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="APP_USR-..." value={String(settings.mercadoPagoPublicKey || '')} onChange={e => setSettings({...settings, mercadoPagoPublicKey: e.target.value})} />
               </div>
               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Access Token</label>
+                <label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Access Token (Produção)</label>
                 <input type="password" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="TEST-..." value={String(settings.mercadoPagoAccessToken || '')} onChange={e => setSettings({...settings, mercadoPagoAccessToken: e.target.value})} />
               </div>
             </div>
@@ -221,11 +220,11 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
               <div className="absolute top-4 right-4">
                 {isMPConfigured ? (
                    <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase rounded-full border border-emerald-500/20">
-                     <ZapIcon size={12}/> Chaves Ativas
+                     <ZapIcon size={12}/> API Conectada
                    </span>
                 ) : (
                    <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase rounded-full border border-amber-500/20">
-                     <AlertCircle size={12}/> Aguardando Chaves
+                     <AlertCircle size={12}/> Chaves Ausentes
                    </span>
                 )}
               </div>
@@ -236,7 +235,7 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
                 </div>
                 <div>
                   <h4 className="text-white font-bold text-base">URL do Webhook</h4>
-                  <p className="text-slate-500 text-xs">Aponte o Mercado Pago para este endereço para receber confirmações automáticas.</p>
+                  <p className="text-slate-500 text-xs">Configure esta URL no painel do Mercado Pago para automação de faturas.</p>
                 </div>
               </div>
               
@@ -253,32 +252,25 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
                   {copied ? 'Copiado' : 'Copiar URL'}
                 </button>
               </div>
-              
-              <div className="mt-6 flex items-start gap-3 p-4 bg-dark-950/50 rounded-2xl border border-dark-800/50">
-                <Info size={16} className="mt-0.5 shrink-0 text-brand-500"/>
-                <span className="text-[11px] text-slate-400 leading-relaxed">
-                  No <b>Painel do Desenvolvedor</b> do Mercado Pago, vá em integrações e adicione esta URL no campo "Notification URL". Certifique-se de selecionar os eventos de <b>payment</b> e <b>subscription</b> para automação completa.
-                </span>
-              </div>
             </div>
           </section>
 
           {isSuperAdmin && ( 
             <section className="space-y-6">
-                <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4">
-                   <Lock className="text-brand-500" size={20}/> Segurança & Acessos
+                <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-3 border-b border-dark-800 pb-4">
+                   <Lock className="text-brand-500" size={20}/> Segurança & Acesso
                 </h3>
                 <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Código de Convite para Cadastro de Alunos</label>
+                    <label className="block text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Código de Convite (Alunos)</label>
                     <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none font-medium" value={String(settings.registrationInviteCode || '')} onChange={e => setSettings({...settings, registrationInviteCode: e.target.value})} />
-                    <p className="text-slate-500 text-xs mt-2">Este código é exigido para novos alunos se registrarem no aplicativo.</p>
+                    <p className="text-slate-500 text-[10px] mt-2 italic">Este código deve ser informado pelo aluno no momento do autocadastro inicial.</p>
                 </div>
             </section>
           )}
           
           <div className="pt-6 border-t border-dark-800">
             <button type="submit" className="w-full md:w-auto px-16 py-5 bg-brand-600 text-white font-black rounded-2xl shadow-xl shadow-brand-600/25 hover:bg-brand-500 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm">
-              <Save size={20}/> Salvar Configurações Gerais
+              <Save size={20}/> Atualizar Ajustes do Studio
             </button>
           </div>
         </form>
@@ -294,6 +286,7 @@ export function App() {
   const [currentView, setCurrentView] = useState<ViewState>('LOGIN');
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const nextToastId = useRef(0);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -339,7 +332,7 @@ export function App() {
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
     setCurrentView('LOGIN');
-    addToast("Você saiu da sua conta.", "info");
+    addToast("Você desconectou da sua conta.", "info");
   };
 
   const handleNavigate = (view: ViewState, params: AppNavParams = {}) => {
@@ -361,12 +354,10 @@ export function App() {
       }
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
-          {/* Efeito de iluminação de fundo premium */}
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/20 blur-[120px] rounded-full"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-300/10 blur-[120px] rounded-full"></div>
 
           <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl w-full max-w-md border border-gray-200 text-center animate-fade-in relative z-10">
-            {/* Logomarca Principal Maximizado - Revertido para URL externa */}
             <div className="mb-14 flex justify-center">
                <img 
                  src={LOGO_URL} 
@@ -377,6 +368,8 @@ export function App() {
 
             <form onSubmit={async (e) => {
               e.preventDefault();
+              if (isLoggingIn) return;
+
               const target = e.target as typeof e.target & {
                 email: { value: string };
                 password: { value: string };
@@ -384,23 +377,31 @@ export function App() {
               const email = target.email.value;
               const password = target.password.value;
 
+              setIsLoggingIn(true);
               try {
                 let user: User | null = null;
-                if (email === SUPER_ADMIN_CONFIG.email && password === SUPER_ADMIN_CONFIG.password) {
-                  user = { ...SUPER_ADMIN_CONFIG, profileCompleted: true }; 
+                
+                const sysAdmin = SYSTEM_ADMINS.find(sa => sa.email === email && sa.password === password);
+                
+                if (sysAdmin) {
+                  user = { ...sysAdmin } as any; 
                 } else {
-                  const allUsers = await SupabaseService.getAllUsers();
-                  user = allUsers.find(u => u.email === email && u.password === password) || null;
+                  user = await SupabaseService.getUserByEmail(email);
+                  if (user && user.password !== password) {
+                    user = null;
+                  }
                 }
 
                 if (user) {
                   handleLogin(user);
                 } else {
-                  addToast("Credenciais inválidas. Tente novamente.", "error");
+                  addToast("E-mail ou senha incorretos. Verifique os dados.", "error");
                 }
               } catch (error: any) {
-                console.error("Erro no login:", error.message || JSON.stringify(error));
-                addToast(`Erro no login: ${error.message || JSON.stringify(error)}. Tente novamente.`, "error");
+                console.error("Erro no login:", error);
+                addToast(`Falha na conexão com o servidor. Verifique sua internet.`, "error");
+              } finally {
+                setIsLoggingIn(false);
               }
             }} className="space-y-4">
               <div className="relative group">
@@ -408,7 +409,8 @@ export function App() {
                   type="email"
                   name="email"
                   required
-                  className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-base placeholder:text-slate-600 transition-all focus:ring-4 focus:ring-brand-500/10"
+                  disabled={isLoggingIn}
+                  className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-base placeholder:text-slate-600 transition-all focus:ring-4 focus:ring-brand-500/10 disabled:opacity-50"
                   placeholder="Seu E-mail"
                 />
               </div>
@@ -417,11 +419,13 @@ export function App() {
                   type={showPassword ? "text" : "password"}
                   name="password"
                   required
-                  className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-base placeholder:text-slate-600 pr-14 transition-all focus:ring-4 focus:ring-brand-500/10"
+                  disabled={isLoggingIn}
+                  className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-base placeholder:text-slate-600 pr-14 transition-all focus:ring-4 focus:ring-brand-500/10 disabled:opacity-50"
                   placeholder="Sua Senha"
                 />
                 <button
                   type="button"
+                  disabled={isLoggingIn}
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500 hover:text-gray-900 transition-colors"
                 >
@@ -431,18 +435,25 @@ export function App() {
               
               <button
                 type="submit"
-                className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/40 hover:bg-brand-500 hover:-translate-y-1 active:translate-y-0 transition-all text-sm mt-6"
+                disabled={isLoggingIn}
+                className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/40 hover:bg-brand-500 hover:-translate-y-1 active:translate-y-0 transition-all text-sm mt-6 flex items-center justify-center gap-2"
               >
-                Entrar no Studio
+                {isLoggingIn ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Autenticando...
+                  </>
+                ) : "Entrar no Studio"}
               </button>
               
               <div className="pt-8">
                   <button 
                     type="button" 
+                    disabled={isLoggingIn}
                     onClick={() => handleNavigate('REGISTRATION')} 
-                    className="w-full text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-2 group"
+                    className="w-full text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-2 group disabled:opacity-30"
                   >
-                    <UserPlus size={14} className="group-hover:scale-110 transition-transform"/> Cadastre-se
+                    <UserPlus size={14} className="group-hover:scale-110 transition-transform"/> Novo por aqui? Cadastre-se
                   </button>
               </div>
             </form>
@@ -457,7 +468,7 @@ export function App() {
           {currentView === 'DASHBOARD' && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-white">Olá, {String(currentUser.name).split(' ')[0]}! 👋</h2>
-              <p className="text-slate-400 text-sm">Bem-vindo ao seu painel de controle.</p>
+              <p className="text-slate-400 text-sm">Este é o seu painel central de atividades.</p>
             </div>
           )}
           {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}

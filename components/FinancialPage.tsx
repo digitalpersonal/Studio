@@ -23,7 +23,6 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
 
   const refreshPayments = async () => {
     let studentIdToFetch = selectedStudentId;
-    // If it's a student, always fetch their own payments, overriding selectedStudentId
     if (!isStaff && user.id) { 
       studentIdToFetch = user.id;
     }
@@ -31,13 +30,13 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
     try { 
       const [p, s] = await Promise.all([
         SupabaseService.getPayments(studentIdToFetch),
-        isStaff ? SupabaseService.getAllStudents() : Promise.resolve([]) 
+        isStaff ? SupabaseService.getAllUsers() : Promise.resolve([]) 
       ]);
       setPayments(p);
       setStudents(s);
     } catch (error: any) {
         console.error("Erro ao carregar pagamentos:", error.message || JSON.stringify(error));
-        addToast(`Erro ao carregar pagamentos: ${error.message || JSON.stringify(error)}`, "error");
+        addToast(`Erro ao carregar pagamentos: ${error.message}`, "error");
     }
   };
 
@@ -54,16 +53,16 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
   }, [payments]);
 
   const handleMarkPaid = async (p: Payment) => {
-    if (!confirm("Confirmar recebimento manual?")) return;
+    if (!confirm("Confirmar recebimento manual deste valor?")) return;
     try {
         await SupabaseService.markPaymentAsPaid(p.id);
         const student = students.find(s => s.id === p.studentId) || user; 
         if (student) WhatsAppAutomation.sendConfirmation(student, p);
-        addToast("Fatura marcada como paga!", "success");
+        addToast("Pagamento registrado com sucesso!", "success");
         refreshPayments();
     } catch (error: any) {
         console.error("Erro ao marcar pagamento:", error.message || JSON.stringify(error));
-        addToast(`Erro ao marcar pagamento: ${error.message || JSON.stringify(error)}`, "error");
+        addToast(`Erro ao processar baixa: ${error.message}`, "error");
     }
   };
 
@@ -76,11 +75,11 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
           const result = await MercadoPagoService.processPayment(p);
           if (result.init_point) {
               window.open(result.init_point, '_blank');
-              addToast("Redirecionando para o Mercado Pago...", "info");
+              addToast("Redirecionando para o ambiente seguro do Mercado Pago...", "info");
           }
       } catch (error: any) { 
-          console.error("Erro ao processar pagamento do Mercado Pago:", error.message || JSON.stringify(error)); 
-          addToast(`Erro ao processar pagamento: ${error.message || JSON.stringify(error)}`, "error");
+          console.error("Erro ao processar pagamento:", error.message || JSON.stringify(error)); 
+          addToast(`Erro na integração com Mercado Pago: ${error.message}`, "error");
           setShowCheckoutModal(null);
       } finally {
           setIsProcessing(null);
@@ -105,15 +104,15 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-dark-950 p-6 rounded-2xl border border-dark-800 shadow-xl">
-          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">Total Pago</p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">Total Recebido</p>
           <p className="text-2xl font-black text-emerald-500">R$ {stats.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-dark-950 p-6 rounded-2xl border border-dark-800 shadow-xl">
-          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">A Receber</p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1">Total a Receber</p>
           <p className="text-2xl font-black text-amber-500">R$ {(stats.total - stats.paid).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
         <div className="bg-brand-600 p-6 rounded-2xl shadow-xl shadow-brand-500/20 text-white">
-          <p className="text-brand-100 text-[10px] font-bold uppercase mb-1">Em Atraso</p>
+          <p className="text-brand-100 text-[10px] font-bold uppercase mb-1">Total em Atraso</p>
           <p className="text-2xl font-black">R$ {stats.overdue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
       </div>
@@ -122,9 +121,14 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         <div className="p-6 border-b border-dark-800 flex flex-col sm:flex-row justify-between items-center bg-dark-950/50 gap-4">
            <h3 className="font-bold flex items-center gap-2 text-white"><Receipt size={18}/> Faturas</h3>
            <div className="flex gap-2 overflow-x-auto w-full sm:w-auto no-scrollbar pb-1">
-             {['ALL', 'PENDING', 'OVERDUE', 'PAID'].map(f => (
-               <button key={f} onClick={() => setFilter(f as any)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all whitespace-nowrap ${filter === f ? 'bg-brand-600 text-white' : 'bg-dark-800 text-slate-500 hover:text-white'}`}>
-                 {f === 'ALL' ? 'Todas' : f === 'PENDING' ? 'Pendentes' : f === 'OVERDUE' ? 'Atrasadas' : 'Pagas'}
+             {[
+               { id: 'ALL', label: 'Todas' },
+               { id: 'PENDING', label: 'Pendentes' },
+               { id: 'OVERDUE', label: 'Atrasadas' },
+               { id: 'PAID', label: 'Pagas' }
+             ].map(f => (
+               <button key={f.id} onClick={() => setFilter(f.id as any)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap tracking-widest ${filter === f.id ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/20' : 'bg-dark-800 text-slate-500 hover:text-white'}`}>
+                 {f.label}
                </button>
              ))}
            </div>
@@ -133,7 +137,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
           <table className="w-full text-left text-sm text-slate-400">
             <thead className="bg-dark-900/50 text-[10px] font-bold uppercase tracking-widest text-slate-500">
               <tr>
-                <th className="px-6 py-4">Fatura / Usuário</th>
+                <th className="px-6 py-4">Fatura / Aluno</th>
                 <th className="px-6 py-4">Vencimento</th>
                 <th className="px-6 py-4">Valor</th>
                 <th className="px-6 py-4">Status</th>
@@ -158,7 +162,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                     <td className="px-6 py-4 font-mono text-xs">{String(p.dueDate)}</td>
                     <td className="px-6 py-4 font-bold text-white">R$ {p.amount.toFixed(2)}</td>
                     <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border ${
+                        <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border ${
                             p.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                             p.status === 'OVERDUE' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
                             'bg-amber-500/10 text-amber-500 border-amber-500/20'
@@ -172,20 +176,20 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                              <button 
                                 onClick={() => handlePayWithMP(p)} 
                                 disabled={isProcessing === p.id}
-                                className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-xl hover:bg-brand-500 transition-all text-xs font-bold shadow-lg shadow-brand-500/20"
+                                className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-xl hover:bg-brand-500 transition-all text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-500/20"
                              >
                                 {isProcessing === p.id ? <Loader2 className="animate-spin" size={14}/> : <CreditCard size={14}/>}
-                                Pagar
+                                Pagar Agora
                              </button>
                           )}
                           {p.status !== 'PAID' && isStaff && (
                             <>
-                                <button onClick={() => handleMarkPaid(p)} className="p-2 bg-emerald-600/10 text-emerald-500 rounded-lg hover:bg-emerald-600 hover:text-white transition-all" title="Baixa Manual"><Check size={16}/></button>
-                                <button onClick={() => WhatsAppAutomation.sendPaymentReminder(student, p)} className="p-2 bg-brand-600/10 text-brand-500 rounded-lg hover:bg-brand-600 hover:text-white transition-all"><MessageCircle size={16}/></button>
+                                <button onClick={() => handleMarkPaid(p)} className="p-2 bg-emerald-600/10 text-emerald-500 rounded-lg hover:bg-emerald-600 hover:text-white transition-all" title="Registrar Recebimento Manual"><Check size={16}/></button>
+                                <button onClick={() => WhatsAppAutomation.sendPaymentReminder(student, p)} className="p-2 bg-brand-600/10 text-brand-500 rounded-lg hover:bg-brand-600 hover:text-white transition-all" title="Lembrar via WhatsApp"><MessageCircle size={16}/></button>
                             </>
                           )}
                           {p.status === 'PAID' && (
-                              <button className="p-2 bg-dark-800 text-slate-500 rounded-lg hover:text-white transition-all" title="Baixar Recibo"><Download size={16}/></button>
+                              <button className="p-2 bg-dark-800 text-slate-500 rounded-lg hover:text-white transition-all" title="Baixar Recibo de Pagamento"><Download size={16}/></button>
                           )}
                        </div>
                     </td>
@@ -204,10 +208,10 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                  {isProcessing ? <Loader2 className="text-white animate-spin" size={48}/> : <CheckCheck className="text-white" size={48}/>}
               </div>
               <div>
-                <h3 className="text-white font-black text-xl mb-2">Conectando ao Mercado Pago</h3>
-                <p className="text-slate-400 text-sm">Estamos gerando seu link de pagamento seguro para R$ {showCheckoutModal.amount.toFixed(2)}...</p>
+                <h3 className="text-white font-black text-xl mb-2">Processando Pagamento Seguro</h3>
+                <p className="text-slate-400 text-sm">Estamos conectando você ao Mercado Pago para realizar o pagamento de R$ {showCheckoutModal.amount.toFixed(2)} com total segurança.</p>
               </div>
-              <button onClick={() => setShowCheckoutModal(null)} className="w-full py-4 text-slate-500 text-xs font-bold uppercase tracking-widest hover:text-white">Cancelar</button>
+              <button onClick={() => setShowCheckoutModal(null)} className="w-full py-4 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-white">Cancelar e Voltar</button>
            </div>
         </div>
       )}

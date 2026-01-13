@@ -51,7 +51,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
         }
         setAssessments(assessmentData);
       } catch (error: any) {
-        addToast(`Erro ao carregar avaliações: ${error.message}`, "error");
+        addToast(`Erro ao carregar avaliações`, "error");
       } finally {
         setLoading(false);
       }
@@ -82,10 +82,10 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
     try {
       if (editingAssessment) {
         await SupabaseService.updateAssessment({ ...assessmentData as Assessment, id: editingAssessment.id });
-        addToast("Avaliação atualizada!", "success");
+        addToast("Avaliação atualizada com sucesso!", "success");
       } else {
         await SupabaseService.addAssessment(assessmentData);
-        addToast("Nova avaliação concluída!", "success");
+        addToast("Nova avaliação salva com sucesso!", "success");
       }
       setShowForm(false);
       setEditingAssessment(null);
@@ -94,7 +94,8 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
         setAssessments(updatedAssessments);
       }
     } catch (error: any) {
-      addToast(`Erro ao salvar avaliação`, "error");
+      console.error("Erro no salvamento:", error);
+      addToast(`Erro crítico ao salvar: Verifique os campos ou conexão`, "error");
     } finally {
       setLoading(false);
     }
