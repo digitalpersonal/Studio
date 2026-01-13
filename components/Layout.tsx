@@ -23,7 +23,8 @@ import {
   MessageCircle,
   Heart,
   ArrowLeft,
-  FileText
+  FileText,
+  ChevronRight
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -44,7 +45,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [showInstallModal, setShowInstallModal] = React.useState(false);
 
-  // Logo URL constante
+  // Revertido para URL externa original
   const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
   // Staff roles (Admin, Super Admin e Trainer)
@@ -92,7 +93,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <img 
             src={LOGO_URL} 
             alt="Studio Logo" 
-            className="w-32 h-auto mb-2 object-contain drop-shadow-[0_5px_15px_rgba(249,115,22,0.3)]"
+            className="w-40 h-auto mb-2 object-contain rounded-2xl"
           />
         </div>
         
@@ -168,7 +169,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <img 
                 src={LOGO_URL} 
                 alt="Studio Logo" 
-                className="w-14 h-auto mr-2 shrink-0 object-contain drop-shadow-[0_2px_10px_rgba(249,115,22,0.2)]"
+                className="w-16 h-auto mr-2 shrink-0 object-contain rounded-lg"
               />
             )}
           </div>
@@ -241,54 +242,60 @@ export const Layout: React.FC<LayoutProps> = ({
         </main>
       </div>
 
-      {/* PWA INSTALL INSTRUCTIONS MODAL */}
+      {/* PWA INSTALL INSTRUCTIONS MODAL - IMPROVED UI */}
       {showInstallModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-fade-in">
-              <div className="bg-dark-900 border border-dark-700 rounded-2xl w-full max-w-sm shadow-2xl relative overflow-hidden">
-                  <div className="bg-brand-600 p-6 text-center">
+              <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-sm shadow-2xl relative overflow-hidden">
+                  <div className="bg-brand-600 p-8 text-center">
                       <img 
                         src={LOGO_URL} 
                         alt="Studio Logo" 
-                        className="w-24 h-auto mx-auto mb-2 drop-shadow-xl"
+                        className="w-24 h-auto mx-auto mb-4 rounded-2xl shadow-xl"
                       />
-                      <h3 className="text-xl font-bold text-white">Instalar Aplicativo</h3>
-                      <p className="text-brand-100 text-sm">Tenha o Studio direto na tela inicial.</p>
+                      <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Studio no Celular</h3>
+                      <p className="text-brand-100 text-sm font-medium mt-1">Siga os passos para instalar o App</p>
                   </div>
-                  <button onClick={() => setShowInstallModal(false)} className="absolute top-4 right-4 text-white/70 hover:text-white"><X size={24}/></button>
+                  <button onClick={() => setShowInstallModal(false)} className="absolute top-6 right-6 text-white/70 hover:text-white p-2 bg-black/20 rounded-full"><X size={20}/></button>
                   
-                  <div className="p-6 space-y-6">
+                  <div className="p-8 space-y-8">
                       {/* iOS Instructions */}
-                      <div className="flex gap-4 items-start">
-                          <div className="bg-dark-950 p-2 rounded-lg border border-dark-800 text-blue-400">
-                             <Share size={24} />
+                      <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-dark-800 pb-2">
+                              <div className="w-2 h-2 rounded-full bg-blue-500" />
+                              <h4 className="text-white font-black text-xs uppercase tracking-widest">Usuários de iPhone (iOS)</h4>
                           </div>
-                          <div>
-                              <h4 className="text-white font-bold text-sm mb-1">iPhone (iOS)</h4>
-                              <p className="text-slate-400 text-xs">
-                                  1. Toque no botão <span className="text-blue-400 font-bold">Compartilhar</span> no menu do navegador.<br/>
-                                  2. Role para baixo e selecione <span className="text-white font-bold">"Adicionar à Tela de Início"</span>.
-                              </p>
+                          <div className="space-y-3">
+                              <div className="flex gap-3 items-center bg-dark-950 p-3 rounded-2xl border border-dark-800">
+                                  <span className="w-6 h-6 flex items-center justify-center bg-blue-500/10 text-blue-500 text-[10px] font-black rounded-full border border-blue-500/20">1</span>
+                                  <p className="text-slate-300 text-xs font-bold">Toque no ícone de <span className="text-blue-400">Compartilhar</span> no Safari.</p>
+                              </div>
+                              <div className="flex gap-3 items-center bg-dark-950 p-3 rounded-2xl border border-dark-800">
+                                  <span className="w-6 h-6 flex items-center justify-center bg-blue-500/10 text-blue-500 text-[10px] font-black rounded-full border border-blue-500/20">2</span>
+                                  <p className="text-slate-300 text-xs font-bold">Selecione <span className="text-white">"Adicionar à Tela de Início"</span>.</p>
+                              </div>
                           </div>
                       </div>
-
-                      <div className="h-px bg-dark-800" />
 
                       {/* Android Instructions */}
-                      <div className="flex gap-4 items-start">
-                          <div className="bg-dark-950 p-2 rounded-lg border border-dark-800 text-slate-300">
-                             <MoreVertical size={24} />
+                      <div className="space-y-4">
+                          <div className="flex items-center gap-2 border-b border-dark-800 pb-2">
+                              <div className="w-2 h-2 rounded-full bg-green-500" />
+                              <h4 className="text-white font-black text-xs uppercase tracking-widest">Usuários de Android</h4>
                           </div>
-                          <div>
-                              <h4 className="text-white font-bold text-sm mb-1">Android (Chrome)</h4>
-                              <p className="text-slate-400 text-xs">
-                                  1. Toque nos <span className="text-white font-bold">três pontos</span> no canto superior direito.<br/>
-                                  2. Selecione <span className="text-white font-bold">"Adicionar à Tela Inicial"</span> ou "Instalar App".
-                              </p>
+                          <div className="space-y-3">
+                              <div className="flex gap-3 items-center bg-dark-950 p-3 rounded-2xl border border-dark-800">
+                                  <span className="w-6 h-6 flex items-center justify-center bg-green-500/10 text-green-500 text-[10px] font-black rounded-full border border-green-500/20">1</span>
+                                  <p className="text-slate-300 text-xs font-bold">Toque nos <span className="text-white">três pontos</span> no canto do Chrome.</p>
+                              </div>
+                              <div className="flex gap-3 items-center bg-dark-950 p-3 rounded-2xl border border-dark-800">
+                                  <span className="w-6 h-6 flex items-center justify-center bg-green-500/10 text-green-500 text-[10px] font-black rounded-full border border-green-500/20">2</span>
+                                  <p className="text-slate-300 text-xs font-bold">Toque em <span className="text-white">"Instalar Aplicativo"</span>.</p>
+                              </div>
                           </div>
                       </div>
 
-                      <button onClick={() => setShowInstallModal(false)} className="w-full bg-dark-800 hover:bg-dark-700 text-white font-bold py-3 rounded-xl transition-colors">
-                          Entendi
+                      <button onClick={() => setShowInstallModal(false)} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-brand-600/20 uppercase text-[10px] tracking-widest">
+                          Entendi, vamos lá!
                       </button>
                   </div>
               </div>

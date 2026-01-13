@@ -3,7 +3,7 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no" />
     <title>Studio</title>
     
     <!-- PWA & Mobile Icons -->
@@ -11,6 +11,7 @@
     <link rel="apple-touch-icon" href="https://digitalfreeshop.com.br/logostudio/logo.jpg" />
     <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#f97316" />
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Studio">
@@ -48,6 +49,8 @@
         background-color: #0f172a; /* dark-900 */
         color: #f8fafc;
         -webkit-tap-highlight-color: transparent;
+        text-size-adjust: none;
+        -webkit-text-size-adjust: none;
       }
       /* Custom Scrollbar */
       ::-webkit-scrollbar {

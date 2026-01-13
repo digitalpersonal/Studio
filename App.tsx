@@ -37,7 +37,7 @@ import { RegistrationPage } from './components/RegistrationPage';
 import { CompleteProfilePage } from './components/CompleteProfilePage'; 
 import { FinancialPage } from './components/FinancialPage';
 
-// Logo URL oficial conforme solicitado
+// Revertido para URL externa conforme solicitado
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
 /* -------------------------------------------------------------------------- */
@@ -360,18 +360,18 @@ export function App() {
         return <RegistrationPage onLogin={handleLogin} onCancelRegistration={() => handleNavigate('LOGIN')} />;
       }
       return (
-        <div className="min-h-screen bg-dark-950 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
           {/* Efeito de iluminação de fundo premium */}
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-600/10 blur-[120px] rounded-full"></div>
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/5 blur-[120px] rounded-full"></div>
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/20 blur-[120px] rounded-full"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-300/10 blur-[120px] rounded-full"></div>
 
-          <div className="bg-dark-900 p-8 md:p-12 rounded-[3rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.8)] w-full max-w-md border border-dark-800 text-center animate-fade-in relative z-10">
-            {/* Logomarca Principal Maximizado - Sem moldura */}
+          <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl w-full max-w-md border border-gray-200 text-center animate-fade-in relative z-10">
+            {/* Logomarca Principal Maximizado - Revertido para URL externa */}
             <div className="mb-14 flex justify-center">
                <img 
                  src={LOGO_URL} 
-                 alt="Studio Logo Official" 
-                 className="w-full max-w-[360px] h-auto object-contain drop-shadow-[0_10px_30px_rgba(249,115,22,0.4)] transform transition-transform duration-700 hover:scale-105" 
+                 alt="Studio Logo" 
+                 className="w-full max-w-[400px] h-auto object-contain rounded-2xl" 
                />
             </div>
 
@@ -408,7 +408,7 @@ export function App() {
                   type="email"
                   name="email"
                   required
-                  className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-base placeholder:text-slate-600 transition-all focus:ring-4 focus:ring-brand-500/10 shadow-inner"
+                  className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-base placeholder:text-slate-600 transition-all focus:ring-4 focus:ring-brand-500/10"
                   placeholder="Seu E-mail"
                 />
               </div>
@@ -417,13 +417,13 @@ export function App() {
                   type={showPassword ? "text" : "password"}
                   name="password"
                   required
-                  className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-base placeholder:text-slate-600 pr-14 transition-all focus:ring-4 focus:ring-brand-500/10 shadow-inner"
+                  className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-base placeholder:text-slate-600 pr-14 transition-all focus:ring-4 focus:ring-brand-500/10"
                   placeholder="Sua Senha"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500 hover:text-white transition-colors"
+                  className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500 hover:text-gray-900 transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -440,7 +440,7 @@ export function App() {
                   <button 
                     type="button" 
                     onClick={() => handleNavigate('REGISTRATION')} 
-                    className="w-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-2 group"
+                    className="w-full text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-2 group"
                   >
                     <UserPlus size={14} className="group-hover:scale-110 transition-transform"/> Cadastre-se
                   </button>
@@ -452,27 +452,30 @@ export function App() {
     }
 
     return (
-      <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
-        {currentView === 'DASHBOARD' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-white">Olá, {String(currentUser.name).split(' ')[0]}! 👋</h2>
-            <p className="text-slate-400 text-sm">Bem-vindo ao seu painel de controle.</p>
-          </div>
-        )}
-        {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
-        {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} selectedStudentId={navParams.studentId} />}
-        {currentView === 'MANAGE_USERS' && <ManageUsersPage currentUser={currentUser} onNavigate={handleNavigate} />}
-        {currentView === 'SETTINGS' && <SettingsPage currentUser={currentUser} />}
-        {currentView === 'RANKING' && <RankingPage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
-        {currentView === 'FEED' && <FeedPage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
-          <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
-        )}
-      </Layout>
+      <ToastContext.Provider value={{ addToast }}>
+        <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
+          {currentView === 'DASHBOARD' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-white">Olá, {String(currentUser.name).split(' ')[0]}! 👋</h2>
+              <p className="text-slate-400 text-sm">Bem-vindo ao seu painel de controle.</p>
+            </div>
+          )}
+          {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}
+          {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
+          {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} selectedStudentId={navParams.studentId} />}
+          {currentView === 'MANAGE_USERS' && <ManageUsersPage currentUser={currentUser} onNavigate={handleNavigate} />}
+          {currentView === 'SETTINGS' && <SettingsPage currentUser={currentUser} />}
+          {currentView === 'RANKING' && <RankingPage currentUser={currentUser} addToast={addToast} />}
+          {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} addToast={addToast} />}
+          {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
+          {currentView === 'FEED' && <FeedPage currentUser={currentUser} addToast={addToast} />}
+          {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
+          {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
+            <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
+          )}
+        </Layout>
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+      </ToastContext.Provider>
     );
   };
 

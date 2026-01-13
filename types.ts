@@ -91,11 +91,20 @@ export interface AttendanceRecord {
   isPresent: boolean;
 }
 
+export interface FMSData {
+  deepSquat: number;           // Agachamento Profundo
+  hurdleStep: number;          // Passa por cima da barreira
+  inlineLunge: number;         // Avanço em linha reta
+  shoulderMobility: number;    // Mobilidade Ombro
+  activeStraightLegRaise: number; // Elevação de pernas estendida
+  rotationalStability: number; // Estabilidade Rotacional
+}
+
 export interface Assessment {
   id: string;
   studentId: string;
   date: string;
-  status: 'DONE' | 'SCHEDULED'; // 'Concluído' | 'Agendado'
+  status: 'DONE' | 'SCHEDULED';
   notes: string;
   weight: number;
   height: number;
@@ -106,13 +115,32 @@ export interface Assessment {
   hydrationPercentage?: number;
   vo2Max?: number;
   squatMax?: number;
-  circumferences?: { // Objeto JSONB no Supabase
+  
+  // Testes de Performance / Potência
+  horizontalJump?: number; // metros
+  verticalJump?: number;   // cm
+  wallBallThrow?: number;  // metros
+
+  // Protocolo FMS
+  fms?: FMSData;
+  correctivePlan?: string;
+
+  // Evolução Visual
+  photos?: {
+    front?: string;
+    side?: string;
+    back?: string;
+  };
+
+  circumferences?: {
     chest?: number;
     waist?: number;
     abdomen?: number;
     hips?: number;
     rightThigh?: number;
+    leftThigh?: number;
     rightCalf?: number;
+    leftCalf?: number;
   };
 }
 
@@ -122,8 +150,8 @@ export interface Route {
   distanceKm: number;
   description: string;
   mapLink: string;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD'; // 'FÁCIL' | 'MÉDIA' | 'DIFÍCIL'
-  elevationGain: number; // em metros
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  elevationGain: number;
 }
 
 export interface Challenge {
@@ -131,10 +159,10 @@ export interface Challenge {
   title: string;
   description: string;
   targetValue: number;
-  unit: string; // ex: 'km', 'reps'
-  startDate: string; // YYYY-MM-DD
-  endDate: string;   // YYYY-MM-DD
-  currentProgress?: number; // Para ser atualizado ou buscado separadamente
+  unit: string;
+  startDate: string;
+  endDate: string;
+  currentProgress?: number;
 }
 
 export interface PersonalizedWorkout {
@@ -142,8 +170,8 @@ export interface PersonalizedWorkout {
   title: string;
   description: string;
   videoUrl?: string;
-  studentIds: string[]; // JSONB array no Supabase
-  createdAt: string; // YYYY-MM-DD
+  studentIds: string[];
+  createdAt: string;
   instructorName: string;
 }
 
@@ -159,7 +187,7 @@ export interface AcademySettings {
   customDomain: string; 
   monthlyFee: number;
   inviteCode: string;
-  registrationInviteCode: string; // Novo campo para código de convite de cadastro de aluno
+  registrationInviteCode: string;
 }
 
 export interface Post {
@@ -169,7 +197,7 @@ export interface Post {
   userAvatar: string;
   imageUrl: string;
   caption: string;
-  likes: string[]; // IDs dos usuários que curtiram
+  likes: string[];
   timestamp: string;
 }
 
@@ -177,7 +205,7 @@ export interface Payment {
   id: string;
   studentId: string;
   amount: number;
-  status: 'PAID' | 'PENDING' | 'OVERDUE'; // 'PAGO' | 'PENDENTE' | 'ATRASADO'
+  status: 'PAID' | 'PENDING' | 'OVERDUE';
   dueDate: string;
   description: string;
   installmentNumber?: number;

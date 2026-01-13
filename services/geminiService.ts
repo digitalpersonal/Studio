@@ -1,7 +1,6 @@
 
-
 import { GoogleGenAI } from "@google/genai";
-import { Assessment } from '../types';
+import { Assessment, FMSData } from '../types';
 
 const getAiClient = () => {
     if (!process.env.API_KEY) return null;
@@ -26,7 +25,7 @@ export const GeminiService = {
 
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview', // Upgrade para análise complexa
+        model: 'gemini-3-pro-preview',
         contents: `Você é um Personal Trainer e Especialista em Fisiologia do Exercício de alto nível.
         Analise os dados de avaliação do aluno ${String(studentName)}:\n${dataString}\n
         
@@ -41,6 +40,41 @@ export const GeminiService = {
     } catch (error: any) {
         console.error("Erro na Análise Gemini:", error.message || JSON.stringify(error));
         return "A IA encontrou um problema ao analisar os dados complexos.";
+    }
+  },
+
+  /**
+   * Sugere plano corretivo baseado nos resultados do FMS.
+   */
+  suggestCorrectivePlan: async (fms: FMSData) => {
+    const ai = getAiClient();
+    if (!ai) return "Serviço indisponível.";
+
+    const scores = `
+      Agachamento Profundo: ${fms.deepSquat}/3
+      Passa Barreira: ${fms.hurdleStep}/3
+      Avanço Linha Reta: ${fms.inlineLunge}/3
+      Mobilidade Ombro: ${fms.shoulderMobility}/3
+      Elevação Perna: ${fms.activeStraightLegRaise}/3
+      Estabilidade Rotacional: ${fms.rotationalStability}/3
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: `Você é um especialista em biomecânica e protocolo FMS.
+        Com base nos seguintes scores de movimento:\n${scores}\n
+        
+        Identifique a maior prioridade de correção (score mais baixo).
+        Sugira 3 exercícios corretivos específicos de mobilidade ou estabilidade.
+        Para cada exercício, explique brevemente o benefício.
+        
+        Seja técnico, porém objetivo. Formate como uma lista curta. Português do Brasil.`,
+      });
+      return response.text;
+    } catch (error: any) {
+        console.error("Erro Corretivos IA:", error);
+        return "Não foi possível gerar as correções agora.";
     }
   }
 };

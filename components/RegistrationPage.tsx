@@ -22,7 +22,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    // Logo URL constante
+    // Revertido para URL externa original
     const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
     const handleCodeValidation = async (e: React.FormEvent) => {
@@ -74,14 +74,14 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     };
 
     return (
-        <div className="min-h-screen bg-dark-950 flex items-center justify-center p-4">
-            <div className="bg-dark-900 p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-dark-800 text-center animate-fade-in relative overflow-hidden">
-                {/* Logo Maximizado sem moldura */}
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="bg-white p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-gray-200 text-center animate-fade-in relative overflow-hidden">
+                {/* Logo local atualizado */}
                 <div className="mb-14 flex justify-center">
                    <img 
                      src={LOGO_URL} 
                      alt="Studio Logo" 
-                     className="w-full max-w-[320px] h-auto object-contain drop-shadow-[0_10px_25px_rgba(249,115,22,0.3)] transform transition-transform duration-700 hover:scale-105" 
+                     className="w-full max-w-[360px] h-auto object-contain" 
                    />
                 </div>
 
@@ -91,7 +91,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                         <input
                             type="text"
                             required
-                            className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg text-center font-bold tracking-wider uppercase"
+                            className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-lg text-center font-bold tracking-wider uppercase"
                             placeholder="CÓDIGO DE CONVITE"
                             value={inviteCode}
                             onChange={e => setInviteCode(e.target.value)}
@@ -119,7 +119,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                         <input
                             type="text"
                             required
-                            className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg"
+                            className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-lg"
                             placeholder="Nome Completo"
                             value={name}
                             onChange={e => setName(e.target.value)}
@@ -128,7 +128,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                         <input
                             type="email"
                             required
-                            className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg"
+                            className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-lg"
                             placeholder="E-mail"
                             value={email}
                             onChange={e => setEmail(e.target.value)}
@@ -138,7 +138,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                             <input
                                 type={showPassword ? "text" : "password"}
                                 required
-                                className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg pr-14"
+                                className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-lg pr-14"
                                 placeholder="Crie sua Senha"
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
@@ -147,7 +147,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500 hover:text-white transition-colors"
+                                className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500 hover:text-gray-900 transition-colors"
                             >
                                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                             </button>
@@ -155,7 +155,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                         <input
                             type="tel"
                             required
-                            className="w-full bg-dark-950 border border-dark-700 rounded-2xl p-5 text-white focus:border-brand-500 outline-none text-lg"
+                            className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-lg"
                             placeholder="WhatsApp (com DDD)"
                             value={phoneNumber}
                             onChange={e => setPhoneNumber(e.target.value)}
