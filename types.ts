@@ -61,7 +61,7 @@ export interface User {
   contractUrl?: string;
   contractGeneratedAt?: string;
 
-  profileCompleted?: boolean; // Sinaliza se o perfil do aluno está completo
+  profileCompleted?: boolean;
 }
 
 export interface ClassSession {
@@ -69,35 +69,35 @@ export interface ClassSession {
   title: string;
   description: string;
   dayOfWeek: string;
-  date?: string; // Data específica (opcional, para aulas não recorrentes ou fixas)
+  date?: string; 
   startTime: string;
   durationMinutes: number;
   instructor: string;
   maxCapacity: number;
-  enrolledStudentIds: string[]; // JSONB array no Supabase
-  waitlistStudentIds?: string[]; // JSONB array no Supabase
+  enrolledStudentIds: string[];
+  waitlistStudentIds?: string[];
   type: 'FUNCTIONAL' | 'RUNNING';
   isCancelled?: boolean;
-  wod?: string; // Workout Of the Day
-  workoutDetails?: string; // Detalhes adicionais sobre o treino
-  feedback?: { studentId: string, rating: number, comment?: string }[]; // JSONB array no Supabase
+  wod?: string; 
+  workoutDetails?: string; 
+  feedback?: { studentId: string, rating: number, comment?: string }[];
 }
 
 export interface AttendanceRecord {
   id: string;
   classId: string;
   studentId: string;
-  date: string; // YYYY-MM-DD
+  date: string; 
   isPresent: boolean;
 }
 
 export interface FMSData {
-  deepSquat: number;           // Agachamento Profundo
-  hurdleStep: number;          // Passa por cima da barreira
-  inlineLunge: number;         // Avanço em linha reta
-  shoulderMobility: number;    // Mobilidade Ombro
-  activeStraightLegRaise: number; // Elevação de pernas estendida
-  rotationalStability: number; // Estabilidade Rotacional
+  deepSquat: number;           
+  hurdleStep: number;          
+  inlineLunge: number;         
+  shoulderMobility: number;    
+  activeStraightLegRaise: number; 
+  rotationalStability: number; 
 }
 
 export interface Assessment {
@@ -116,16 +116,13 @@ export interface Assessment {
   vo2Max?: number;
   squatMax?: number;
   
-  // Testes de Performance / Potência
-  horizontalJump?: number; // metros
-  verticalJump?: number;   // cm
-  wallBallThrow?: number;  // metros
+  horizontalJump?: number; 
+  verticalJump?: number;   
+  wallBallThrow?: number;  
 
-  // Protocolo FMS
   fms?: FMSData;
   correctivePlan?: string;
 
-  // Evolução Visual
   photos?: {
     front?: string;
     side?: string;
@@ -185,6 +182,7 @@ export interface AcademySettings {
   mercadoPagoPublicKey: string;
   mercadoPagoAccessToken: string;
   customDomain: string; 
+  supabaseProjectId: string; // Novo campo para gerar URL de webhook correta
   monthlyFee: number;
   inviteCode: string;
   registrationInviteCode: string;
