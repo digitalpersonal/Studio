@@ -1,232 +1,75 @@
 
-export enum UserRole {
-  SUPER_ADMIN = 'SUPER_ADMIN', // Administrador Geral
-  ADMIN = 'ADMIN',             // Administrador
-  TRAINER = 'TRAINER',         // Treinador
-  STUDENT = 'STUDENT'          // Aluno
-}
+export const DEFAULT_CATEGORIES = [
+  'Combustível',
+  'Manutenção Veículo',
+  'Seguro/IPVA',
+  'Aluguel de Veículo',
+  'Alimentação (Trabalho)',
+  'Contas de Casa (Luz/Água)',
+  'Aluguel Casa',
+  'Saúde',
+  'Lazer',
+  'Outros'
+];
 
-export interface Anamnesis {
-  hasInjury: boolean;
-  injuryDescription?: string;
-  takesMedication: boolean;
-  medicationDescription?: string;
-  hadSurgery: boolean;
-  surgeryDescription?: string;
-  hasHeartCondition: boolean;
-  heartConditionDescription?: string; 
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  bloodType?: string;
-  notes?: string;
-  updatedAt: string;
-}
-
-export interface Address {
-  zipCode: string;
-  street: string;
-  number: string;
-  complement?: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-}
+export const EARNING_CATEGORIES = [
+  'Entrega/transporte'
+];
 
 export interface User {
   id: string;
-  name: string;
   email: string;
-  password?: string;
-  role: UserRole;
-  avatarUrl?: string;
-  joinDate: string;
-  phoneNumber?: string;
-  birthDate?: string;
-  
-  // Contrato e Documentos
-  cpf?: string;
-  rg?: string;
-  nationality?: string; 
-  maritalStatus?: string; 
-  profession?: string; 
-  address?: Address;
-  
-  // Recorrência e Financeiro
-  planValue?: number;
-  planDuration?: number; // em meses
-  billingDay?: number;
-  planStartDate?: string;
-  
-  anamnesis?: Anamnesis;
-  contractUrl?: string;
-  contractGeneratedAt?: string;
-
-  profileCompleted?: boolean;
-}
-
-export interface ClassSession {
-  id: string;
-  title: string;
-  description: string;
-  dayOfWeek: string;
-  date?: string; 
-  startTime: string;
-  durationMinutes: number;
-  instructor: string;
-  maxCapacity: number;
-  enrolledStudentIds: string[];
-  waitlistStudentIds?: string[];
-  type: 'FUNCTIONAL' | 'RUNNING';
-  isCancelled?: boolean;
-  wod?: string; 
-  workoutDetails?: string; 
-  feedback?: { studentId: string, rating: number, comment?: string }[];
-}
-
-export interface AttendanceRecord {
-  id: string;
-  classId: string;
-  studentId: string;
-  date: string; 
-  isPresent: boolean;
-}
-
-export interface FMSData {
-  deepSquat: number;           
-  hurdleStep: number;          
-  inlineLunge: number;         
-  shoulderMobility: number;    
-  activeStraightLegRaise: number; 
-  rotationalStability: number; 
-}
-
-export interface Assessment {
-  id: string;
-  studentId: string;
-  date: string;
-  status: 'DONE' | 'SCHEDULED';
-  notes: string;
-  weight: number;
-  height: number;
-  bodyFatPercentage: number;
-  skeletalMuscleMass?: number;
-  visceralFatLevel?: number;
-  basalMetabolicRate?: number;
-  hydrationPercentage?: number;
-  vo2Max?: number;
-  squatMax?: number;
-  
-  horizontalJump?: number; 
-  verticalJump?: number;   
-  wallBallThrow?: number;  
-
-  fms?: FMSData;
-  correctivePlan?: string;
-
-  photos?: {
-    front?: string;
-    side?: string;
-    back?: string;
-  };
-
-  circumferences?: {
-    chest?: number;
-    waist?: number;
-    abdomen?: number;
-    hips?: number;
-    rightThigh?: number;
-    leftThigh?: number;
-    rightCalf?: number;
-    leftCalf?: number;
-  };
-}
-
-export interface Route {
-  id: string;
-  title: string;
-  distanceKm: number;
-  description: string;
-  mapLink: string;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  elevationGain: number;
-}
-
-export interface Challenge {
-  id: string;
-  title: string;
-  description: string;
-  targetValue: number;
-  unit: string;
-  startDate: string;
-  endDate: string;
-  currentProgress?: number;
-}
-
-export interface PersonalizedWorkout {
-  id: string;
-  title: string;
-  description: string;
-  videoUrl?: string;
-  studentIds: string[];
-  createdAt: string;
-  instructorName: string;
-}
-
-export interface AcademySettings {
+  password: string;
+  role: 'ADMIN' | 'USER';
   name: string;
-  cnpj: string;
-  academyAddress: Address; 
-  phone: string;
-  email: string;
-  representativeName: string;
-  mercadoPagoPublicKey: string;
-  mercadoPagoAccessToken: string;
-  customDomain: string; 
-  supabaseProjectId: string; // Novo campo para gerar URL de webhook correta
-  monthlyFee: number;
-  inviteCode: string;
-  registrationInviteCode: string;
 }
 
-export interface Post {
+export interface Expense {
   id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  imageUrl: string;
-  caption: string;
-  likes: string[];
-  timestamp: string;
-}
-
-export interface Payment {
-  id: string;
-  studentId: string;
+  description: string;
   amount: number;
-  status: 'PAID' | 'PENDING' | 'OVERDUE';
-  dueDate: string;
+  date: string;
+  category: string;
+  km?: number;
+  type: 'WORK' | 'PERSONAL';
+  isRecurringInstance?: boolean;
+  observations?: string;
+}
+
+export interface Earning {
+  id: string;
   description: string;
-  installmentNumber?: number;
-  totalInstallments?: number;
+  amount: number;
+  date: string;
+  category: string;
 }
 
-export type ViewState = 
-  | 'LOGIN' 
-  | 'REGISTRATION'
-  | 'COMPLETE_PROFILE' 
-  | 'DASHBOARD' 
-  | 'SCHEDULE' 
-  | 'ASSESSMENTS' 
-  | 'FINANCIAL' 
-  | 'MANAGE_USERS'
-  | 'SETTINGS'
-  | 'RANKING'
-  | 'ROUTES'
-  | 'PERSONAL_WORKOUTS'
-  | 'FEED'
-  | 'REPORTS';
-
-export interface AppNavParams {
-  studentId?: string;
-  tab?: 'basic' | 'plan' | 'anamnesis';
+export interface DailyKm {
+  id: string;
+  date: string;
+  startKm: number;
+  endKm: number;
 }
+
+export interface CreditEntry {
+  id: string;
+  description: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingBalance: number;
+  dueDate: string;
+  category: 'Empréstimo' | 'Financiamento' | 'Cartão' | 'Outros';
+}
+
+export type Frequency = 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+
+export interface RecurringExpense {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  frequency: Frequency;
+  nextDueDate: string;
+}
+
+export type ViewState = 'DASHBOARD' | 'DAILY_FLOW' | 'ADD_ENTRY' | 'LIST' | 'AI_ADVISOR' | 'RECURRING' | 'CREDIT_HISTORY' | 'ADMIN_PANEL';
