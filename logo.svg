@@ -1,0 +1,22 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fundo combinando com dark-950 -->
+  <rect width="512" height="512" rx="128" fill="#020617"/>
+  
+  <!-- Corredores (Branco) -->
+  <g fill="#FFFFFF">
+    <!-- Corredor 1 (Esquerda) -->
+    <path d="M180 160c13.8 0 25-11.2 25-25s-11.2-25-25-25-25 11.2-25 25 11.2 25 25 25zm-20 30h-10c-5.5 0-10 4.5-10 10v60c0 5.5 4.5 10 10 10h10v80c0 5.5 4.5 10 10 10h20c5.5 0 10-4.5 10-10v-80h10c5.5 0 10-4.5 10-10v-60c0-5.5-4.5-10-10-10h-50z" opacity="0.9"/>
+    <!-- Corredor 2 (Direita) -->
+    <path d="M332 160c13.8 0 25-11.2 25-25s-11.2-25-25-25-25 11.2-25 25 11.2 25 25 25zm20 30h10c5.5 0 10 4.5 10 10v60c0 5.5-4.5 10-10 10h-10v80c0 5.5-4.5 10-10 10h-20c-5.5 0-10-4.5-10-10v-80h-10c-5.5 0-10-4.5-10-10v-60c0-5.5 4.5-10 10-10h50z" opacity="0.9"/>
+  </g>
+
+  <!-- Coração Central (Laranja Vibrante) -->
+  <path fill="#f97316" d="M256 290l-14.5-13.2C189.9 231.2 156 203.8 156 169.1c0-29.5 23.9-53.4 53.4-53.4 16.7 0 32.7 7.7 43.1 19.9 10.4-12.2 26.4-19.9 43.1-19.9 29.5 0 53.4 23.9 53.4 53.4 0 34.7-33.9 62.1-85.5 107.8L256 290z" transform="translate(0, 20) scale(0.8) transform-origin(center)"/>
+
+  <!-- Texto STUDIO (Branco) -->
+  <text x="50%" y="420" text-anchor="middle" fill="#FFFFFF" font-family="Arial, sans-serif" font-weight="900" font-size="72" letter-spacing="8">STUDIO</text>
+  
+  <!-- Detalhe decorativo (Laranja) -->
+  <rect x="156" y="440" width="200" height="6" rx="3" fill="#f97316"/>
+</svg>

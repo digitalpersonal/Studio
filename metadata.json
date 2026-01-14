@@ -1,0 +1,8 @@
+{
+  "name": "Studio - Gestão Fitness",
+  "description": "Studio: Uma plataforma completa para gestão de academias, treinos funcionais e grupos de corrida.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
