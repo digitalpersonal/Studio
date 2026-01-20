@@ -22,7 +22,6 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    // Revertido para URL externa original
     const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
     const handleCodeValidation = async (e: React.FormEvent) => {
@@ -37,8 +36,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 addToast("Código de convite inválido.", "error");
             }
         } catch (error: any) {
-            console.error("Erro ao validar código:", error.message || JSON.stringify(error));
-            addToast(`Ocorreu um erro ao validar o código. Tente novamente.`, "error");
+            addToast(`Erro ao validar código.`, "error");
         } finally {
             setIsLoading(false);
         }
@@ -48,26 +46,34 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
         e.preventDefault();
         setIsLoading(true);
         try {
+            // FALLBACK: Garantir que objetos jsonb não sejam null
             const newUser: Omit<User, 'id'> = {
                 name,
                 email,
                 password,
-                role: UserRole.STUDENT, // Via registro online é sempre ALUNO
+                role: UserRole.STUDENT,
                 joinDate: new Date().toISOString().split('T')[0],
                 phoneNumber,
                 avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`,
                 planValue: 0,
                 planDuration: 1,
-                billingDay: 5, // Valor padrão de vencimento
+                billingDay: 5,
                 profileCompleted: false,
+                address: {
+                    zipCode: '', street: '', number: '', neighborhood: '', city: '', state: ''
+                },
+                anamnesis: {
+                    hasInjury: false, takesMedication: false, hadSurgery: false, hasHeartCondition: false,
+                    emergencyContactName: '', emergencyContactPhone: '', updatedAt: new Date().toISOString()
+                }
             };
 
             const createdUser = await SupabaseService.addUser(newUser);
-            addToast("Cadastro realizado com sucesso! Bem-vindo(a) ao Studio!", "success");
+            addToast("Cadastro realizado com sucesso!", "success");
             onLogin(createdUser); 
         } catch (error: any) {
-            console.error("Erro ao registrar:", error.message || JSON.stringify(error));
-            addToast(`Erro ao registrar: ${error.message || 'Verifique seus dados e tente novamente.'}`, "error");
+            console.error("Erro no registro:", error);
+            addToast(error.message || "Erro ao registrar usuário. Tente novamente.", "error");
         } finally {
             setIsLoading(false);
         }
@@ -76,13 +82,8 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
             <div className="bg-white p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-gray-200 text-center animate-fade-in relative overflow-hidden">
-                {/* Logo local atualizado */}
                 <div className="mb-14 flex justify-center">
-                   <img 
-                     src={LOGO_URL} 
-                     alt="Studio Logo" 
-                     className="w-full max-w-[360px] h-auto object-contain" 
-                   />
+                   <img src={LOGO_URL} alt="Studio Logo" className="w-full max-w-[360px] h-auto object-contain" />
                 </div>
 
                 {step === 'CODE_INPUT' ? (

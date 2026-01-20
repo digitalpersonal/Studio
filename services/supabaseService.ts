@@ -40,8 +40,8 @@ const mapUserFromDb = (dbUser: any): User => ({
   contractUrl: dbUser.contract_url,
   contractGeneratedAt: dbUser.contract_generated_at,
   profileCompleted: dbUser.profile_completed,
-  address: dbUser.address,
-  anamnesis: dbUser.anamnesis
+  address: dbUser.address || {},
+  anamnesis: dbUser.anamnesis || {}
 });
 
 const mapUserToDb = (user: Partial<User>) => {
@@ -51,8 +51,11 @@ const mapUserToDb = (user: Partial<User>) => {
   if (user.email) dbObj.email = user.email;
   if (user.password) dbObj.password = user.password;
   if (user.role) dbObj.role = user.role;
-  if (user.address) dbObj.address = user.address;
-  if (user.anamnesis) dbObj.anamnesis = user.anamnesis;
+  
+  // GARANTIA: Nunca enviar null para colunas JSONB
+  dbObj.address = user.address || {};
+  dbObj.anamnesis = user.anamnesis || {};
+  
   if (user.cpf) dbObj.cpf = user.cpf;
   if (user.rg) dbObj.rg = user.rg;
   if (user.nationality) dbObj.nationality = user.nationality;
@@ -62,9 +65,12 @@ const mapUserToDb = (user: Partial<User>) => {
   if (user.joinDate !== undefined) dbObj.join_date = user.joinDate;
   if (user.phoneNumber !== undefined) dbObj.phone_number = user.phoneNumber;
   if (user.birthDate !== undefined) dbObj.birth_date = user.birthDate;
-  if (user.planValue !== undefined) dbObj.plan_value = user.planValue;
-  if (user.planDuration !== undefined) dbObj.plan_duration = user.planDuration;
-  if (user.billingDay !== undefined) dbObj.billing_day = user.billingDay;
+  
+  // Sanitização de tipos numéricos para evitar erro de casting
+  dbObj.plan_value = user.planValue !== undefined ? Number(user.planValue) : 0;
+  dbObj.plan_duration = user.planDuration !== undefined ? Math.floor(Number(user.planDuration)) : 12;
+  dbObj.billing_day = user.billingDay !== undefined ? Math.floor(Number(user.billingDay)) : 5;
+  
   if (user.planStartDate !== undefined) dbObj.plan_start_date = user.planStartDate;
   if (user.contractUrl !== undefined) dbObj.contract_url = user.contractUrl;
   if (user.contractGeneratedAt !== undefined) dbObj.contract_generated_at = user.contractGeneratedAt;
@@ -88,7 +94,10 @@ export const SupabaseService = {
     if (configError) throw configError;
     const dbPayload = mapUserToDb(user);
     const { data, error } = await supabase!.from('users').insert([dbPayload]).select().single();
-    if (error) throw error;
+    if (error) {
+      console.error("Erro Supabase (AddUser):", error);
+      throw new Error(`Falha ao registrar: ${error.message}`);
+    }
     return mapUserFromDb(data);
   },
 
@@ -97,7 +106,10 @@ export const SupabaseService = {
     if (configError) throw configError;
     const dbPayload = mapUserToDb(updatedUser);
     const { data, error } = await supabase!.from('users').update(dbPayload).eq('id', updatedUser.id).select().single();
-    if (error) throw error;
+    if (error) {
+      console.error("Erro Supabase (UpdateUser):", error);
+      throw new Error(`Falha ao atualizar: ${error.message}`);
+    }
     return mapUserFromDb(data);
   },
 
@@ -136,8 +148,8 @@ export const SupabaseService = {
       ...c,
       dayOfWeek: c.day_of_week,
       startTime: c.start_time,
-      enrolledStudentIds: c.enrolled_student_ids,
-      waitlistStudentIds: c.waitlist_student_ids,
+      enrolledStudentIds: c.enrolled_student_ids || [],
+      waitlistStudentIds: c.waitlist_student_ids || [],
     })) as ClassSession[];
   },
 
@@ -148,8 +160,8 @@ export const SupabaseService = {
       ...newClass,
       day_of_week: newClass.dayOfWeek,
       start_time: newClass.startTime,
-      enrolled_student_ids: newClass.enrolledStudentIds,
-      waitlist_student_ids: newClass.waitlistStudentIds,
+      enrolled_student_ids: newClass.enrolledStudentIds || [],
+      waitlist_student_ids: newClass.waitlistStudentIds || [],
     }]).select().single();
     if (error) throw error;
     return { ...data, dayOfWeek: data.day_of_week, startTime: data.start_time, enrolledStudentIds: data.enrolled_student_ids, waitlistStudentIds: data.waitlist_student_ids } as ClassSession;
@@ -162,8 +174,8 @@ export const SupabaseService = {
       ...updatedClass,
       day_of_week: updatedClass.dayOfWeek,
       start_time: updatedClass.startTime,
-      enrolled_student_ids: updatedClass.enrolledStudentIds,
-      waitlist_student_ids: updatedClass.waitlistStudentIds
+      enrolled_student_ids: updatedClass.enrolledStudentIds || [],
+      waitlist_student_ids: updatedClass.waitlistStudentIds || []
     }).eq('id', updatedClass.id).select().single();
     if (error) throw error;
     return { ...data, dayOfWeek: data.day_of_week, startTime: data.start_time, enrolledStudentIds: data.enrolled_student_ids, waitlistStudentIds: data.waitlist_student_ids } as ClassSession;
@@ -192,7 +204,9 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('assessments').insert([{
       ...newAssessment,
-      student_id: newAssessment.studentId
+      student_id: newAssessment.studentId,
+      fms: newAssessment.fms || {},
+      circumferences: newAssessment.circumferences || {}
     }]).select().single();
     if (error) throw error;
     return { ...data, studentId: data.student_id } as Assessment;
@@ -203,7 +217,9 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('assessments').update({
       ...updatedAssessment,
-      student_id: updatedAssessment.studentId
+      student_id: updatedAssessment.studentId,
+      fms: updatedAssessment.fms || {},
+      circumferences: updatedAssessment.circumferences || {}
     }).eq('id', updatedAssessment.id).select().single();
     if (error) throw error;
     return { ...data, studentId: data.student_id } as Assessment;
@@ -275,7 +291,7 @@ export const SupabaseService = {
            const [y, m, d] = String(p.due_date).split('-').map(Number);
            const idx = m - 1;
            if (idx >= 0 && idx < 12) {
-               monthlyData[idx].revenue += p.amount;
+               monthlyData[idx].revenue += Number(p.amount);
                monthlyData[idx].students += 1; 
            }
         });
@@ -328,7 +344,7 @@ export const SupabaseService = {
       title: newWorkout.title,
       description: newWorkout.description,
       video_url: newWorkout.videoUrl,
-      student_ids: newWorkout.studentIds,
+      student_ids: newWorkout.studentIds || [],
       created_at: newWorkout.createdAt,
       instructor_name: newWorkout.instructorName
     }]).select().single();
@@ -343,7 +359,7 @@ export const SupabaseService = {
       title: updatedWorkout.title,
       description: updatedWorkout.description,
       video_url: updatedWorkout.videoUrl,
-      student_ids: updatedWorkout.studentIds,
+      student_ids: updatedWorkout.studentIds || [],
       created_at: updatedWorkout.createdAt,
       instructor_name: updatedWorkout.instructorName
     }).eq('id', updatedWorkout.id).select().single();
@@ -414,7 +430,7 @@ export const SupabaseService = {
     if (configError) throw configError;
     const { data, error } = await supabase!.from('payments').insert([{
       student_id: payment.studentId,
-      amount: payment.amount,
+      amount: Number(payment.amount),
       status: payment.status,
       due_date: payment.dueDate,
       description: payment.description,
@@ -447,7 +463,6 @@ export const SupabaseService = {
     const configError = getSupabaseConfigError();
     if (configError) throw configError;
     
-    // Usamos upsert baseado no class_id, student_id e date para evitar duplicatas
     const payload = records.map(r => ({
       class_id: r.classId,
       student_id: r.studentId,
