@@ -3,7 +3,6 @@ import React, { useEffect, useState, useContext } from 'react';
 import { User, UserRole, ViewState } from '../types';
 import { ToastContext } from '../App';
 import { 
-  Dumbbell, 
   Calendar, 
   Activity, 
   Users, 
@@ -18,11 +17,8 @@ import {
   Map,
   Settings,
   Download,
-  Smartphone,
-  Share,
-  MoreVertical,
   MessageCircle,
-  Heart,
+  MoreVertical,
   ArrowLeft,
   FileText,
   PlusSquare,
@@ -108,7 +104,7 @@ export const Layout: React.FC<LayoutProps> = ({
     switch(role) {
       case UserRole.SUPER_ADMIN: return 'Administrador Geral';
       case UserRole.ADMIN: return 'Administrador';
-      case UserRole.TRAINER: return 'Treinador';
+      case UserRole.TRAINER: return 'Professor / Treinador';
       default: return 'Aluno';
     }
   };
@@ -117,28 +113,27 @@ export const Layout: React.FC<LayoutProps> = ({
     <div className="min-h-screen bg-dark-950 flex text-slate-200 font-sans">
       <aside className="hidden md:flex flex-col w-64 bg-dark-950 border-r border-dark-800 h-screen sticky top-0">
         <div className="p-8 flex flex-col items-center justify-center border-b border-dark-800 text-center">
-          <img src={studioLogo} alt="Studio Logo" className="w-40 h-auto mb-2 object-contain rounded-2xl" />
+          <img src={studioLogo} alt="Logo do Studio" className="w-40 h-auto mb-2 object-contain rounded-2xl" />
         </div>
         
         <nav className="flex-1 px-4 py-6 overflow-y-auto no-scrollbar">
-          <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Visão Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Início" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="RANKING" icon={Trophy} label="Ranking" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
-          <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="ROUTES" icon={Map} label="Rotas de Corrida" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="SCHEDULE" icon={Calendar} label="Agenda de Aulas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
-          <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações Físicas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="FEED" icon={Camera} label="Comunidade" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           
           {isStaff && (
             <>
-              <div className="my-4 border-t border-dark-800 pt-4 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Operação</div>
-              <NavItem view="MANAGE_USERS" icon={Users} label="Alunos & Equipe" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} /> 
+              <div className="my-4 border-t border-dark-800 pt-4 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestão</div>
+              <NavItem view="MANAGE_USERS" icon={Users} label="Alunos e Equipe" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} /> 
             </>
           )}
 
           {isAdmin && ( 
             <>
-              <div className="my-4 border-t border-dark-800 pt-4 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestão</div>
               <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
               {isSuperAdmin && <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN]} />} 
             </>
@@ -151,14 +146,14 @@ export const Layout: React.FC<LayoutProps> = ({
 
         <div className="p-4 border-t border-dark-800">
           <div className="flex items-center mb-4 px-2">
-            <img src={String(currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${String(currentUser.name)}`)} alt="Avatar" className="w-8 h-8 rounded-full bg-dark-800 mr-3 border border-brand-500" />
+            <img src={String(currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${String(currentUser.name)}`)} alt="Foto do perfil" className="w-8 h-8 rounded-full bg-dark-800 mr-3 border border-brand-500" />
             <div className="overflow-hidden">
               <p className="text-sm font-medium text-white truncate">{String(currentUser.name)}</p>
               <p className="text-xs text-slate-500 truncate">{getRoleLabel(currentUser.role)}</p>
             </div>
           </div>
           <button onClick={onLogout} className="flex items-center w-full px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-            <LogOut size={16} className="mr-2" /> Sair
+            <LogOut size={16} className="mr-2" /> Sair da conta
           </button>
         </div>
       </aside>
@@ -171,7 +166,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <ArrowLeft size={24} />
               </button>
             ) : (
-              <img src={studioLogo} alt="Studio Logo" className="w-16 h-auto mr-2 shrink-0 object-contain rounded-lg" />
+              <img src={studioLogo} alt="Logo" className="w-16 h-auto mr-2 shrink-0 object-contain rounded-lg" />
             )}
           </div>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-slate-300 p-2">
@@ -181,15 +176,15 @@ export const Layout: React.FC<LayoutProps> = ({
 
         {mobileMenuOpen && (
           <div className="md:hidden fixed inset-0 z-40 bg-dark-900/95 backdrop-blur-md pt-20 px-4 pb-8 overflow-y-auto">
-            <nav className="flex flex-col space-y-2 animate-fade-in-up">
-              <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Visão Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+            <nav className="flex flex-col space-y-2">
+              <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Início" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="RANKING" icon={Trophy} label="Ranking" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
-              <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="ROUTES" icon={Map} label="Rotas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="SCHEDULE" icon={Calendar} label="Agenda" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
-              <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="FEED" icon={Camera} label="Comunidade" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
-              {isStaff && <NavItem view="MANAGE_USERS" icon={Users} label="Alunos & Equipe" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />}
+              {isStaff && <NavItem view="MANAGE_USERS" icon={Users} label="Alunos e Equipe" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />}
               {isAdmin && (
                 <>
                   <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
@@ -217,14 +212,14 @@ export const Layout: React.FC<LayoutProps> = ({
                       <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-brand-500 group-hover:bg-brand-500/10 transition-all">
                           <Download size={20} />
                       </div>
-                      <span className="text-xs font-bold">Instalar App</span>
+                      <span className="text-xs font-bold">Instalar Aplicativo</span>
                   </button>
                 )}
                 <a href="https://wa.me/5535991048020" target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-green-500 transition-colors group">
                     <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-green-500 group-hover:bg-green-500/10 transition-all">
                         <MessageCircle size={20} />
                     </div>
-                    <span className="text-xs font-bold">Suporte</span>
+                    <span className="text-xs font-bold">Suporte WhatsApp</span>
                 </a>
              </div>
              <p className="text-slate-600 text-sm mb-2">Desenvolvido por <span className="text-brand-500 font-bold">Multiplus</span> - Silvio Torres de Sá Filho</p>
@@ -237,7 +232,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in">
               <div className="bg-dark-900 border border-dark-700 rounded-[3rem] w-full max-w-sm shadow-2xl relative overflow-hidden">
                   <div className="bg-brand-600 p-8 text-center">
-                      <img src={studioLogo} alt="Studio Logo" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl bg-white p-2" />
+                      <img src={studioLogo} alt="Studio" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl bg-white p-2" />
                       <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Instalar Studio</h3>
                       <p className="text-brand-100 text-xs font-bold mt-1 uppercase tracking-widest">Adicione à sua tela inicial</p>
                   </div>

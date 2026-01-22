@@ -57,7 +57,9 @@ export const SupabaseService = {
       plan_duration: user.planDuration,
       billing_day: user.billingDay,
       plan_start_date: user.planStartDate,
-      profile_completed: user.profileCompleted
+      profile_completed: user.profileCompleted,
+      address: user.address || {},
+      anamnesis: user.anamnesis || {}
     }]).select().single();
     if (error) throw error;
     return mapUserFromDb(data);
@@ -74,7 +76,9 @@ export const SupabaseService = {
       plan_duration: u.planDuration,
       billing_day: u.billingDay,
       plan_start_date: u.planStartDate,
-      profile_completed: u.profileCompleted
+      profile_completed: u.profileCompleted,
+      address: u.address || {},
+      anamnesis: u.anamnesis || {}
     }).eq('id', u.id).select().single();
     if (error) throw error;
     return mapUserFromDb(data);
@@ -87,11 +91,11 @@ export const SupabaseService = {
 
   // --- PAYMENTS ---
   getPayments: async (userId?: string): Promise<Payment[]> => {
-    let query = supabase!.from('payments').select('*').order('due_date');
+    let query = supabase!.from('payments').select('*').order('due_date', { ascending: false });
     if (userId) query = query.eq('student_id', userId);
     const { data, error } = await query;
     if (error) throw error;
-    return data.map(p => ({ ...p, studentId: p.student_id, dueDate: p.due_date })) as Payment[];
+    return (data || []).map(p => ({ ...p, studentId: p.student_id, dueDate: p.due_date })) as Payment[];
   },
 
   markPaymentAsPaid: async (id: string) => {
@@ -126,7 +130,7 @@ export const SupabaseService = {
   getClasses: async (): Promise<ClassSession[]> => {
     const { data, error } = await supabase!.from('classes').select('*').order('day_of_week').order('start_time');
     if (error) throw error;
-    return data.map(c => ({
+    return (data || []).map(c => ({
       ...c,
       dayOfWeek: c.day_of_week,
       startTime: c.start_time,
@@ -183,7 +187,7 @@ export const SupabaseService = {
   getAttendanceByClassAndDate: async (classId: string, date: string): Promise<AttendanceRecord[]> => {
     const { data, error } = await supabase!.from('attendance').select('*').eq('class_id', classId).eq('date', date);
     if (error) throw error;
-    return data.map(r => ({ ...r, classId: r.class_id, studentId: r.student_id, isPresent: r.is_present })) as AttendanceRecord[];
+    return (data || []).map(r => ({ ...r, classId: r.class_id, studentId: r.student_id, isPresent: r.is_present })) as AttendanceRecord[];
   },
 
   saveAttendance: async (records: Omit<AttendanceRecord, 'id'>[]) => {
@@ -204,9 +208,9 @@ export const SupabaseService = {
         if (error || !challengeData) return { challenge: null, totalDistance: 0, ranking: [] };
         const { data: entries, error: entriesError } = await supabase!.from('challenge_entries').select('student_id, value').eq('challenge_id', challengeData.id);
         if (entriesError) return { challenge: challengeData as Challenge, totalDistance: 0, ranking: [] };
-        const total = entries.reduce((acc, curr) => acc + Number(curr.value), 0);
+        const total = (entries || []).reduce((acc, curr) => acc + Number(curr.value), 0);
         const rankingMap: Record<string, number> = {};
-        entries.forEach(e => { rankingMap[e.student_id] = (rankingMap[e.student_id] || 0) + Number(e.value); });
+        (entries || []).forEach(e => { rankingMap[e.student_id] = (rankingMap[e.student_id] || 0) + Number(e.value); });
         const ranking = Object.entries(rankingMap).map(([studentId, total]) => ({ studentId, total })).sort((a,b) => b.total - a.total);
         return { challenge: challengeData as Challenge, totalDistance: total, ranking };
     } catch (err) {
@@ -237,7 +241,7 @@ export const SupabaseService = {
     if (userId) query = query.filter('student_ids', 'cs', `["${userId}"]`);
     const { data, error } = await query;
     if (error) throw error;
-    return data.map(w => ({ ...w, studentIds: w.student_ids || [], createdAt: w.created_at, videoUrl: w.video_url, instructorName: w.instructor_name })) as PersonalizedWorkout[];
+    return (data || []).map(w => ({ ...w, studentIds: w.student_ids || [], createdAt: w.created_at, videoUrl: w.video_url, instructorName: w.instructor_name })) as PersonalizedWorkout[];
   },
 
   addPersonalizedWorkout: async (w: Omit<PersonalizedWorkout, 'id'>): Promise<PersonalizedWorkout> => {
@@ -275,7 +279,7 @@ export const SupabaseService = {
     if (studentId) query = query.eq('student_id', studentId);
     const { data, error } = await query;
     if (error) throw error;
-    return data.map(a => ({
+    return (data || []).map(a => ({
       ...a,
       studentId: a.student_id,
       bodyFatPercentage: a.body_fat_percentage,
@@ -297,8 +301,8 @@ export const SupabaseService = {
       horizontal_jump: a.horizontalJump,
       vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow,
-      fms: a.fms,
-      circumferences: a.circumferences
+      fms: a.fms || {},
+      circumferences: a.circumferences || {}
     }]).select().single();
     if (error) throw error;
     return { ...data, studentId: data.student_id, bodyFatPercentage: data.body_fat_percentage } as Assessment;
@@ -315,8 +319,8 @@ export const SupabaseService = {
       horizontal_jump: a.horizontalJump,
       vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow,
-      fms: a.fms,
-      circumferences: a.circumferences
+      fms: a.fms || {},
+      circumferences: a.circumferences || {}
     }).eq('id', a.id).select().single();
     if (error) throw error;
     return { ...data, studentId: data.student_id, bodyFatPercentage: data.body_fat_percentage } as Assessment;
@@ -330,7 +334,7 @@ export const SupabaseService = {
   getRoutes: async (): Promise<Route[]> => {
     const { data, error } = await supabase!.from('routes').select('*').order('title');
     if (error) throw error;
-    return data.map(r => ({ ...r, distanceKm: r.distance_km, mapLink: r.map_link, elevationGain: r.elevation_gain })) as Route[];
+    return (data || []).map(r => ({ ...r, distanceKm: r.distance_km, mapLink: r.map_link, elevationGain: r.elevation_gain })) as Route[];
   },
 
   addRoute: async (r: Omit<Route, 'id'>): Promise<Route> => {
@@ -370,7 +374,7 @@ export const SupabaseService = {
       users:user_id (name, avatar_url)
     `).order('timestamp', { ascending: false });
     if (error) throw error;
-    return data.map(p => ({
+    return (data || []).map(p => ({
       ...p,
       userId: p.user_id,
       userName: p.users?.name || 'Desconhecido',
@@ -430,24 +434,52 @@ export const SupabaseService = {
     if (error) throw error;
     const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     const report = months.map(m => ({ name: m, revenue: 0, students: 0 }));
-    data.forEach(p => {
-      const monthIndex = new Date(p.due_date).getMonth();
-      report[monthIndex].revenue += Number(p.amount);
-      report[monthIndex].students += 1;
+    
+    (data || []).forEach(p => {
+      try {
+        const dateStr = p.due_date.includes('T') ? p.due_date : `${p.due_date}T12:00:00`;
+        const monthIndex = new Date(dateStr).getMonth();
+        if (monthIndex >= 0 && monthIndex < 12) {
+          report[monthIndex].revenue += Number(p.amount);
+          report[monthIndex].students += 1;
+        }
+      } catch (e) {
+        console.warn("Data inválida no relatório:", p.due_date);
+      }
     });
     return report;
   },
 
   getAttendanceReport: async (): Promise<any[]> => {
-    const { data, error } = await supabase!.from('attendance').select('date').eq('is_present', true);
-    if (error) throw error;
-    const days = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-    const report: Record<string, number> = {};
-    days.forEach(d => report[d] = 0);
-    data.forEach(a => {
-      const dayName = days[new Date(a.date).getDay()];
-      report[dayName] += 1;
-    });
-    return Object.entries(report).map(([name, attendance]) => ({ name, attendance }));
+    try {
+        const { data, error } = await supabase!.from('attendance').select('date').eq('is_present', true);
+        
+        if (error) {
+            // Se a coluna não existe, retornamos dados vazios graciosamente
+            if (error.message.includes("is_present")) {
+                console.warn("Coluna 'is_present' não encontrada. Relatório de frequência desabilitado.");
+                return [];
+            }
+            throw error;
+        }
+        
+        const days = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+        const report: Record<string, number> = {};
+        days.forEach(d => report[d] = 0);
+        
+        (data || []).forEach(a => {
+          try {
+            const dateStr = a.date.includes('T') ? a.date : `${a.date}T12:00:00`;
+            const dayName = days[new Date(dateStr).getDay()];
+            report[dayName] += 1;
+          } catch (e) {
+            console.warn("Data inválida na presença:", a.date);
+          }
+        });
+        return Object.entries(report).map(([name, attendance]) => ({ name, attendance }));
+    } catch (err) {
+        console.error("Erro ao gerar relatório de frequência:", err);
+        return [];
+    }
   }
 };
