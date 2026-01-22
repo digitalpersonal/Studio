@@ -3,26 +3,9 @@ import React, { useEffect, useState, useContext } from 'react';
 import { User, UserRole, ViewState } from '../types';
 import { ToastContext } from '../App';
 import { 
-  Calendar, 
-  Activity, 
-  Users, 
-  DollarSign, 
-  FileBarChart, 
-  LogOut, 
-  LayoutDashboard,
-  Menu,
-  X,
-  Camera,
-  Trophy,
-  Map,
-  Settings,
-  Download,
-  MessageCircle,
-  MoreVertical,
-  ArrowLeft,
-  FileText,
-  PlusSquare,
-  Share2
+  Calendar, Activity, Users, DollarSign, FileBarChart, LogOut, LayoutDashboard,
+  Menu, X, Camera, Trophy, Map, Settings, Download, MessageCircle,
+  MoreVertical, ArrowLeft, FileText, PlusSquare, Share2
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -78,6 +61,15 @@ export const Layout: React.FC<LayoutProps> = ({
   const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
   const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN; 
 
+  const getRoleLabel = (role: UserRole) => {
+    switch(role) {
+      case UserRole.SUPER_ADMIN: return 'Administrador Geral';
+      case UserRole.ADMIN: return 'Administrador';
+      case UserRole.TRAINER: return 'Professor / Treinador';
+      default: return 'Aluno';
+    }
+  };
+
   const NavItem = ({ view, icon: Icon, label, roles }: { view: ViewState; icon: any; label: string; roles?: UserRole[] }) => {
     if (roles && !roles.includes(currentUser.role)) {
       return null;
@@ -98,15 +90,6 @@ export const Layout: React.FC<LayoutProps> = ({
         <span className="font-medium">{label}</span>
       </button>
     );
-  };
-
-  const getRoleLabel = (role: UserRole) => {
-    switch(role) {
-      case UserRole.SUPER_ADMIN: return 'Administrador Geral';
-      case UserRole.ADMIN: return 'Administrador';
-      case UserRole.TRAINER: return 'Professor / Treinador';
-      default: return 'Aluno';
-    }
   };
 
   return (
@@ -204,27 +187,6 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="max-w-6xl mx-auto min-h-[calc(100vh-150px)]">
             {children}
           </div>
-
-          <footer className="mt-12 pt-8 border-t border-dark-800 text-center pb-8">
-             <div className="flex justify-center gap-6 mb-6">
-                {!isStandalone && (
-                  <button onClick={handleInstallClick} className="flex flex-col items-center gap-2 text-slate-500 hover:text-brand-500 transition-colors group">
-                      <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-brand-500 group-hover:bg-brand-500/10 transition-all">
-                          <Download size={20} />
-                      </div>
-                      <span className="text-xs font-bold">Instalar Aplicativo</span>
-                  </button>
-                )}
-                <a href="https://wa.me/5535991048020" target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-green-500 transition-colors group">
-                    <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-green-500 group-hover:bg-green-500/10 transition-all">
-                        <MessageCircle size={20} />
-                    </div>
-                    <span className="text-xs font-bold">Suporte WhatsApp</span>
-                </a>
-             </div>
-             <p className="text-slate-600 text-sm mb-2">Desenvolvido por <span className="text-brand-500 font-bold">Multiplus</span> - Silvio Torres de Sá Filho</p>
-             <p className="text-slate-700 text-xs">&copy; {new Date().getFullYear()} Studio. Todos os direitos reservados.</p>
-          </footer>
         </main>
       </div>
 
@@ -237,7 +199,6 @@ export const Layout: React.FC<LayoutProps> = ({
                       <p className="text-brand-100 text-xs font-bold mt-1 uppercase tracking-widest">Adicione à sua tela inicial</p>
                   </div>
                   <button onClick={() => setShowInstallModal(false)} className="absolute top-6 right-6 text-white/70 hover:text-white p-2 bg-black/20 rounded-full"><X size={20}/></button>
-                  
                   <div className="p-8 space-y-8">
                       <div className="space-y-4">
                           <div className="flex items-center gap-2 border-b border-dark-800 pb-2">
@@ -246,29 +207,9 @@ export const Layout: React.FC<LayoutProps> = ({
                           </div>
                           <div className="flex gap-4 items-center text-slate-300">
                              <Share2 size={24} className="text-blue-500 shrink-0" />
-                             <p className="text-xs">Toque no ícone de <b>Compartilhar</b> na barra inferior do navegador.</p>
-                          </div>
-                          <div className="flex gap-4 items-center text-slate-300">
-                             <PlusSquare size={24} className="text-blue-500 shrink-0" />
-                             <p className="text-xs">Role para baixo e toque em <b>"Adicionar à Tela de Início"</b>.</p>
+                             <p className="text-xs">Toque no ícone de <b>Compartilhar</b> na barra inferior.</p>
                           </div>
                       </div>
-
-                      <div className="space-y-4">
-                          <div className="flex items-center gap-2 border-b border-dark-800 pb-2">
-                              <div className="w-2 h-2 rounded-full bg-green-500" />
-                              <h4 className="text-white font-bold text-[10px] uppercase tracking-widest">Para Android (Chrome)</h4>
-                          </div>
-                          <div className="flex gap-4 items-center text-slate-300">
-                             <MoreVertical size={24} className="text-green-500 shrink-0" />
-                             <p className="text-xs">Toque nos <b>três pontos</b> no canto superior direito.</p>
-                          </div>
-                          <div className="flex gap-4 items-center text-slate-300">
-                             <Download size={24} className="text-green-500 shrink-0" />
-                             <p className="text-xs">Selecione <b>"Instalar Aplicativo"</b> ou "Adicionar à Tela Inicial".</p>
-                          </div>
-                      </div>
-
                       <button onClick={() => setShowInstallModal(false)} className="w-full bg-brand-600 hover:bg-brand-500 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-brand-600/20 uppercase text-[10px] tracking-widest">
                           Entendi
                       </button>

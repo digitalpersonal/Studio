@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User, UserRole, Anamnesis, AcademySettings } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { SettingsService } from '../services/settingsService';
-import { Dumbbell, ArrowLeft, Send, Loader2, CheckCircle2, Eye, EyeOff, UserCircle, Stethoscope, AlertTriangle, Camera, X, Check } from 'lucide-react';
+import { Dumbbell, ArrowLeft, Send, Loader2, CheckCircle2, Eye, EyeOff, UserCircle, Stethoscope, AlertTriangle, Camera, X, Check, ShieldAlert, AlertCircle } from 'lucide-react';
 import { useToast } from '../App';
 
 interface RegistrationPageProps {
@@ -20,15 +20,11 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [showPassword, setShowPassword] = useState(false);
     const [settings, setSettings] = useState<AcademySettings | null>(null);
     
-    // Step 1: Code
     const [inviteCode, setInviteCode] = useState('');
-    
-    // Step 2: Basic Info
     const [basicInfo, setBasicInfo] = useState({
         name: '', email: '', password: '', phoneNumber: ''
     });
 
-    // Step 3: Anamnesis
     const [anamnesis, setAnamnesis] = useState<Omit<Anamnesis, 'updatedAt'>>({
         hasInjury: false,
         injuryDescription: '',
@@ -55,37 +51,6 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     }, []);
 
     const hasAnyRestriction = anamnesis.hasInjury || anamnesis.hadSurgery || anamnesis.hasHeartCondition || anamnesis.takesMedication;
-
-    const compressImage = (base64Str: string): Promise<string> => {
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.src = base64Str;
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 800;
-                const MAX_HEIGHT = 800;
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > MAX_WIDTH) {
-                        height *= MAX_WIDTH / width;
-                        width = MAX_WIDTH;
-                    }
-                } else {
-                    if (height > MAX_HEIGHT) {
-                        width *= MAX_HEIGHT / height;
-                        height = MAX_HEIGHT;
-                    }
-                }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/jpeg', 0.5)); 
-            };
-        });
-    };
 
     const handleCodeValidation = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -114,9 +79,8 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
         const file = e.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = async () => {
-                const compressed = await compressImage(reader.result as string);
-                setAnamnesis({ ...anamnesis, medicalCertificateUrl: compressed });
+            reader.onloadend = () => {
+                setAnamnesis({ ...anamnesis, medicalCertificateUrl: reader.result as string });
             };
             reader.readAsDataURL(file);
         }
@@ -124,8 +88,19 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (hasAnyRestriction && !anamnesis.medicalCertificateUrl) {
-            addToast("O atestado médico é obrigatório devido às restrições informadas.", "error");
+        
+        // VALIDAÇÃO OBRIGATÓRIA DE ANAMNESE (CAMPOS DE EMERGÊNCIA)
+        if (!anamnesis.emergencyContactName || !anamnesis.emergencyContactPhone) {
+            addToast("Dados de contato de emergência são obrigatórios.", "error");
+            return;
+        }
+
+        // Validação se as descrições foram preenchidas caso marcado como 'Sim'
+        if ((anamnesis.hasInjury && !anamnesis.injuryDescription) || 
+            (anamnesis.takesMedication && !anamnesis.medicationDescription) ||
+            (anamnesis.hadSurgery && !anamnesis.surgeryDescription) ||
+            (anamnesis.hasHeartCondition && !anamnesis.heartConditionDescription)) {
+            addToast("Por favor, descreva as condições marcadas como 'Sim'.", "error");
             return;
         }
 
@@ -149,10 +124,10 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
             };
 
             const createdUser = await SupabaseService.addUser(newUser);
-            addToast("Cadastro concluído! Bem-vindo.", "success");
+            addToast("Cadastro concluído! Bem-vindo ao Studio.", "success");
             onLogin(createdUser); 
         } catch (error: any) {
-            addToast("Erro ao registrar. Verifique se o e-mail já existe.", "error");
+            addToast("Erro ao registrar. Verifique os dados.", "error");
         } finally {
             setIsLoading(false);
         }
@@ -160,13 +135,13 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 py-10">
-            <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-gray-200 text-center animate-fade-in relative overflow-hidden">
+            <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-gray-200 animate-fade-in relative overflow-hidden">
                 <div className="mb-10 flex justify-center">
                    <img src={settings?.logoUrl || LOGO_DEFAULT} alt="Studio Logo" className="w-full max-w-[280px] h-auto object-contain rounded-2xl" />
                 </div>
 
                 {step === 'CODE_INPUT' && (
-                    <form onSubmit={handleCodeValidation} className="space-y-4">
+                    <form onSubmit={handleCodeValidation} className="space-y-4 text-center">
                         <p className="text-slate-400 text-sm mb-6 uppercase font-bold tracking-widest text-[10px]">Validação de Acesso</p>
                         <input
                             type="text"
@@ -188,9 +163,11 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
 
                 {step === 'BASIC_INFO' && (
                     <form onSubmit={handleBasicInfoSubmit} className="space-y-4">
-                        <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 bg-brand-500/10 border border-brand-500/20 rounded-full">
-                            <UserCircle size={16} className="text-brand-500" />
-                            <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">Passo 1: Dados Pessoais</span>
+                        <div className="mb-6 flex justify-center">
+                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-brand-500/10 border border-brand-500/20 rounded-full">
+                                <UserCircle size={16} className="text-brand-500" />
+                                <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">Passo 1: Dados Pessoais</span>
+                            </div>
                         </div>
                         <input required className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none" placeholder="Nome Completo" value={basicInfo.name} onChange={e => setBasicInfo({...basicInfo, name: e.target.value})} />
                         <input required type="email" className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none" placeholder="E-mail" value={basicInfo.email} onChange={e => setBasicInfo({...basicInfo, email: e.target.value})} />
@@ -204,11 +181,12 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 )}
 
                 {step === 'ANAMNESIS' && (
-                    <form onSubmit={handleRegister} className="space-y-6 text-left">
-                        <div className="text-center mb-4">
-                            <div className="mb-2 inline-flex items-center gap-2 px-4 py-2 bg-brand-500/10 border border-brand-500/20 rounded-full">
-                                <Stethoscope size={16} className="text-brand-500" />
-                                <span className="text-[10px] font-black text-brand-500 uppercase tracking-widest">Passo 2: Anamnese Médica</span>
+                    <form onSubmit={handleRegister} className="space-y-6">
+                        <div className="bg-red-600 text-white p-4 rounded-2xl mb-4 flex items-center gap-3 shadow-lg shadow-red-600/20">
+                            <ShieldAlert size={24} className="shrink-0 animate-pulse" />
+                            <div>
+                                <p className="font-black text-xs uppercase tracking-tighter">Anamnese Obrigatória</p>
+                                <p className="text-[10px] opacity-90 font-bold uppercase leading-tight">Preencha todos os dados de saúde para finalizar seu cadastro com segurança.</p>
                             </div>
                         </div>
 
@@ -219,43 +197,38 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                             <AnamnesisCheck label="Possui algum problema cardíaco?" checked={anamnesis.hasHeartCondition} onChange={v => setAnamnesis({...anamnesis, hasHeartCondition: v})} description={anamnesis.heartConditionDescription} onDescriptionChange={v => setAnamnesis({...anamnesis, heartConditionDescription: v})} />
                         </div>
 
-                        {hasAnyRestriction && (
-                            <div className="bg-red-50 border border-red-200 p-5 rounded-2xl space-y-4 animate-fade-in ring-2 ring-red-500 ring-offset-2">
-                                <div className="flex gap-3 text-red-600 items-start">
-                                    <AlertTriangle size={24} className="shrink-0 mt-0.5 animate-pulse"/>
-                                    <div>
-                                        <p className="font-black text-sm uppercase tracking-tighter">RESTRIÇÃO DETECTADA</p>
-                                        <p className="text-[11px] leading-relaxed font-bold">Para sua segurança, é obrigatório apresentar o atestado médico ou anexar uma foto nítida aqui.</p>
-                                    </div>
-                                </div>
-                                
-                                {anamnesis.medicalCertificateUrl ? (
-                                    <div className="relative rounded-xl overflow-hidden border-2 border-emerald-500 shadow-lg">
-                                        <img src={anamnesis.medicalCertificateUrl} className="w-full h-40 object-cover" />
-                                        <button type="button" onClick={() => setAnamnesis({...anamnesis, medicalCertificateUrl: ''})} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full shadow-md"><X size={16}/></button>
-                                        <div className="absolute bottom-0 inset-x-0 bg-emerald-500 text-white text-[10px] font-black text-center py-2 uppercase tracking-widest">Atestado Carregado</div>
-                                    </div>
-                                ) : (
-                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full py-6 border-2 border-dashed border-red-400 rounded-xl flex flex-col items-center justify-center gap-2 text-red-600 bg-red-100/50 hover:bg-red-100 transition-all shadow-inner">
-                                        <Camera size={32} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Tirar foto do Atestado</span>
-                                    </button>
-                                )}
-                                <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
-                            </div>
-                        )}
-
                         <div className="space-y-4 pt-4 border-t border-gray-100">
-                            <div>
-                                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Contato de Emergência</label>
-                                <input required className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-sm" placeholder="Nome do contato" value={anamnesis.emergencyContactName} onChange={e => setAnamnesis({...anamnesis, emergencyContactName: e.target.value})} />
-                            </div>
-                            <input required className="w-full bg-gray-50 border border-gray-300 rounded-xl p-3 text-sm" placeholder="Telefone (WhatsApp)" value={anamnesis.emergencyContactPhone} onChange={e => setAnamnesis({...anamnesis, emergencyContactPhone: e.target.value})} />
+                             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                                <label className="block text-slate-500 text-[10px] font-black uppercase mb-2 tracking-widest flex items-center gap-1"><AlertCircle size={10} className="text-red-500"/> Contatos de Emergência (Obrigatório)</label>
+                                <div className="space-y-3">
+                                    <input required className="w-full bg-white border border-gray-300 rounded-xl p-3 text-sm focus:border-brand-500 outline-none" placeholder="Nome do Contato" value={anamnesis.emergencyContactName} onChange={e => setAnamnesis({...anamnesis, emergencyContactName: e.target.value})} />
+                                    <input required className="w-full bg-white border border-gray-300 rounded-xl p-3 text-sm focus:border-brand-500 outline-none" placeholder="Telefone de Emergência" value={anamnesis.emergencyContactPhone} onChange={e => setAnamnesis({...anamnesis, emergencyContactPhone: e.target.value})} />
+                                </div>
+                             </div>
+
+                             {hasAnyRestriction && (
+                                <div className="p-4 border border-blue-100 rounded-2xl bg-blue-50/50 space-y-3">
+                                    <p className="text-blue-600 font-black text-[10px] uppercase tracking-widest text-center">Atestado Médico (Opcional p/ o Aluno)</p>
+                                    <p className="text-[9px] text-blue-400 text-center uppercase font-bold leading-tight">Se você tiver o documento agora, pode enviar. Caso contrário, o professor poderá anexar depois.</p>
+                                    {anamnesis.medicalCertificateUrl ? (
+                                        <div className="relative h-32 rounded-xl overflow-hidden shadow-md">
+                                            <img src={anamnesis.medicalCertificateUrl} className="w-full h-full object-cover" />
+                                            <button type="button" onClick={() => setAnamnesis({...anamnesis, medicalCertificateUrl: ''})} className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-full"><X size={14}/></button>
+                                        </div>
+                                    ) : (
+                                        <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full py-4 flex flex-col items-center gap-2 text-blue-400 hover:text-blue-600 transition-colors border-2 border-dashed border-blue-200 rounded-xl">
+                                            <Camera size={24} />
+                                            <span className="text-[10px] font-black uppercase">Anexar Foto (Opcional)</span>
+                                        </button>
+                                    )}
+                                    <input type="file" accept="image/*" capture="environment" className="hidden" ref={fileInputRef} onChange={handleFileChange} />
+                                </div>
+                             )}
                         </div>
 
                         <button type="submit" disabled={isLoading} className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all text-sm flex items-center justify-center">
                             {isLoading ? <Loader2 size={20} className="animate-spin mr-2" /> : <Send size={20} className="mr-2" />}
-                            Finalizar e Entrar
+                            Finalizar Cadastro
                         </button>
                     </form>
                 )}
@@ -271,7 +244,7 @@ const AnamnesisCheck = ({ label, checked, onChange, description, onDescriptionCh
             <div className={`w-6 h-6 rounded-full flex items-center justify-center ${checked ? 'bg-brand-500 text-white' : 'bg-gray-200 text-transparent'}`}><Check size={14} strokeWidth={4}/></div>
         </button>
         {checked && (
-            <textarea required className="w-full bg-white border border-brand-200 rounded-xl p-3 text-xs focus:border-brand-500 outline-none animate-fade-in shadow-inner" placeholder="Pode nos dar mais detalhes?" value={description} onChange={e => onDescriptionChange(e.target.value)} />
+            <textarea required className="w-full bg-white border border-brand-200 rounded-xl p-3 text-xs focus:border-brand-500 outline-none animate-fade-in shadow-inner" placeholder="Especifique detalhadamente..." value={description} onChange={e => onDescriptionChange(e.target.value)} />
         )}
     </div>
 );

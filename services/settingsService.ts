@@ -32,7 +32,9 @@ const DEFAULT_SETTINGS: AcademySettings = {
 export const SettingsService = {
     getSettings: async (): Promise<AcademySettings> => {
         try {
-            const { data, error } = await SupabaseService.supabase!
+            if (!SupabaseService.supabase) return DEFAULT_SETTINGS;
+
+            const { data, error } = await SupabaseService.supabase
                 .from('settings')
                 .select('*')
                 .eq('id', 'main_settings')
@@ -40,7 +42,6 @@ export const SettingsService = {
 
             if (error || !data) return DEFAULT_SETTINGS;
 
-            // Mapeamento explícito para garantir que nomes do DB batam com nomes do código
             return {
                 ...DEFAULT_SETTINGS,
                 name: data.name || DEFAULT_SETTINGS.name,
@@ -56,13 +57,15 @@ export const SettingsService = {
                 logoUrl: data.logo_url || DEFAULT_SETTINGS.logoUrl
             };
         } catch (e) {
-            console.error("Falha ao buscar configurações:", e);
+            console.warn("Retornando configurações padrão devido a erro de conexão.");
             return DEFAULT_SETTINGS;
         }
     },
 
     saveSettings: async (settings: AcademySettings) => {
-        const { error } = await SupabaseService.supabase!
+        if (!SupabaseService.supabase) throw new Error("Supabase não inicializado");
+
+        const { error } = await SupabaseService.supabase
             .from('settings')
             .upsert({
                 id: 'main_settings',
@@ -80,11 +83,7 @@ export const SettingsService = {
                 updated_at: new Date().toISOString()
             });
 
-        if (error) {
-            console.error("Erro ao salvar configurações no Supabase:", error);
-            throw error;
-        }
-        
+        if (error) throw error;
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     }
 };

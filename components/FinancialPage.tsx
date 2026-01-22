@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Payment, User, UserRole, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { MercadoPagoService } from '../services/mercadoPagoService';
-import { Loader2, DollarSign, Receipt, Check, Download, CreditCard, MessageCircle, AlertTriangle, X, CheckCheck, Info, Copy, QrCode, Smartphone, Wallet, Tag, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Loader2, DollarSign, Receipt, Check, Download, CreditCard, MessageCircle, AlertTriangle, X, CheckCircle2, Info, Copy, QrCode, Smartphone, Wallet, Tag, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useToast, WhatsAppAutomation } from '../App'; 
 
 interface FinancialPageProps {
@@ -19,7 +19,6 @@ export const FinancialPage = ({ user, onNavigate, selectedStudentId }: Financial
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState<Payment | null>(null);
   const [showConfirmPayment, setShowConfirmPayment] = useState<Payment | null>(null);
-  const [discountValue, setDiscountValue] = useState<number>(0);
   const [pixCopiaCola, setPixCopiaCola] = useState<string | null>(null);
   const { addToast } = useToast();
   
@@ -32,12 +31,12 @@ export const FinancialPage = ({ user, onNavigate, selectedStudentId }: Financial
     }
 
     try { 
-      const [p, s] = await Promise.all([
+      const [p, u] = await Promise.all([
         SupabaseService.getPayments(studentIdToFetch),
-        isStaff ? SupabaseService.getAllStudents() : Promise.resolve([]) 
+        isStaff ? SupabaseService.getAllUsers() : Promise.resolve([]) 
       ]);
-      setPayments(p);
-      setStudents(s);
+      setPayments(p || []);
+      setStudents(isStaff ? u.filter((u: User) => u?.role === UserRole.STUDENT) : []);
     } catch (error: any) {
         addToast(`Erro ao carregar pagamentos.`, "error");
     }
@@ -49,30 +48,25 @@ export const FinancialPage = ({ user, onNavigate, selectedStudentId }: Financial
 
   const stats = useMemo(() => {
     return {
-      total: payments.reduce((acc, p) => acc + p.amount, 0),
-      paid: payments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + p.amount, 0),
-      overdue: payments.filter(p => p.status === 'OVERDUE').reduce((acc, p) => acc + p.amount, 0),
+      total: payments.reduce((acc, p) => acc + (Number(p?.amount) || 0), 0),
+      paid: payments.filter(p => p?.status === 'PAID').reduce((acc, p) => acc + (Number(p?.amount) || 0), 0),
+      overdue: payments.filter(p => p?.status === 'OVERDUE').reduce((acc, p) => acc + (Number(p?.amount) || 0), 0),
     };
   }, [payments]);
 
-  const handleMarkPaid = async () => {
-    if (!showConfirmPayment) return;
+  const handleMarkPaid = async (paymentId?: string) => {
+    const idToPay = paymentId || showConfirmPayment?.id;
+    if (!idToPay) return;
     
-    const p = showConfirmPayment;
-    setIsProcessing(p.id);
+    setIsProcessing(idToPay);
     try {
-        const finalAmount = Math.max(0, p.amount - discountValue);
-        p.amount = finalAmount;
-        await SupabaseService.markPaymentAsPaid(p.id);
-        const student = students.find(s => s.id === p.studentId) || user; 
-        if (student) WhatsAppAutomation.sendConfirmation(student, p);
-        
-        addToast("Pagamento registrado e comprovante enviado!", "success");
+        await SupabaseService.markPaymentAsPaid(idToPay);
+        addToast("Pagamento liquidado com sucesso!", "success");
         setShowConfirmPayment(null);
-        setDiscountValue(0);
+        setShowCheckoutModal(null);
         refreshPayments();
     } catch (error: any) {
-        addToast(`Erro ao dar baixa.`, "error");
+        addToast(`Erro ao processar baixa.`, "error");
     } finally {
         setIsProcessing(null);
     }
@@ -80,7 +74,7 @@ export const FinancialPage = ({ user, onNavigate, selectedStudentId }: Financial
 
   const handlePayNow = (p: Payment) => {
     setShowCheckoutModal(p);
-    setPixCopiaCola(`00020101021226850014br.gov.bcb.pix0123estudio@pix.com.br520400005303986540${p.amount.toFixed(2)}5802BR5915STUDIO_FITNESS6009SAO_PAULO62070503***6304E1F4`);
+    setPixCopiaCola(`00020101021226850014br.gov.bcb.pix0123estudio@pix.com.br520400005303986540${Number(p.amount).toFixed(2)}5802BR5915STUDIO_FITNESS6009SAO_PAULO62070503***6304E1F4`);
   };
 
   const copyPix = () => {
@@ -144,9 +138,9 @@ export const FinancialPage = ({ user, onNavigate, selectedStudentId }: Financial
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-800">
-              {payments.filter(p => filter === 'ALL' || p.status === filter).map(p => {
-                const userForPayment = students.find(s => s.id === p.studentId) || user;
-                const isPaid = p.status === 'PAID';
+              {payments.filter(p => filter === 'ALL' || p?.status === filter).map(p => {
+                const userForPayment = students.find(s => s?.id === p?.studentId) || user;
+                const isPaid = p?.status === 'PAID';
 
                 return (
                   <tr key={p.id} className={`hover:bg-dark-900/50 transition-colors group ${isPaid ? 'opacity-60' : ''}`}>
@@ -154,13 +148,13 @@ export const FinancialPage = ({ user, onNavigate, selectedStudentId }: Financial
                       <div className="flex items-center gap-4">
                         <img src={String(userForPayment?.avatarUrl || `https://ui-avatars.com/api/?name=${String(userForPayment?.name)}`)} className="w-10 h-10 rounded-xl border border-dark-800" />
                         <div>
-                            <p className="text-white font-bold">{String(userForPayment?.name)}</p>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase">{String(p.description)}</p>
+                            <p className="text-white font-bold">{String(userForPayment?.name || 'Membro')}</p>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase">{String(p.description || 'Mensalidade')}</p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6 font-mono text-xs font-bold">{String(p.dueDate).split('-').reverse().join('/')}</td>
-                    <td className="px-8 py-6 font-black text-white text-base">R$ {p.amount.toFixed(2)}</td>
+                    <td className="px-8 py-6 font-mono text-xs font-bold">{String(p.dueDate || '').split('-').reverse().join('/')}</td>
+                    <td className="px-8 py-6 font-black text-white text-base">R$ {Number(p.amount || 0).toFixed(2)}</td>
                     <td className="px-8 py-6">
                         <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
                             p.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
@@ -185,23 +179,16 @@ export const FinancialPage = ({ user, onNavigate, selectedStudentId }: Financial
                                 <button 
                                     onClick={() => setShowConfirmPayment(p)} 
                                     className="p-3 bg-emerald-600/10 text-emerald-500 rounded-xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-500/20" 
-                                    title="Baixa Manual"
                                 >
                                     <Check size={16}/>
                                 </button>
                                 <button 
                                     onClick={() => userForPayment && WhatsAppAutomation.sendPaymentReminder(userForPayment, p)} 
                                     className="p-3 bg-dark-900 text-slate-400 rounded-xl hover:text-white transition-all border border-dark-800"
-                                    title="Lembrar Cobrança"
                                 >
                                     <MessageCircle size={16}/>
                                 </button>
                             </>
-                          )}
-                          {isPaid && (
-                              <button className="p-3 bg-dark-900 text-slate-600 rounded-xl hover:text-emerald-500 transition-all border border-dark-800" title="Ver Recibo">
-                                  <Download size={16}/>
-                              </button>
                           )}
                        </div>
                     </td>
@@ -213,112 +200,59 @@ export const FinancialPage = ({ user, onNavigate, selectedStudentId }: Financial
         </div>
       </div>
 
-      {/* Modal de Baixa Manual com Desconto (Staff) */}
       {showConfirmPayment && (
         <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
            <div className="bg-dark-900 border border-dark-700 rounded-[3rem] shadow-2xl max-w-sm w-full overflow-hidden">
               <div className="bg-emerald-600 p-8 text-center relative">
                   <button onClick={() => setShowConfirmPayment(null)} className="absolute top-6 right-6 text-white/50 hover:text-white"><X size={24}/></button>
                   <div className="bg-white p-3 rounded-3xl inline-block mb-4 shadow-xl">
-                    <CheckCheck size={40} className="text-emerald-600"/>
+                    <CheckCircle2 size={40} className="text-emerald-600"/>
                   </div>
                   <h3 className="text-white font-black text-2xl uppercase tracking-tighter">Confirmar Recebimento</h3>
-                  <p className="text-emerald-100 text-[10px] font-black uppercase tracking-widest mt-1">Baixa Manual no Sistema</p>
               </div>
-              
               <div className="p-8 space-y-6">
-                <div className="space-y-1">
-                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Aluno:</p>
-                   <p className="text-white font-bold">{students.find(s => s.id === showConfirmPayment.studentId)?.name || 'Aluno'}</p>
-                </div>
-
-                <div className="flex flex-col gap-4">
-                    <div className="flex justify-between items-center bg-dark-950 p-4 rounded-2xl border border-dark-800">
-                        <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Valor Original:</span>
-                        <span className="text-slate-300 font-bold">R$ {showConfirmPayment.amount.toFixed(2)}</span>
-                    </div>
-
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                           <Tag size={12} className="text-brand-500"/> Desconto Aplicado (R$):
-                        </label>
-                        <input 
-                            type="number" 
-                            step="0.01"
-                            className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-bold focus:border-brand-500 outline-none"
-                            value={discountValue}
-                            onChange={(e) => setDiscountValue(Number(e.target.value))}
-                            placeholder="0.00"
-                        />
-                    </div>
-
-                    <div className="flex justify-between items-center bg-brand-500/10 p-5 rounded-2xl border border-brand-500/30">
-                        <span className="text-brand-500 text-[10px] font-black uppercase tracking-widest">Valor Final a Receber:</span>
-                        <span className="text-white font-black text-xl">R$ {(showConfirmPayment.amount - discountValue).toFixed(2)}</span>
-                    </div>
-                </div>
-
-                <div className="pt-4 space-y-3">
-                    <button 
-                        onClick={handleMarkPaid}
-                        disabled={isProcessing === showConfirmPayment.id}
-                        className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/20 hover:bg-emerald-500 transition-all active:scale-95"
-                    >
-                        {isProcessing === showConfirmPayment.id ? <Loader2 size={18} className="animate-spin"/> : <><Check size={18}/> Confirmar Baixa</>}
-                    </button>
-                    <button onClick={() => { setShowConfirmPayment(null); setDiscountValue(0); }} className="w-full py-4 bg-dark-800 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:text-white transition-all">Cancelar</button>
-                </div>
+                <button 
+                    onClick={() => handleMarkPaid()}
+                    disabled={!!isProcessing}
+                    className="w-full py-5 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-600/20 hover:bg-emerald-500 transition-all"
+                >
+                    {isProcessing ? <Loader2 size={18} className="animate-spin"/> : <><Check size={18}/> Confirmar Baixa</>}
+                </button>
               </div>
            </div>
         </div>
       )}
 
-      {/* Modal de Pagamento (Aluno) */}
       {showCheckoutModal && (
         <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
-           <div className="bg-dark-900 border border-dark-700 rounded-[3rem] shadow-2xl max-w-sm w-full overflow-hidden">
+           <div className="bg-dark-900 border border-dark-700 rounded-[3rem] shadow-2xl max-sm w-full overflow-hidden">
               <div className="bg-brand-600 p-8 text-center relative">
                   <button onClick={() => setShowCheckoutModal(null)} className="absolute top-6 right-6 text-white/50 hover:text-white"><X size={24}/></button>
                   <div className="bg-white p-3 rounded-3xl inline-block mb-4 shadow-xl">
                     <QrCode size={40} className="text-brand-600"/>
                   </div>
                   <h3 className="text-white font-black text-2xl uppercase tracking-tighter">Pagar via Pix</h3>
-                  <p className="text-brand-100 text-[10px] font-black uppercase tracking-widest mt-1">Liquidado em Segundos</p>
               </div>
-              
               <div className="p-8 space-y-6">
-                <div className="flex justify-between items-center bg-dark-950 p-4 rounded-2xl border border-dark-800">
-                    <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Valor a pagar:</span>
-                    <span className="text-white font-black text-xl">R$ {showCheckoutModal.amount.toFixed(2)}</span>
-                </div>
-
                 <div className="space-y-3">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Pix Copia e Cola</p>
-                    <div className="relative group">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Código para Copiar</p>
+                    <div className="relative">
                         <textarea 
                             readOnly 
-                            className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-[10px] font-mono text-brand-500 focus:outline-none h-24 resize-none"
+                            className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-[10px] font-mono text-brand-500 h-24 resize-none"
                             value={pixCopiaCola || ''}
                         />
-                        <button 
-                            onClick={copyPix}
-                            className="absolute bottom-4 right-4 p-3 bg-brand-600 text-white rounded-xl hover:scale-110 active:scale-95 transition-all shadow-xl"
-                        >
-                            <Copy size={16}/>
-                        </button>
+                        <button onClick={copyPix} className="absolute bottom-4 right-4 p-3 bg-brand-600 text-white rounded-xl"><Copy size={16}/></button>
                     </div>
                 </div>
-
                 <div className="pt-4 space-y-3">
-                    <a 
-                        href={`https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=simulada`} 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-blue-600/20 hover:bg-blue-500 transition-all"
+                    <button 
+                        onClick={() => handleMarkPaid(showCheckoutModal.id)}
+                        className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2"
                     >
-                        <CreditCard size={16}/> Outros Métodos (Cartão)
-                    </a>
-                    <button onClick={() => setShowCheckoutModal(null)} className="w-full py-4 bg-dark-800 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:text-white transition-all">Cancelar</button>
+                        <Check size={16}/> SIMULAR CONFIRMAÇÃO (TESTE)
+                    </button>
+                    <button onClick={() => setShowCheckoutModal(null)} className="w-full py-4 bg-dark-800 text-slate-500 rounded-2xl font-black uppercase text-[10px] tracking-widest">Cancelar</button>
                 </div>
               </div>
            </div>

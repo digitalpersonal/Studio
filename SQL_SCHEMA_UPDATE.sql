@@ -1,8 +1,25 @@
 
--- 1. EXTENSÕES NECESSÁRIAS
+-- 1. EXTENSÕES
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 2. TABELA DE USUÁRIOS
+-- 2. TABELA DE CONFIGURAÇÕES (CRÍTICA PARA O INÍCIO)
+CREATE TABLE IF NOT EXISTS settings (
+    id TEXT PRIMARY KEY DEFAULT 'main_settings',
+    name TEXT,
+    cnpj TEXT,
+    academy_address JSONB,
+    phone TEXT,
+    email TEXT,
+    representative_name TEXT,
+    mercado_pago_public_key TEXT,
+    mercado_pago_access_token TEXT,
+    monthly_fee NUMERIC(10,2),
+    registration_invite_code TEXT,
+    logo_url TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 3. TABELA DE USUÁRIOS
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
@@ -30,7 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. TABELA DE AULAS
+-- 4. TABELA DE AULAS
 CREATE TABLE IF NOT EXISTS classes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
@@ -51,7 +68,7 @@ CREATE TABLE IF NOT EXISTS classes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. TABELA DE PAGAMENTOS
+-- 5. TABELA DE PAGAMENTOS
 CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -64,7 +81,7 @@ CREATE TABLE IF NOT EXISTS payments (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. TABELA DE CHAMADA
+-- 6. TABELA DE CHAMADA
 CREATE TABLE IF NOT EXISTS attendance (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
@@ -74,7 +91,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     UNIQUE(class_id, student_id, date)
 );
 
--- 6. TABELA DE AVALIAÇÕES
+-- 7. TABELA DE AVALIAÇÕES
 CREATE TABLE IF NOT EXISTS assessments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -98,7 +115,7 @@ CREATE TABLE IF NOT EXISTS assessments (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 7. TABELA DE TREINOS PERSONALIZADOS
+-- 8. TREINOS PERSONALIZADOS
 CREATE TABLE IF NOT EXISTS personalized_workouts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
@@ -109,7 +126,7 @@ CREATE TABLE IF NOT EXISTS personalized_workouts (
     created_at DATE DEFAULT CURRENT_DATE
 );
 
--- 8. TABELA DE POSTS
+-- 9. POSTS
 CREATE TABLE IF NOT EXISTS posts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -119,7 +136,7 @@ CREATE TABLE IF NOT EXISTS posts (
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 9. TABELA DE DESAFIOS
+-- 10. DESAFIOS
 CREATE TABLE IF NOT EXISTS challenges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
@@ -131,7 +148,7 @@ CREATE TABLE IF NOT EXISTS challenges (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 10. TABELA DE ENTRADAS DE DESAFIO (Ranking)
+-- 11. ENTRADAS DE DESAFIO
 CREATE TABLE IF NOT EXISTS challenge_entries (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     challenge_id UUID REFERENCES challenges(id) ON DELETE CASCADE,
@@ -140,7 +157,7 @@ CREATE TABLE IF NOT EXISTS challenge_entries (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 11. TABELA DE ROTAS
+-- 12. ROTAS
 CREATE TABLE IF NOT EXISTS routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
