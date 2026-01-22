@@ -1,17 +1,18 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Assessment, User, UserRole } from '../types';
+import { Assessment, User, UserRole, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { GeminiService } from '../services/geminiService';
-import { Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, X, ArrowLeft } from 'lucide-react';
 
 interface AssessmentsPageProps {
   currentUser: User;
+  onNavigate: (view: ViewState) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   initialStudentId?: string; 
 }
 
-export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, addToast, initialStudentId }) => {
+export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, onNavigate, addToast, initialStudentId }) => {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [students, setStudents] = useState<User[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(initialStudentId || null); 
@@ -131,9 +132,14 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white tracking-tighter uppercase">Avaliações Físicas</h2>
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Acompanhamento e Evolução Funcional</p>
+        <div className="flex items-center gap-4">
+          <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-white tracking-tighter uppercase">Avaliações Físicas</h2>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Acompanhamento e Evolução Funcional</p>
+          </div>
         </div>
         {isStaff && (
           <button

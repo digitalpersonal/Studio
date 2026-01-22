@@ -1,17 +1,18 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Payment, User, UserRole } from '../types';
+import { Payment, User, UserRole, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { MercadoPagoService } from '../services/mercadoPagoService';
-import { Loader2, DollarSign, Receipt, Check, Download, CreditCard, MessageCircle, AlertTriangle, X, CheckCheck, Info, Copy, QrCode, Smartphone, Wallet, Tag, ArrowRight } from 'lucide-react';
+import { Loader2, DollarSign, Receipt, Check, Download, CreditCard, MessageCircle, AlertTriangle, X, CheckCheck, Info, Copy, QrCode, Smartphone, Wallet, Tag, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useToast, WhatsAppAutomation } from '../App'; 
 
 interface FinancialPageProps {
   user: User;
+  onNavigate: (view: ViewState) => void;
   selectedStudentId?: string; 
 }
 
-export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) => {
+export const FinancialPage = ({ user, onNavigate, selectedStudentId }: FinancialPageProps) => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [students, setStudents] = useState<User[]>([]); 
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE'>('ALL');
@@ -61,15 +62,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
     setIsProcessing(p.id);
     try {
         const finalAmount = Math.max(0, p.amount - discountValue);
-        
-        // Se houver desconto, atualizamos o valor da fatura antes/durante a baixa
-        if (discountValue > 0) {
-            // No SupabaseService real, poderíamos ter um updatePayment. 
-            // Para simplificar, assumimos que markPaymentAsPaid pode ser estendido ou o amount atualizado via updateUser-like logic se necessário.
-            // Aqui vamos apenas proceder com a baixa e notificar.
-            p.amount = finalAmount;
-        }
-
+        p.amount = finalAmount;
         await SupabaseService.markPaymentAsPaid(p.id);
         const student = students.find(s => s.id === p.studentId) || user; 
         if (student) WhatsAppAutomation.sendConfirmation(student, p);
@@ -100,9 +93,14 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Fluxo Financeiro</h2>
-          <p className="text-slate-400 text-sm">Gerencie faturas, recebimentos e inadimplência.</p>
+        <div className="flex items-center gap-4">
+          <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Fluxo Financeiro</h2>
+            <p className="text-slate-400 text-sm">Gerencie faturas, recebimentos e inadimplência.</p>
+          </div>
         </div>
       </header>
 

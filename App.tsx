@@ -4,7 +4,7 @@ import { Layout } from './components/Layout';
 import { User, UserRole, ViewState, ClassSession, Assessment, Payment, Post, Anamnesis, Route, Challenge, PersonalizedWorkout, Address, AcademySettings, AppNavParams } from './types';
 import { DAYS_OF_WEEK, SUPER_ADMIN_CONFIG } from './constants';
 import { 
-  Dumbbell, UserPlus, Lock, ArrowRight, Check, X, Calendar, Camera, 
+  Dumbbell, UserPlus, Lock, ArrowLeft, Check, X, Calendar, Camera, 
   Trash2, Edit, Plus, Filter, Download, User as UserIcon, Search,
   Users, Activity, DollarSign, UserCheck, CheckCircle2, XCircle, Clock,
   AlertTriangle, CreditCard, QrCode, Smartphone, Barcode, FileText,
@@ -12,7 +12,7 @@ import {
   Building, Save, Settings, Repeat, Zap, Trophy, Medal, Crown, Star, Flame,
   ClipboardList, Stethoscope, Pill, AlertCircle, Phone, CheckCheck, ChevronDown,
   ArrowRightLeft, TrendingUp, TrendingDown, Minus, Diff, Map, MapPin, Flag, Globe,
-  ArrowLeft, List, ChevronUp, Gauge, Video, CheckSquare, Share2, Copy, Ruler, Scale,
+  List, ChevronUp, Gauge, Video, CheckSquare, Share2, Copy, Ruler, Scale,
   Heart, Upload, FileCheck, FileSignature, CalendarCheck, PieChart, BarChart3,
   CalendarPlus, ShieldCheck, Eye, EyeOff, GraduationCap, MapPinned, CreditCard as CardIcon,
   Info, Sparkles, Target, ZapOff, ChevronRight, TrendingUp as TrendUp, Wallet, Receipt,
@@ -76,7 +76,7 @@ const ToastContainer = ({ toasts, removeToast }: { toasts: Toast[], removeToast:
   );
 };
 
-const SettingsPage = ({ currentUser }: { currentUser: User }) => {
+const SettingsPage = ({ currentUser, onBack }: { currentUser: User, onBack: () => void }) => {
   const { academySettings, refreshSettings, addToast } = useToast();
   const [localSettings, setLocalSettings] = useState<AcademySettings | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,9 +111,14 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
 
   return (
     <div className="space-y-8 animate-fade-in max-w-4xl mx-auto pb-20">
-      <header>
-        <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Configurações do Studio</h2>
-        <p className="text-slate-400 text-sm">Personalize os dados, logo e regras de acesso.</p>
+      <header className="flex items-center gap-4">
+        <button onClick={onBack} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Configurações do Studio</h2>
+          <p className="text-slate-400 text-sm">Personalize os dados, logo e regras de acesso.</p>
+        </div>
       </header>
 
       <div className="bg-dark-950 rounded-[2.5rem] border border-dark-800 shadow-2xl overflow-hidden">
@@ -390,16 +395,16 @@ export function App() {
             addToast={addToast} 
           />
         )}
-        {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
-        {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} selectedStudentId={navParams.studentId} />}
+        {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
+        {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} initialStudentId={navParams.studentId} />}
+        {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} onNavigate={handleNavigate} selectedStudentId={navParams.studentId} />}
         {currentView === 'MANAGE_USERS' && <ManageUsersPage currentUser={currentUser} onNavigate={handleNavigate} />}
-        {currentView === 'SETTINGS' && <SettingsPage currentUser={currentUser} />}
-        {currentView === 'RANKING' && <RankingPage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
-        {currentView === 'FEED' && <FeedPage currentUser={currentUser} addToast={addToast} />}
-        {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
+        {currentView === 'SETTINGS' && <SettingsPage currentUser={currentUser} onBack={() => handleNavigate('DASHBOARD')} />}
+        {currentView === 'RANKING' && <RankingPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
+        {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
+        {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} initialStudentId={navParams.studentId} />}
+        {currentView === 'FEED' && <FeedPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
+        {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
         {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
           <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
         )}

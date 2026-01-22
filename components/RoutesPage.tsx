@@ -1,19 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { Route, User, UserRole } from '../types';
+import { Route, User, UserRole, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { 
   Map, Plus, Edit, Trash2, Loader2, Link, ExternalLink, 
   MapPinned, Navigation, Mountain, Timer, X, Check, Search,
-  Compass
+  Compass, ArrowLeft
 } from 'lucide-react';
 
 interface RoutesPageProps {
   currentUser: User;
+  onNavigate: (view: ViewState) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const RoutesPage: React.FC<RoutesPageProps> = ({ currentUser, addToast }) => {
+export const RoutesPage: React.FC<RoutesPageProps> = ({ currentUser, onNavigate, addToast }) => {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingRoute, setEditingRoute] = useState<Route | null>(null);
@@ -95,9 +96,14 @@ export const RoutesPage: React.FC<RoutesPageProps> = ({ currentUser, addToast })
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Rotas & Exploração</h2>
-          <p className="text-slate-400 text-sm">Os melhores percursos mapeados para seu treino.</p>
+        <div className="flex items-center gap-4">
+          <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Rotas & Exploração</h2>
+            <p className="text-slate-400 text-sm">Os melhores percursos mapeados para seu treino.</p>
+          </div>
         </div>
         <div className="flex gap-2">
             <div className="relative">

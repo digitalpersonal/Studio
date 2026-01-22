@@ -1,17 +1,18 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ClassSession, User, UserRole, AttendanceRecord } from '../types';
+import { ClassSession, User, UserRole, AttendanceRecord, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search, User as UserIcon } from 'lucide-react'; 
+import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search, User as UserIcon, ArrowLeft } from 'lucide-react'; 
 import { DAYS_OF_WEEK } from '../constants';
 import { WORKOUT_TYPES } from '../constants'; 
 
 interface SchedulePageProps {
   currentUser: User;
+  onNavigate: (view: ViewState) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToast }) => {
+export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, onNavigate, addToast }) => {
   const [classes, setClasses] = useState<ClassSession[]>([]);
   const [students, setStudents] = useState<User[]>([]); 
   const [showForm, setShowForm] = useState(false);
@@ -102,9 +103,14 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Agenda Studio</h2>
-          <p className="text-slate-400 text-sm">Cronograma de aulas e controle de presenças.</p>
+        <div className="flex items-center gap-4">
+          <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Agenda Studio</h2>
+            <p className="text-slate-400 text-sm">Cronograma de aulas e controle de presenças.</p>
+          </div>
         </div>
         {isAdmin && (
           <button onClick={() => { setEditingClass(null); setShowForm(true); }} className="bg-brand-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all">
@@ -192,8 +198,6 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
         const map: Record<string, boolean> = {};
         records.forEach(r => { map[r.studentId] = r.isPresent; });
         
-        // Inicializa com false para quem ainda não tem registro
-        // Fix: Changed s.studentId to s.id as studentId does not exist on User type
         students.forEach(s => {
           if (map[s.id] === undefined) map[s.id] = false;
         });
@@ -215,7 +219,6 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Fix: Cast isPresent to boolean and explicitly type records to fix "unknown" type error
       const records: Omit<AttendanceRecord, 'id'>[] = Object.entries(attendance).map(([studentId, isPresent]) => ({
         classId: classSession.id,
         studentId,
@@ -360,7 +363,7 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
            </div>
         </div>
 
-        <div className="space-y-5 flex flex-col h-full bg-dark-900/30 p-6 rounded-[2rem] border border-dark-800">
+        <div className="space-y-5 flex flex-col h-full bg-dark-900/30 p-6 rounded-[2.5rem] border border-dark-800">
            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><UserPlus size={18}/> Alunos Inscritos ({formData.enrolledStudentIds?.length || 0})</h4>
            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14}/>

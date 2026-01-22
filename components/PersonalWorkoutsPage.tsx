@@ -1,16 +1,17 @@
 
 import React, { useState, useEffect } from 'react';
-import { PersonalizedWorkout, User, UserRole } from '../types';
+import { PersonalizedWorkout, User, UserRole, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Dumbbell, Plus, Edit, Trash2, Loader2, Video, User as UserIcon, X } from 'lucide-react';
+import { Dumbbell, Plus, Edit, Trash2, Loader2, Video, User as UserIcon, X, ArrowLeft } from 'lucide-react';
 
 interface PersonalWorkoutsPageProps {
   currentUser: User;
+  onNavigate: (view: ViewState) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   initialStudentId?: string; 
 }
 
-export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ currentUser, addToast, initialStudentId }) => {
+export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ currentUser, onNavigate, addToast, initialStudentId }) => {
   const [workouts, setWorkouts] = useState<PersonalizedWorkout[]>([]);
   const [students, setStudents] = useState<User[]>([]); 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialStudentId || null); 
@@ -32,7 +33,6 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
         if (!isStaff) {
           workoutData = await SupabaseService.getPersonalizedWorkouts(currentUser.id);
         } else {
-          // Se for staff, respeita o filtro inicial de aluno vindo da navegação
           workoutData = await SupabaseService.getPersonalizedWorkouts(selectedUserId || undefined);
         }
         setWorkouts(workoutData);
@@ -45,7 +45,6 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
     fetchInitialData();
   }, [currentUser, isStaff, addToast]);
 
-  // Efeito secundário para quando o filtro manual mudar
   useEffect(() => {
     const fetchFilteredWorkouts = async () => {
       if (!isStaff) return;
@@ -130,9 +129,14 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Treinos Individuais</h2>
-          <p className="text-slate-400 text-sm">Fichas técnicas e rotinas personalizadas.</p>
+        <div className="flex items-center gap-4">
+          <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Treinos Individuais</h2>
+            <p className="text-slate-400 text-sm">Fichas técnicas e rotinas personalizadas.</p>
+          </div>
         </div>
         {isStaff && (
           <button

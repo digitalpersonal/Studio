@@ -1,17 +1,17 @@
 
-
 import React, { useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
+import { User, UserRole, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { FileBarChart, Loader2, DollarSign, Users, Calendar } from 'lucide-react';
+import { FileBarChart, Loader2, DollarSign, Users, Calendar, ArrowLeft } from 'lucide-react';
 
 interface ReportsPageProps {
   currentUser: User;
+  onNavigate: (view: ViewState) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast }) => {
+export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, onNavigate, addToast }) => {
   const [financialData, setFinancialData] = useState<any[]>([]);
   const [attendanceData, setAttendanceData] = useState<any[]>([]);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -52,10 +52,15 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Relatórios & Insights</h2>
-          <p className="text-slate-400 text-sm">Análises financeiras e de frequência para a gestão do studio.</p>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-white tracking-tighter uppercase">Relatórios & Insights</h2>
+            <p className="text-slate-400 text-sm">Análises financeiras e de frequência para a gestão do studio.</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-slate-500 text-[10px] font-bold uppercase">Ano:</label>

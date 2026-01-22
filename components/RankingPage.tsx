@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { User, UserRole, Challenge } from '../types';
+import { User, UserRole, Challenge, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Trophy, Loader2, Award, ChevronRight, Hash, Plus, X, Zap, Target, History } from 'lucide-react';
+import { Trophy, Loader2, Award, ChevronRight, Hash, Plus, X, Zap, Target, History, ArrowLeft } from 'lucide-react';
 
 interface RankingPageProps {
   currentUser: User;
+  onNavigate: (view: ViewState) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const RankingPage: React.FC<RankingPageProps> = ({ currentUser, addToast }) => {
+export const RankingPage: React.FC<RankingPageProps> = ({ currentUser, onNavigate, addToast }) => {
   const [globalChallenge, setGlobalChallenge] = useState<Challenge | null>(null);
   const [challengeProgress, setChallengeProgress] = useState(0);
   const [rankingData, setRankingData] = useState<{studentId: string, total: number}[]>([]);
@@ -106,9 +107,14 @@ export const RankingPage: React.FC<RankingPageProps> = ({ currentUser, addToast 
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Ranking & Desafios</h2>
-          <p className="text-slate-400 text-sm">Supere limites e lidere a comunidade!</p>
+        <div className="flex items-center gap-4">
+          <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Ranking & Desafios</h2>
+            <p className="text-slate-400 text-sm">Supere limites e lidere a comunidade!</p>
+          </div>
         </div>
         {isStaff && ( 
           <button onClick={() => setShowChallengeForm(true)} className="bg-brand-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center shadow-xl shadow-brand-600/20 active:scale-95 transition-all">

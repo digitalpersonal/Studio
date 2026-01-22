@@ -66,8 +66,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         if (!confirm(`Deseja PAUSAR o contrato de ${user.name}? As cobranças futuras serão suspensas.`)) return;
         setIsProcessingAction(user.id);
         try {
-            // No SupabaseService atualizado, usaríamos uma flag ou campo status
-            // Simulando via atualização de metadados no profile_completed (usado como flag ativa temporária)
             const updated = { ...user, profileCompleted: false }; 
             await SupabaseService.updateUser(updated);
             addToast(`${user.name} foi pausado(a).`, "info");
@@ -89,24 +87,18 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         const { user, pending } = showReactivateModal;
         setIsLoading(true);
         try {
-            // 1. Atualizar status do aluno para Ativo
             await SupabaseService.updateUser({ ...user, profileCompleted: true });
-
-            // 2. Reajustar parcelas pendentes
             let currentDate = new Date(newStartDate);
             for (let i = 0; i < pending.length; i++) {
                 const p = pending[i];
                 const dueDate = new Date(currentDate);
                 dueDate.setMonth(currentDate.getMonth() + i);
-                
-                // Chamada de serviço para atualizar a parcela
                 await SupabaseService.updatePayment({
                     ...p,
                     amount: newAmount,
                     due_date: dueDate.toISOString().split('T')[0]
                 });
             }
-
             addToast(`${user.name} reativado com sucesso!`, "success");
             setShowReactivateModal(null);
             refreshList();
@@ -185,9 +177,14 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Alunos & Equipe</h2>
-                    <p className="text-slate-400 text-sm">Controle operacional e financeiro centralizado.</p>
+                <div className="flex items-center gap-4">
+                  <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div>
+                      <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Alunos & Equipe</h2>
+                      <p className="text-slate-400 text-sm">Controle operacional e financeiro centralizado.</p>
+                  </div>
                 </div>
                 {(isAdmin || isTrainer) && (
                   <button onClick={() => handleOpenForm(null)} className="bg-brand-600 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all active:scale-95">

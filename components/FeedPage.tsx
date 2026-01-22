@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Post, User } from '../types';
+import { Post, User, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Camera, Send, Heart, Loader2, MessageCircle, Share2, X, Upload, Facebook, Copy, Check } from 'lucide-react';
+import { Camera, Send, Heart, Loader2, MessageCircle, Share2, X, Upload, Facebook, Copy, Check, ArrowLeft } from 'lucide-react';
 
 interface FeedPageProps {
   currentUser: User;
+  onNavigate: (view: ViewState) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => {
+export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, onNavigate, addToast }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostCaption, setNewPostCaption] = useState('');
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -148,9 +149,14 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <header>
-        <h2 className="text-2xl font-bold text-white">Comunidade Studio</h2>
-        <p className="text-slate-400 text-sm">Compartilhe sua rotina e motive seus colegas!</p>
+      <header className="flex items-center gap-4">
+        <button onClick={() => onNavigate('DASHBOARD')} className="p-2.5 bg-dark-950 border border-dark-800 text-slate-500 rounded-full hover:text-brand-500 hover:border-brand-500/50 transition-all active:scale-90">
+          <ArrowLeft size={20} />
+        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Comunidade Studio</h2>
+          <p className="text-slate-400 text-sm">Compartilhe sua rotina e motive seus colegas!</p>
+        </div>
       </header>
 
       <div className="bg-dark-950 p-6 rounded-3xl border border-dark-800 shadow-xl">
