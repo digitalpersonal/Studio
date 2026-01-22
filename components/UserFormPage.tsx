@@ -60,6 +60,15 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     setActiveTab(initialActiveTab);
   }, [initialFormData, initialActiveTab, defaultFee]);
 
+  const getRoleLabel = (role: UserRole) => {
+    switch(role) {
+      case UserRole.SUPER_ADMIN: return 'Administrador Geral';
+      case UserRole.ADMIN: return 'Administrador';
+      case UserRole.TRAINER: return 'Professor / Treinador';
+      default: return 'Aluno';
+    }
+  };
+
   const compressImage = (base64Str: string): Promise<string> => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -167,11 +176,21 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   <div>
                       <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Função / Nível de Acesso</label>
                       {isSuperAdmin ? (
-                        <select required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.role || UserRole.STUDENT} onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}>
-                            {Object.values(UserRole).map(role => (<option key={role} value={role}>{role}</option>))}
+                        <select 
+                          required 
+                          className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm font-bold" 
+                          value={formData.role || UserRole.STUDENT} 
+                          onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
+                        >
+                            {Object.values(UserRole).map(role => (
+                              <option key={role} value={role}>{getRoleLabel(role as UserRole)}</option>
+                            ))}
                         </select>
                       ) : (
-                        <div className="flex items-center gap-3 bg-dark-900/50 border border-dark-800 rounded-xl p-3"><ShieldCheck size={18} className="text-brand-500" /><span className="text-white text-sm font-bold uppercase">Aluno(a)</span></div>
+                        <div className="flex items-center gap-3 bg-dark-900/50 border border-dark-800 rounded-xl p-3">
+                          <ShieldCheck size={18} className="text-brand-500" />
+                          <span className="text-white text-sm font-bold uppercase">{getRoleLabel(formData.role || UserRole.STUDENT)}</span>
+                        </div>
                       )}
                   </div>
 
