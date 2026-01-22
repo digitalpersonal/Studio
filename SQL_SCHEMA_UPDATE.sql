@@ -2,7 +2,7 @@
 -- 1. EXTENSÕES NECESSÁRIAS
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 2. TABELA DE USUÁRIOS (Corrigida e Completa)
+-- 2. TABELA DE USUÁRIOS
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. TABELA DE AULAS (Classes)
+-- 3. TABELA DE AULAS
 CREATE TABLE IF NOT EXISTS classes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS classes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. TABELA DE PAGAMENTOS (Payments)
+-- 4. TABELA DE PAGAMENTOS
 CREATE TABLE IF NOT EXISTS payments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS payments (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. TABELA DE CHAMADA (Attendance)
+-- 5. TABELA DE CHAMADA
 CREATE TABLE IF NOT EXISTS attendance (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     UNIQUE(class_id, student_id, date)
 );
 
--- 6. TABELA DE AVALIAÇÕES (Assessments)
+-- 6. TABELA DE AVALIAÇÕES
 CREATE TABLE IF NOT EXISTS assessments (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     student_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS personalized_workouts (
     created_at DATE DEFAULT CURRENT_DATE
 );
 
--- 8. TABELA DE POSTS (Comunidade)
+-- 8. TABELA DE POSTS
 CREATE TABLE IF NOT EXISTS posts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS posts (
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 9. TABELA DE DESAFIOS (Challenges)
+-- 9. TABELA DE DESAFIOS
 CREATE TABLE IF NOT EXISTS challenges (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
@@ -127,10 +127,20 @@ CREATE TABLE IF NOT EXISTS challenges (
     target_value NUMERIC(15,2) NOT NULL,
     unit TEXT DEFAULT 'km',
     start_date DATE NOT NULL,
-    end_date DATE NOT NULL
+    end_date DATE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 10. TABELA DE ROTAS (Routes)
+-- 10. TABELA DE ENTRADAS DE DESAFIO (Ranking)
+CREATE TABLE IF NOT EXISTS challenge_entries (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    challenge_id UUID REFERENCES challenges(id) ON DELETE CASCADE,
+    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    value NUMERIC(10,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 11. TABELA DE ROTAS
 CREATE TABLE IF NOT EXISTS routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     title TEXT NOT NULL,
@@ -140,14 +150,3 @@ CREATE TABLE IF NOT EXISTS routes (
     difficulty TEXT DEFAULT 'MEDIUM',
     elevation_gain INTEGER DEFAULT 0
 );
-
--- POLÍTICAS DE ACESSO (Opcional - se quiser desabilitar RLS para testes rápidos)
--- ALTER TABLE users DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE classes DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE assessments DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE personalized_workouts DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE posts DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE challenges DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE routes DISABLE ROW LEVEL SECURITY;

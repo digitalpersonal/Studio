@@ -17,13 +17,10 @@ import {
   CalendarPlus, ShieldCheck, Eye, EyeOff, GraduationCap, MapPinned, CreditCard as CardIcon,
   Info, Sparkles, Target, ZapOff, ChevronRight, TrendingUp as TrendUp, Wallet, Receipt,
   BadgePercent, HandCoins, ExternalLink as LinkIcon, Copy as CopyIcon, Globe as GlobeIcon,
-  Zap as ZapIcon
+  Zap as ZapIcon, ImageIcon as PhotoIcon
 } from 'lucide-react';
 import { SupabaseService } from './services/supabaseService';
-import { GeminiService } from './services/geminiService';
-import { ContractService } from './services/contractService';
 import { SettingsService } from './services/settingsService';
-import { MercadoPagoService } from './services/mercadoPagoService';
 import { UserFormPage } from './components/UserFormPage';
 import { SchedulePage } from './components/SchedulePage';
 import { AssessmentsPage } from './components/AssessmentsPage.tsx';
@@ -38,13 +35,6 @@ import { CompleteProfilePage } from './components/CompleteProfilePage';
 import { FinancialPage } from './components/FinancialPage';
 import { DashboardPage } from './components/DashboardPage';
 
-// Revertido para URL externa conforme solicitado
-const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
-
-/* -------------------------------------------------------------------------- */
-/*                                   NOTIFICAÇÕES                             */
-/* -------------------------------------------------------------------------- */
-
 type ToastType = 'success' | 'error' | 'info';
 
 interface Toast {
@@ -55,7 +45,9 @@ interface Toast {
 
 export const ToastContext = createContext<{
   addToast: (message: string, type?: ToastType) => void;
-}>({ addToast: () => {} });
+  academySettings: AcademySettings | null;
+  refreshSettings: () => Promise<void>;
+}>({ addToast: () => {}, academySettings: null, refreshSettings: async () => {} });
 
 export const useToast = () => useContext(ToastContext);
 
@@ -84,219 +76,175 @@ const ToastContainer = ({ toasts, removeToast }: { toasts: Toast[], removeToast:
   );
 };
 
-/* -------------------------------------------------------------------------- */
-/*                                   SERVIÇOS                                 */
-/* -------------------------------------------------------------------------- */
+const SettingsPage = ({ currentUser }: { currentUser: User }) => {
+  const { academySettings, refreshSettings, addToast } = useToast();
+  const [localSettings, setLocalSettings] = useState<AcademySettings | null>(null);
+  const [loading, setLoading] = useState(false);
 
-export const WhatsAppAutomation = {
-  sendPlanSold: (student: User) => {
-    const message = `Boas-vindas ao Studio, ${String(student.name).split(' ')[0]}! 🎉🔥 Seu plano de ${student.planDuration} meses foi ativado com sucesso! Valor mensal: R$ ${student.planValue?.toFixed(2)}. Estamos muito felizes em ter você conosco. Rumo à sua melhor versão! 💪🚀`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  },
-  sendPaymentReminder: (student: User, payment: Payment) => {
-    const message = `Olá ${String(student.name).split(' ')[0]}! 👋 Passando para lembrar que sua mensalidade vence em breve (${payment.dueDate}). Valor: R$ ${payment.amount.toFixed(2)}. Evite juros e mantenha seu acesso liberado! 🏃‍♂️💨`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  },
-  sendConfirmation: (student: User, payment: Payment) => {
-    const message = `Olá ${String(student.name).split(' ')[0]}! Recebemos seu pagamento de R$ ${payment.amount.toFixed(2)} referente a ${payment.description}. Obrigado e bom treino! 🔥`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  },
-  sendGenericMessage: (student: User, customMessage: string) => {
-    const message = `Olá ${String(student.name).split(' ')[0]}! 👋\n\n${customMessage}`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  }
-};
+  useEffect(() => {
+    if (academySettings) setLocalSettings(academySettings);
+  }, [academySettings]);
 
-/* -------------------------------------------------------------------------- */
-/*                                   PÁGINAS                                  */
-/* -------------------------------------------------------------------------- */
-
-const SettingsPage = ({ currentUser }: { currentUser: User }) => { 
-  const [settings, setSettings] = useState<AcademySettings>(SettingsService.getSettings());
-  const [copied, setCopied] = useState(false);
-  const { addToast } = useToast();
-
-  const webhookUrl = `https://${settings.customDomain}/api/webhooks/mercadopago`;
-  const isMPConfigured = !!(settings.mercadoPagoPublicKey && settings.mercadoPagoAccessToken);
-  const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN; 
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async () => {
+    if (!localSettings) return;
+    setLoading(true);
     try {
-      SettingsService.saveSettings(settings);
-      addToast("Configurações salvas com sucesso!", "success");
-    } catch (error: any) {
-      console.error("Erro ao salvar configurações:", error.message || JSON.stringify(error));
-      addToast(`Erro ao salvar configurações: ${error.message || JSON.stringify(error)}`, "error");
+      await SettingsService.saveSettings(localSettings);
+      await refreshSettings();
+      addToast("Configurações atualizadas!", "success");
+    } catch (e) {
+      addToast("Erro ao salvar no banco de dados.", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(webhookUrl);
-    setCopied(true);
-    addToast("Link do Webhook copiado!", "info");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleAddressChange = (field: keyof Address, value: string) => {
-    setSettings(prev => ({
-      ...prev,
-      academyAddress: {
-        ...(prev.academyAddress as Address),
-        [field]: value
-      }
+    if (!localSettings) return;
+    setLocalSettings(prev => ({
+      ...prev!,
+      academyAddress: { ...prev!.academyAddress, [field]: value }
     }));
   };
 
+  if (!localSettings) return <div className="flex justify-center py-20"><Loader2 className="animate-spin text-brand-500" /></div>;
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <header className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-white">Ajustes do Studio</h2>
-          <p className="text-slate-400 text-sm">Controle de identidade visual, dados jurídicos e integrações.</p>
-        </div>
+    <div className="space-y-8 animate-fade-in max-w-4xl mx-auto pb-20">
+      <header>
+        <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Configurações do Studio</h2>
+        <p className="text-slate-400 text-sm">Personalize os dados, logo e regras de acesso.</p>
       </header>
 
-      <div className="bg-dark-950 p-8 rounded-3xl border border-dark-800 shadow-xl">
-        <form onSubmit={handleSave} className="space-y-10">
-          
-          <section className="space-y-6">
-            <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4">
-               <Building className="text-brand-500" size={20}/> Dados da Academia
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Domínio Próprio (Ex: studiosemovimento.com.br)</label>
-                <div className="relative">
-                  <GlobeIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
-                  <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-brand-500 outline-none font-medium" value={String(settings.customDomain || '')} onChange={e => setSettings({...settings, customDomain: e.target.value})} />
-                </div>
+      <div className="bg-dark-950 rounded-[2.5rem] border border-dark-800 shadow-2xl overflow-hidden">
+        <div className="p-8 space-y-8">
+           <section className="space-y-6">
+              <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Building size={18}/> Visual e Identidade</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="md:col-span-2">
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-2">URL da Logo do Studio</label>
+                      <div className="flex gap-4 items-center">
+                          <img src={localSettings.logoUrl} className="w-16 h-16 rounded-xl border border-dark-700 object-contain bg-dark-900" alt="Logo preview" />
+                          <input className="flex-1 bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-xs font-mono" value={localSettings.logoUrl} onChange={e => setLocalSettings({...localSettings, logoUrl: e.target.value})} placeholder="https://..." />
+                      </div>
+                  </div>
+                  <div className="md:col-span-2">
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Nome Fantasia</label>
+                      <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={localSettings.name} onChange={e => setLocalSettings({...localSettings, name: e.target.value})} />
+                  </div>
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Nome da Academia / Razão Social</label>
-                <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none" value={String(settings.name || '')} onChange={e => setSettings({...settings, name: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">CNPJ</label>
-                <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none" value={String(settings.cnpj || '')} onChange={e => setSettings({...settings, cnpj: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Representante Legal</label>
-                <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none" value={String(settings.representativeName || '')} onChange={e => setSettings({...settings, representativeName: e.target.value})} />
-              </div>
-              <div className="md:col-span-2 pt-4 border-t border-dark-800">
-                 <h4 className="text-white font-bold text-sm flex items-center gap-2"><MapPin size={18} className="text-brand-500"/> Endereço Completo</h4>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">CEP</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.zipCode || '')} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
-                   <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Rua / Avenida</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.street || '')} onChange={e => handleAddressChange('street', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Número</label><input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.number || '')} onChange={e => handleAddressChange('number', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Complemento</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.complement || '')} onChange={e => handleAddressChange('complement', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Bairro</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.neighborhood || '')} onChange={e => handleAddressChange('neighborhood', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Cidade</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.city || '')} onChange={e => handleAddressChange('city', e.target.value)} /></div>
-                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Estado</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={String(settings.academyAddress?.state || '')} onChange={e => handleAddressChange('state', e.target.value)} /></div>
-                 </div>
-              </div>
-            </div>
-          </section>
+           </section>
 
-          <section className="space-y-6">
-            <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4">
-               <CardIcon className="text-brand-500" size={20}/> Gateway Mercado Pago
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Public Key</label>
-                <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="APP_USR-..." value={String(settings.mercadoPagoPublicKey || '')} onChange={e => setSettings({...settings, mercadoPagoPublicKey: e.target.value})} />
+           <section className="space-y-6 pt-8 border-t border-dark-800">
+              <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><MapPin size={18}/> Dados Fiscais e Localização</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">CNPJ</label>
+                      <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={localSettings.cnpj} onChange={e => setLocalSettings({...localSettings, cnpj: e.target.value})} />
+                  </div>
+                  <div>
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Responsável</label>
+                      <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={localSettings.representativeName} onChange={e => setLocalSettings({...localSettings, representativeName: e.target.value})} />
+                  </div>
+                  <div className="md:col-span-2">
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Rua / Logradouro</label>
+                      <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={localSettings.academyAddress.street} onChange={e => handleAddressChange('street', e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 md:col-span-2">
+                      <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Cidade</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={localSettings.academyAddress.city} onChange={e => handleAddressChange('city', e.target.value)} /></div>
+                      <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">UF</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={localSettings.academyAddress.state} onChange={e => handleAddressChange('state', e.target.value)} /></div>
+                      <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">CEP</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={localSettings.academyAddress.zipCode} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
+                  </div>
               </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Access Token</label>
-                <input type="password" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="TEST-..." value={String(settings.mercadoPagoAccessToken || '')} onChange={e => setSettings({...settings, mercadoPagoAccessToken: e.target.value})} />
-              </div>
-            </div>
+           </section>
 
-            <div className="p-6 bg-brand-500/5 rounded-3xl border border-brand-500/10 relative overflow-hidden">
-              <div className="absolute top-4 right-4">
-                {isMPConfigured ? (
-                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase rounded-full border border-emerald-500/20">
-                     <ZapIcon size={12}/> Chaves Ativas
-                   </span>
-                ) : (
-                   <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase rounded-full border border-amber-500/20">
-                     <AlertCircle size={12}/> Aguardando Chaves
-                   </span>
-                )}
+           <section className="space-y-6 pt-8 border-t border-dark-800">
+              <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><DollarSign size={18}/> Regras de Negócio</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Código de Convite Aluno</label>
+                      <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold tracking-widest" value={localSettings.registrationInviteCode} onChange={e => setLocalSettings({...localSettings, registrationInviteCode: e.target.value})} />
+                  </div>
+                  <div>
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Mensalidade Padrão (R$)</label>
+                      <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={localSettings.monthlyFee} onChange={e => setLocalSettings({...localSettings, monthlyFee: Number(e.target.value)})} />
+                  </div>
               </div>
+           </section>
+        </div>
 
-              <div className="flex items-center gap-4 mb-6">
-                <div className="bg-brand-600/20 p-3 rounded-2xl text-brand-500">
-                  <GlobeIcon size={24}/>
-                </div>
-                <div>
-                  <h4 className="text-white font-bold text-base">URL do Webhook</h4>
-                  <p className="text-slate-500 text-xs">Aponte o Mercado Pago para este endereço para receber confirmações automáticas.</p>
-                </div>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 bg-dark-950 border border-dark-800 rounded-2xl p-4 text-brand-500 font-mono text-xs select-all break-all">
-                  {webhookUrl}
-                </div>
-                <button 
-                  type="button"
-                  onClick={copyToClipboard}
-                  className="px-6 py-4 bg-brand-600 text-white rounded-2xl hover:bg-brand-500 transition-all flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest shrink-0 shadow-lg shadow-brand-600/20"
-                >
-                  {copied ? <CheckCheck size={18}/> : <CopyIcon size={18}/>}
-                  {copied ? 'Copiado' : 'Copiar URL'}
-                </button>
-              </div>
-              
-              <div className="mt-6 flex items-start gap-3 p-4 bg-dark-950/50 rounded-2xl border border-dark-800/50">
-                <Info size={16} className="mt-0.5 shrink-0 text-brand-500"/>
-                <span className="text-[11px] text-slate-400 leading-relaxed">
-                  No <b>Painel do Desenvolvedor</b> do Mercado Pago, vá em integrações e adicione esta URL no campo "Notification URL". Certifique-se de selecionar os eventos de <b>payment</b> e <b>subscription</b> para automação completa.
-                </span>
-              </div>
-            </div>
-          </section>
-
-          {isSuperAdmin && ( 
-            <section className="space-y-6">
-                <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4">
-                   <Lock className="text-brand-500" size={20}/> Segurança & Acessos
-                </h3>
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Código de Convite para Cadastro de Alunos</label>
-                    <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none font-medium" value={String(settings.registrationInviteCode || '')} onChange={e => setSettings({...settings, registrationInviteCode: e.target.value})} />
-                    <p className="text-slate-500 text-xs mt-2">Este código é exigido para novos alunos se registrarem no aplicativo.</p>
-                </div>
-            </section>
-          )}
-          
-          <div className="pt-6 border-t border-dark-800">
-            <button type="submit" className="w-full md:w-auto px-16 py-5 bg-brand-600 text-white font-black rounded-2xl shadow-xl shadow-brand-600/25 hover:bg-brand-500 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm">
-              <Save size={20}/> Salvar Configurações Gerais
+        <div className="p-8 bg-dark-900 border-t border-dark-800 flex justify-end">
+            <button onClick={handleSave} disabled={loading} className="bg-brand-600 text-white px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all flex items-center gap-2 active:scale-95">
+                {loading ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>}
+                Salvar Alterações
             </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
 };
 
+export const WhatsAppAutomation = {
+  getApiUrl: (phone: string, text: string) => {
+    const cleanPhone = phone.replace(/\D/g, '');
+    const isMobile = /iPhone|Android|iPad|iPod/i.test(navigator.userAgent);
+    
+    if (!isMobile) {
+      return `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
+    }
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+  },
+  
+  sendPlanSold: (student: User) => {
+    const message = `Boas-vindas ao *Studio*, ${String(student.name).split(' ')[0]}! 🎉🔥\n\nSeu plano de ${student.planDuration} meses foi ativado com sucesso!\nValor mensal: *R$ ${student.planValue?.toFixed(2)}*.\n\nEstamos muito felizes em ter você conosco. Rumo à sua melhor versão! 💪🚀`;
+    window.open(WhatsAppAutomation.getApiUrl(student.phoneNumber || '', message), 'studio_whatsapp');
+  },
+  
+  sendPaymentReminder: (student: User, payment: Payment) => {
+    const message = `Olá, ${String(student.name).split(' ')[0]}! 👋 Passando para lembrar que sua mensalidade vence em breve (*${payment.dueDate.split('-').reverse().join('/')}*).\n\nValor: *R$ ${payment.amount.toFixed(2)}*.\n\nEvite juros e mantenha seu acesso liberado para os treinos! 🏃‍♂️💨`;
+    window.open(WhatsAppAutomation.getApiUrl(student.phoneNumber || '', message), 'studio_whatsapp');
+  },
+  
+  sendConfirmation: (student: User, payment: Payment) => {
+    const message = `Olá, ${String(student.name).split(' ')[0]}! 🌟\n\nRecebemos seu pagamento de *R$ ${payment.amount.toFixed(2)}* referente a ${payment.description}.\n\nObrigado pela pontualidade e bom treino! 🔥🏋️‍♂️`;
+    window.open(WhatsAppAutomation.getApiUrl(student.phoneNumber || '', message), 'studio_whatsapp');
+  },
+  
+  sendGenericMessage: (student: User, customMessage: string) => {
+    const message = `Olá, ${String(student.name).split(' ')[0]}! 👋\n\n${customMessage}`;
+    window.open(WhatsAppAutomation.getApiUrl(student.phoneNumber || '', message), 'studio_whatsapp');
+  }
+};
 
-// Main App Component
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('LOGIN');
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [academySettings, setAcademySettings] = useState<AcademySettings | null>(null);
   const nextToastId = useRef(0);
   const [showPassword, setShowPassword] = useState(false);
+
+  const LOGO_DEFAULT = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+
+  const refreshSettings = async () => {
+    const settings = await SettingsService.getSettings();
+    setAcademySettings(settings);
+  };
+
+  useEffect(() => {
+    refreshSettings();
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setCurrentUser(user);
+      if (user.role === UserRole.STUDENT && user.profileCompleted === false) {
+        setCurrentView('COMPLETE_PROFILE');
+      } else {
+        setCurrentView('DASHBOARD');
+      }
+    }
+  }, []);
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = nextToastId.current++;
@@ -310,21 +258,6 @@ export function App() {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      const user = JSON.parse(storedUser);
-      setCurrentUser(user);
-      if (user.role === UserRole.STUDENT && user.profileCompleted === false) {
-        setCurrentView('COMPLETE_PROFILE');
-      } else {
-        setCurrentView('DASHBOARD');
-      }
-    } else {
-      setCurrentView('LOGIN');
-    }
-  }, []);
-
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     localStorage.setItem('currentUser', JSON.stringify(user));
@@ -333,7 +266,7 @@ export function App() {
     } else {
       setCurrentView('DASHBOARD');
     }
-    addToast(`Bem-vindo(a) de volta, ${String(user.name).split(' ')[0]}!`, "success");
+    addToast(`Bem-vindo(a) de volta!`, "success");
   };
 
   const handleLogout = () => {
@@ -354,7 +287,6 @@ export function App() {
     setCurrentView('DASHBOARD');
   };
 
-
   const renderContent = () => {
     if (!currentUser) {
       if (currentView === 'REGISTRATION') {
@@ -362,15 +294,13 @@ export function App() {
       }
       return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
-          {/* Efeito de iluminação de fundo premium */}
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/20 blur-[120px] rounded-full"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-300/10 blur-[120px] rounded-full"></div>
 
           <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl w-full max-w-md border border-gray-200 text-center animate-fade-in relative z-10">
-            {/* Logomarca Principal Maximizado - Revertido para URL externa */}
             <div className="mb-14 flex justify-center">
                <img 
-                 src={LOGO_URL} 
+                 src={academySettings?.logoUrl || LOGO_DEFAULT} 
                  alt="Studio Logo" 
                  className="w-full max-w-[400px] h-auto object-contain rounded-2xl" 
                />
@@ -397,11 +327,10 @@ export function App() {
                 if (user) {
                   handleLogin(user);
                 } else {
-                  addToast("Credenciais inválidas. Tente novamente.", "error");
+                  addToast("Credenciais inválidas.", "error");
                 }
               } catch (error: any) {
-                console.error("Erro no login:", error.message || JSON.stringify(error));
-                addToast(`Erro no login: ${error.message || JSON.stringify(error)}. Tente novamente.`, "error");
+                addToast(`Erro no login.`, "error");
               }
             }} className="space-y-4">
               <div className="relative group">
@@ -453,36 +382,33 @@ export function App() {
     }
 
     return (
-      <ToastContext.Provider value={{ addToast }}>
-        <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
-          {currentView === 'DASHBOARD' && (
-            <DashboardPage 
-              currentUser={currentUser} 
-              onNavigate={handleNavigate} 
-              addToast={addToast} 
-            />
-          )}
-          {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
-          {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} selectedStudentId={navParams.studentId} />}
-          {currentView === 'MANAGE_USERS' && <ManageUsersPage currentUser={currentUser} onNavigate={handleNavigate} />}
-          {currentView === 'SETTINGS' && <SettingsPage currentUser={currentUser} />}
-          {currentView === 'RANKING' && <RankingPage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
-          {currentView === 'FEED' && <FeedPage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
-            <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
-          )}
-        </Layout>
-        <ToastContainer toasts={toasts} removeToast={removeToast} />
-      </ToastContext.Provider>
+      <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
+        {currentView === 'DASHBOARD' && (
+          <DashboardPage 
+            currentUser={currentUser} 
+            onNavigate={handleNavigate} 
+            addToast={addToast} 
+          />
+        )}
+        {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}
+        {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
+        {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} selectedStudentId={navParams.studentId} />}
+        {currentView === 'MANAGE_USERS' && <ManageUsersPage currentUser={currentUser} onNavigate={handleNavigate} />}
+        {currentView === 'SETTINGS' && <SettingsPage currentUser={currentUser} />}
+        {currentView === 'RANKING' && <RankingPage currentUser={currentUser} addToast={addToast} />}
+        {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} addToast={addToast} />}
+        {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
+        {currentView === 'FEED' && <FeedPage currentUser={currentUser} addToast={addToast} />}
+        {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
+        {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
+          <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
+        )}
+      </Layout>
     );
   };
 
   return (
-    <ToastContext.Provider value={{ addToast }}>
+    <ToastContext.Provider value={{ addToast, academySettings, refreshSettings }}>
       {renderContent()}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
     </ToastContext.Provider>

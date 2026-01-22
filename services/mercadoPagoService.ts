@@ -1,5 +1,4 @@
 
-
 import { Payment } from "../types";
 import { SettingsService } from "./settingsService";
 
@@ -14,8 +13,9 @@ export const MercadoPagoService = {
     /**
      * Inicializa o SDK do Mercado Pago com a chave pública configurada
      */
-    getMPInstance: () => {
-        const settings = SettingsService.getSettings();
+    // Fix: Made getMPInstance async to await settings from SettingsService
+    getMPInstance: async () => {
+        const settings = await SettingsService.getSettings();
         if (!settings.mercadoPagoPublicKey) {
             console.warn("Mercado Pago: Chave Pública não configurada.");
             return null;
@@ -33,8 +33,9 @@ export const MercadoPagoService = {
      * Processa um pagamento individual (Checkout Pro ou Pix/Cartão)
      */
     processPayment: async (payment: Payment): Promise<{ status: 'approved' | 'rejected' | 'pending', id: string, init_point?: string }> => {
-        const settings = SettingsService.getSettings();
-        const mp = MercadoPagoService.getMPInstance();
+        // Fix: Await getSettings and getMPInstance to handle asynchronous settings retrieval
+        const settings = await SettingsService.getSettings();
+        const mp = await MercadoPagoService.getMPInstance();
         
         console.log(`[Mercado Pago] Iniciando checkout de R$ ${payment.amount} para fatura: ${String(payment.description)}`);
 
@@ -64,7 +65,8 @@ export const MercadoPagoService = {
      * Cria uma assinatura recorrente
      */
     createSubscription: async (studentEmail: string, amount: number, planName: string): Promise<{ status: 'created', init_point: string, id: string }> => {
-        const settings = SettingsService.getSettings();
+        // Fix: Await getSettings to correctly handle the async nature of settings retrieval
+        const settings = await SettingsService.getSettings();
         console.log(`[Mercado Pago] Criando plano recorrente: ${String(planName)} - R$ ${amount}/mês`);
 
         await new Promise(resolve => setTimeout(resolve, 2000));

@@ -1,13 +1,12 @@
 
-
 import { jsPDF } from "jspdf";
-import { User } from "../types";
+import { User, AcademySettings } from "../types";
 import { SettingsService } from "./settingsService";
 
 export const ContractService = {
-  _createContractDoc: (student: User) => {
+  // Fix: Accepts settings object as parameter to avoid Promise issues within synchronous PDF generation
+  _createContractDoc: (student: User, settings: AcademySettings) => {
     const doc = new jsPDF();
-    const settings = SettingsService.getSettings(); 
     let cursorY = 20;
 
     const addText = (text: string, fontSize: number = 10, fontStyle: string = 'normal', align: 'left' | 'center' | 'right' = 'left') => {
@@ -89,8 +88,10 @@ export const ContractService = {
     return doc;
   },
 
-  generateContract: (student: User) => {
-    const doc = ContractService._createContractDoc(student);
+  // Fix: Made generateContract async to correctly await settings before doc creation
+  generateContract: async (student: User) => {
+    const settings = await SettingsService.getSettings();
+    const doc = ContractService._createContractDoc(student, settings);
     doc.save(`Contrato_${String(student.name).replace(/\s+/g, '_')}.pdf`);
   }
 };

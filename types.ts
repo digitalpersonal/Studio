@@ -19,6 +19,7 @@ export interface Anamnesis {
   emergencyContactPhone: string;
   bloodType?: string;
   notes?: string;
+  medicalCertificateUrl?: string; // URL ou Base64 da foto do atestado
   updatedAt: string;
 }
 
@@ -178,7 +179,8 @@ export interface AcademySettings {
   customDomain: string; 
   monthlyFee: number;
   inviteCode: string;
-  registrationInviteCode: string; // Novo campo para código de convite de cadastro de aluno
+  registrationInviteCode: string; 
+  logoUrl: string; // Novo campo
 }
 
 export interface Post {

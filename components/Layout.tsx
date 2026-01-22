@@ -1,6 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { User, UserRole, ViewState } from '../types';
+import { ToastContext } from '../App';
 import { 
   Dumbbell, 
   Calendar, 
@@ -47,22 +48,21 @@ export const Layout: React.FC<LayoutProps> = ({
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const { academySettings } = useContext(ToastContext);
 
-  const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+  const LOGO_DEFAULT = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+  const studioLogo = academySettings?.logoUrl || LOGO_DEFAULT;
 
   useEffect(() => {
-    // Detecta se o app já está rodando como instalado (standalone)
     const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
     setIsStandalone(!!checkStandalone);
 
-    // Captura o evento nativo de instalação para Android/Chrome
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
@@ -70,15 +70,10 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
-      // Se tiver o prompt nativo (Android), dispara ele
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        console.log('Usuário aceitou a instalação');
-      }
       setDeferredPrompt(null);
     } else {
-      // Se for iOS ou o prompt não estiver disponível, abre o manual visual
       setShowInstallModal(true);
     }
   };
@@ -122,10 +117,10 @@ export const Layout: React.FC<LayoutProps> = ({
     <div className="min-h-screen bg-dark-950 flex text-slate-200 font-sans">
       <aside className="hidden md:flex flex-col w-64 bg-dark-950 border-r border-dark-800 h-screen sticky top-0">
         <div className="p-8 flex flex-col items-center justify-center border-b border-dark-800 text-center">
-          <img src={LOGO_URL} alt="Studio Logo" className="w-40 h-auto mb-2 object-contain rounded-2xl" />
+          <img src={studioLogo} alt="Studio Logo" className="w-40 h-auto mb-2 object-contain rounded-2xl" />
         </div>
         
-        <nav className="flex-1 px-4 py-6 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 overflow-y-auto no-scrollbar">
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Visão Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="RANKING" icon={Trophy} label="Ranking" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
@@ -176,7 +171,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <ArrowLeft size={24} />
               </button>
             ) : (
-              <img src={LOGO_URL} alt="Studio Logo" className="w-16 h-auto mr-2 shrink-0 object-contain rounded-lg" />
+              <img src={studioLogo} alt="Studio Logo" className="w-16 h-auto mr-2 shrink-0 object-contain rounded-lg" />
             )}
           </div>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-slate-300 p-2">
@@ -242,7 +237,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in">
               <div className="bg-dark-900 border border-dark-700 rounded-[3rem] w-full max-w-sm shadow-2xl relative overflow-hidden">
                   <div className="bg-brand-600 p-8 text-center">
-                      <img src={LOGO_URL} alt="Studio Logo" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl" />
+                      <img src={studioLogo} alt="Studio Logo" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl bg-white p-2" />
                       <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Instalar Studio</h3>
                       <p className="text-brand-100 text-xs font-bold mt-1 uppercase tracking-widest">Adicione à sua tela inicial</p>
                   </div>

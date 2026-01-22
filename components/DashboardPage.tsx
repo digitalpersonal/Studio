@@ -5,7 +5,8 @@ import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
   CheckCircle2, Clock, Trophy, MessageCircle, Loader2,
-  TrendingUp, Activity, Zap, Cake, UserPlus, Star
+  TrendingUp, Activity, Zap, Cake, UserPlus, Star, CreditCard, Wallet,
+  Gift, PartyPopper
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
@@ -50,31 +51,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     fetchData();
   }, [isManagement, isTrainer, currentUser.id]);
 
-  const todayIndex = (new Date().getDay() + 6) % 7; // Ajuste para Segunda=0
+  const todayIndex = (new Date().getDay() + 6) % 7; 
   const todayName = DAYS_OF_WEEK[todayIndex];
 
   const dashboardStats = useMemo(() => {
     const students = allUsers.filter(u => u.role === UserRole.STUDENT);
     const todayClasses = classes.filter(c => c.dayOfWeek === todayName);
     
-    // Aniversariantes do dia
     const today = new Date();
-    const todayDayMonth = `${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+    const todayDay = today.getDate();
+    const todayMonth = today.getMonth() + 1;
+    
     const birthdayBoys = students.filter(s => {
       if (!s.birthDate) return false;
       const bDate = new Date(s.birthDate);
-      return `${String(bDate.getDate() + 1).padStart(2, '0')}-${String(bDate.getMonth() + 1).padStart(2, '0')}` === todayDayMonth;
+      // Ajuste para lidar com timezone local e evitar erro de -1 dia
+      const bDay = bDate.getUTCDate();
+      const bMonth = bDate.getUTCMonth() + 1;
+      return bDay === todayDay && bMonth === todayMonth;
     });
 
-    // Novos alunos (últimos 30 dias)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const newStudents = students.filter(s => new Date(s.joinDate) >= thirtyDaysAgo);
 
-    // Financeiro (Apenas Admin/SuperAdmin)
     const overduePayments = payments.filter(p => p.status === 'OVERDUE');
     const totalOverdueAmount = overduePayments.reduce((acc, p) => acc + p.amount, 0);
     const uniqueOverdueStudents = new Set(overduePayments.map(p => p.studentId)).size;
+
+    const nextInvoice = !isStaff ? payments
+      .filter(p => p.status !== 'PAID')
+      .sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0] : null;
 
     return {
       todayClasses,
@@ -83,9 +90,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       uniqueOverdueStudents,
       totalStudents: students.length,
       birthdayBoys,
-      newStudentsCount: newStudents.length
+      newStudentsCount: newStudents.length,
+      nextInvoice
     };
-  }, [allUsers, classes, payments, todayName]);
+  }, [allUsers, classes, payments, todayName, isStaff]);
+
+  const sendBirthdayMsg = (student: User) => {
+      const msg = `Parabéns, ${String(student.name).split(' ')[0]}! 🥳🎂 O Studio te deseja um dia incrível e cheio de energia! Que este novo ciclo seja de muita saúde, treinos e conquistas. Grande abraço! 🔥💪`;
+      WhatsAppAutomation.sendGenericMessage(student, msg);
+  };
 
   if (loading) {
     return (
@@ -110,7 +123,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         )}
       </header>
 
-      {/* Grid de Métricas Inteligente */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 ${isManagement ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
         <div className="bg-dark-950 p-6 rounded-[2rem] border border-dark-800 shadow-xl group hover:border-blue-500/30 transition-all">
           <div className="flex justify-between items-start mb-4">
@@ -152,96 +164,106 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
               <p className="mt-2 text-slate-500 text-[10px] font-bold uppercase">Total em Aberto</p>
             </div>
           </>
-        ) : isTrainer ? (
-            <div className="bg-dark-950 p-6 rounded-[2rem] border border-dark-800 shadow-xl group hover:border-pink-500/30 transition-all">
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-3 bg-pink-500/10 rounded-2xl text-pink-500"><Cake size={24}/></div>
-                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">B-Day</span>
-              </div>
-              <p className="text-3xl font-black text-white">{dashboardStats.birthdayBoys.length}</p>
-              <p className="mt-2 text-pink-500 text-[10px] font-bold uppercase">Aniversariantes Hoje</p>
-            </div>
         ) : (
-          <div className="sm:col-span-1 bg-brand-600 p-6 rounded-[2rem] shadow-xl shadow-brand-600/20 text-white relative overflow-hidden">
-             <Zap className="absolute -right-4 -bottom-4 text-brand-500/30" size={100} />
-             <h4 className="text-sm font-black uppercase tracking-widest mb-1">Status Plano</h4>
-             {payments.some(p => p.status === 'OVERDUE') ? (
-               <p className="text-brand-100 font-bold text-xs flex items-center gap-2 mt-2"><AlertTriangle size={16}/> Pendência financeira.</p>
+          <div className="bg-dark-950 p-6 rounded-[2rem] border border-dark-800 shadow-xl relative overflow-hidden group hover:border-brand-500/50 transition-all">
+             {dashboardStats.nextInvoice ? (
+               <>
+                <div className="flex justify-between items-start mb-2">
+                    <div className="p-3 bg-amber-500/10 rounded-2xl text-amber-500"><Wallet size={24}/></div>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Próxima Fatura</span>
+                </div>
+                <p className="text-xl font-black text-white">R$ {dashboardStats.nextInvoice.amount.toFixed(2)}</p>
+                <p className={`text-[10px] font-bold uppercase mt-1 ${dashboardStats.nextInvoice.status === 'OVERDUE' ? 'text-red-500' : 'text-slate-500'}`}>
+                    Vence em: {new Date(dashboardStats.nextInvoice.dueDate).toLocaleDateString('pt-BR')}
+                </p>
+                <button onClick={() => onNavigate('FINANCIAL')} className="mt-4 w-full py-3 bg-brand-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-brand-500 transition-all shadow-lg shadow-brand-600/20 flex items-center justify-center gap-2">
+                    <CreditCard size={14}/> Pagar Agora
+                </button>
+               </>
              ) : (
-               <p className="text-brand-100 font-bold text-xs flex items-center gap-2 mt-2"><CheckCircle2 size={16}/> Plano Ativo</p>
+               <div className="h-full flex flex-col justify-center items-center text-center space-y-2">
+                  <CheckCircle2 size={32} className="text-emerald-500 mb-2"/>
+                  <p className="text-white font-bold text-sm uppercase">Tudo em dia!</p>
+                  <p className="text-slate-500 text-[10px] font-medium">Nenhuma fatura pendente encontrada.</p>
+               </div>
              )}
-             <button onClick={() => onNavigate('FINANCIAL')} className="mt-4 bg-white/20 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-white/30 transition-all">Faturas</button>
           </div>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Próximas Aulas (Operational Hub) */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center px-2">
+        <div className="lg:col-span-2 space-y-8">
+          {/* Aniversariantes */}
+          {isStaff && dashboardStats.birthdayBoys.length > 0 && (
+            <section className="bg-brand-500/10 border border-brand-500/20 rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden">
+                <PartyPopper className="absolute -right-6 -bottom-6 text-brand-500/10 rotate-12" size={150} />
+                <div className="flex items-center gap-4 mb-6 relative z-10">
+                    <div className="p-4 bg-brand-500 text-white rounded-3xl shadow-lg">
+                        <Cake size={32}/>
+                    </div>
+                    <div>
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Aniversariantes de Hoje!</h3>
+                        <p className="text-brand-200 text-sm font-bold uppercase tracking-widest">Celebre com seus alunos</p>
+                    </div>
+                </div>
+                <div className="flex flex-wrap gap-4 relative z-10">
+                    {dashboardStats.birthdayBoys.map(s => (
+                        <div key={s.id} className="bg-dark-950/80 backdrop-blur-sm p-4 rounded-3xl border border-brand-500/30 flex items-center gap-4 hover:border-brand-500 transition-all group">
+                            <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-12 h-12 rounded-2xl border-2 border-brand-500" />
+                            <div>
+                                <p className="text-white font-bold text-sm">{String(s.name)}</p>
+                                <button onClick={() => sendBirthdayMsg(s)} className="text-brand-500 text-[9px] font-black uppercase tracking-widest mt-1 flex items-center gap-1 group-hover:scale-105 transition-transform">
+                                    <MessageCircle size={12}/> Dar Parabéns
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
+          )}
+
+          <div className="space-y-4">
             <h3 className="text-lg font-black text-white uppercase tracking-tighter flex items-center gap-2">
               <Clock className="text-brand-500" size={20}/> Agenda de Hoje ({todayName})
             </h3>
-          </div>
-          
-          <div className="space-y-3">
-            {dashboardStats.todayClasses.length > 0 ? (
-              dashboardStats.todayClasses.map(c => (
-                <div key={c.id} className="bg-dark-950 p-5 rounded-3xl border border-dark-800 flex justify-between items-center group hover:border-brand-500/50 transition-all shadow-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="text-center bg-dark-900 px-4 py-2 rounded-2xl border border-dark-800 min-w-[70px]">
-                      <p className="text-brand-500 font-black text-sm">{c.startTime}</p>
+            <div className="space-y-3">
+                {dashboardStats.todayClasses.length > 0 ? (
+                dashboardStats.todayClasses.map(c => (
+                    <div key={c.id} className="bg-dark-950 p-5 rounded-3xl border border-dark-800 flex justify-between items-center group hover:border-brand-500/50 transition-all shadow-lg">
+                    <div className="flex items-center gap-4">
+                        <div className="text-center bg-dark-900 px-4 py-2 rounded-2xl border border-dark-800 min-w-[70px]">
+                        <p className="text-brand-500 font-black text-sm">{c.startTime}</p>
+                        </div>
+                        <div>
+                        <p className="text-white font-bold text-sm">{c.title}</p>
+                        <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">
+                            Prof. {c.instructor.split(' ')[0]} • <span className={c.type === 'RUNNING' ? 'text-blue-500' : 'text-brand-500'}>{c.type}</span>
+                        </p>
+                        </div>
                     </div>
-                    <div>
-                      <p className="text-white font-bold text-sm">{c.title}</p>
-                      <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest">
-                        Prof. {c.instructor.split(' ')[0]} • <span className={c.type === 'RUNNING' ? 'text-blue-500' : 'text-brand-500'}>{c.type}</span>
-                      </p>
+                    <div className="flex items-center gap-6">
+                        <div className="hidden sm:block text-right">
+                        <div className="w-24 h-1.5 bg-dark-900 rounded-full overflow-hidden border border-dark-800">
+                            <div className="bg-brand-500 h-full transition-all duration-700" style={{ width: `${(c.enrolledStudentIds.length / c.maxCapacity) * 100}%` }}></div>
+                        </div>
+                        <p className="text-[8px] text-slate-600 font-black mt-1 uppercase tracking-widest">{c.enrolledStudentIds.length}/{c.maxCapacity} Alunos</p>
+                        </div>
+                        <button onClick={() => onNavigate('SCHEDULE')} className="p-2 bg-dark-900 rounded-xl text-slate-400 group-hover:text-brand-500 transition-colors border border-dark-800">
+                        <ArrowRight size={18}/>
+                        </button>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="hidden sm:block text-right">
-                      <div className="w-24 h-1.5 bg-dark-900 rounded-full overflow-hidden border border-dark-800">
-                        <div className="bg-brand-500 h-full transition-all duration-700" style={{ width: `${(c.enrolledStudentIds.length / c.maxCapacity) * 100}%` }}></div>
-                      </div>
-                      <p className="text-[8px] text-slate-600 font-black mt-1 uppercase tracking-widest">{c.enrolledStudentIds.length}/{c.maxCapacity} Alunos</p>
                     </div>
-                    <button onClick={() => onNavigate('SCHEDULE')} className="p-2 bg-dark-900 rounded-xl text-slate-400 group-hover:text-brand-500 transition-colors border border-dark-800">
-                      <ArrowRight size={18}/>
-                    </button>
-                  </div>
+                ))
+                ) : (
+                <div className="py-16 text-center bg-dark-950 rounded-[2.5rem] border border-dashed border-dark-800">
+                    <Calendar size={40} className="mx-auto text-dark-800 mb-2"/>
+                    <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Sem atividades agendadas para hoje</p>
                 </div>
-              ))
-            ) : (
-              <div className="py-16 text-center bg-dark-950 rounded-[2.5rem] border border-dashed border-dark-800">
-                <Calendar size={40} className="mx-auto text-dark-800 mb-2"/>
-                <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Sem atividades agendadas para hoje</p>
-              </div>
-            )}
-          </div>
-
-          {/* Seção Extra para Trainers/Staff: Aniversariantes */}
-          {isStaff && dashboardStats.birthdayBoys.length > 0 && (
-            <div className="pt-6 space-y-4">
-              <h3 className="text-lg font-black text-white uppercase tracking-tighter flex items-center gap-2">
-                <Cake className="text-pink-500" size={20}/> Celebrando Hoje
-              </h3>
-              <div className="flex flex-wrap gap-3">
-                {dashboardStats.birthdayBoys.map(s => (
-                  <div key={s.id} className="bg-pink-500/5 border border-pink-500/20 px-4 py-3 rounded-2xl flex items-center gap-3">
-                    <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-8 h-8 rounded-full border border-pink-500/20" />
-                    <div>
-                      <p className="text-white text-xs font-bold">{String(s.name)}</p>
-                      <button onClick={() => WhatsAppAutomation.sendGenericMessage(s, "Parabéns pelo seu dia! Muita saúde, treinos e conquistas! 🎂🔥")} className="text-[9px] text-pink-500 font-black uppercase tracking-widest hover:underline">Parabenizar</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                )}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Sidebar Informativa (Financial for Management / Community for all) */}
         <div className="space-y-6">
           {isManagement && dashboardStats.overduePayments.length > 0 && (
             <section className="bg-red-500/5 border border-red-500/20 rounded-[2rem] p-6 space-y-4 shadow-xl">
@@ -274,7 +296,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
             </section>
           )}
 
-          {/* Social / Challenge Progress */}
           {challengeData.challenge && (
             <section className="bg-dark-950 border border-dark-800 rounded-[2rem] p-6 space-y-4 shadow-2xl relative overflow-hidden">
                <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -305,18 +326,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
               <button onClick={() => onNavigate('RANKING')} className="w-full py-4 bg-dark-900 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-dark-800 hover:text-brand-500 transition-all border border-dark-800 mt-2">Painel de Ranking</button>
             </section>
           )}
-
-          {/* Quick Support / Feedback */}
-          <div className="bg-brand-600/5 border border-brand-500/10 p-6 rounded-[2rem] flex items-center gap-4 group">
-            <div className="p-3 bg-brand-600/20 rounded-2xl text-brand-500 group-hover:scale-110 transition-transform">
-              <Activity size={24}/>
-            </div>
-            <div>
-              <p className="text-white font-bold text-xs">Precisando de ajuda?</p>
-              <p className="text-slate-500 text-[10px] uppercase font-black tracking-widest">Suporte Multiplus</p>
-              <a href="https://wa.me/5535991048020" target="_blank" className="text-brand-500 font-bold text-[9px] uppercase hover:underline mt-1 inline-block">Falar no WhatsApp</a>
-            </div>
-          </div>
         </div>
       </div>
     </div>
