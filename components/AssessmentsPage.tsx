@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Assessment, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { GeminiService } from '../services/geminiService';
-import { Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, X, Gauge, TrendingUp, Users, AlertCircle } from 'lucide-react';
 
 interface AssessmentsPageProps {
   currentUser: User;
@@ -85,7 +85,13 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
         setAssessments(updated);
       }
     } catch (error: any) {
-      addToast(`Erro técnico ao salvar no banco.`, "error");
+      console.error("Erro ao salvar avaliação:", error);
+      const errorMsg = error.message || '';
+      if (errorMsg.includes("column") || errorMsg.includes("fms")) {
+         addToast("Erro de Banco: Certifique-se de executar o SQL de atualização no painel do Supabase.", "error");
+      } else {
+         addToast(`Erro ao salvar avaliação: ${errorMsg || 'Erro de conexão'}`, "error");
+      }
     } finally {
       setLoading(false);
     }
@@ -174,8 +180,8 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                     <Activity size={24} />
                   </div>
                   <div>
-                    <h4 className="text-white font-black text-lg uppercase tracking-tighter">Avaliação: {new Date(assessment.date).toLocaleDateString('pt-BR')}</h4>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Status: Concluída</p>
+                    <h4 className="text-white font-black text-lg uppercase tracking-tighter">Ficha: {new Date(assessment.date).toLocaleDateString('pt-BR')}</h4>
+                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Avaliação Concluída</p>
                   </div>
                 </div>
                 {isStaff && (
@@ -190,85 +196,158 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="bg-dark-900/50 p-5 rounded-2xl border border-dark-800 space-y-2">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-dark-800 pb-2 mb-2">Composição</p>
-                    <p className="text-sm text-slate-300 font-bold">Peso: <span className="text-white">{String(assessment.weight)} kg</span></p>
-                    <p className="text-sm text-slate-300 font-bold">Altura: <span className="text-white">{String(assessment.height)} cm</span></p>
-                    <p className="text-sm text-slate-300 font-bold">% Gordura: <span className="text-brand-500">{String(assessment.bodyFatPercentage)}%</span></p>
+              {/* Exibição Resumida */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-dark-900/50 p-4 rounded-2xl border border-dark-800">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Massa Corporal</p>
+                    <p className="text-lg text-white font-black">{String(assessment.weight)}<span className="text-[10px] text-slate-500 ml-1">kg</span></p>
                 </div>
-                <div className="bg-dark-900/50 p-5 rounded-2xl border border-dark-800 space-y-2">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-dark-800 pb-2 mb-2">Potência & Saltos</p>
-                    <p className="text-sm text-slate-300 font-bold">Salto Horiz.: <span className="text-white">{assessment.horizontalJump || 0} cm</span></p>
-                    <p className="text-sm text-slate-300 font-bold">Salto Vert.: <span className="text-white">{assessment.verticalJump || 0} cm</span></p>
-                    <p className="text-sm text-slate-300 font-bold">Arr. Med. Ball: <span className="text-white">{assessment.medicineBallThrow || 0} m</span></p>
+                <div className="bg-dark-900/50 p-4 rounded-2xl border border-dark-800">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Gordura Corporal</p>
+                    <p className="text-lg text-brand-500 font-black">{String(assessment.bodyFatPercentage)}<span className="text-[10px] text-slate-500 ml-1">%</span></p>
                 </div>
-                <div className="bg-dark-900/50 p-5 rounded-2xl border border-dark-800 space-y-2">
-                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-dark-800 pb-2 mb-2">Protocolo FMS</p>
-                    {assessment.fms ? (
-                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] font-bold">
-                        <span className="text-slate-500">Agachamento: <span className="text-brand-500">{assessment.fms.deepSquat || 0}</span></span>
-                        <span className="text-slate-500">Barreira: <span className="text-brand-500">{assessment.fms.hurdleStep || 0}</span></span>
-                        <span className="text-slate-500">Avanço: <span className="text-brand-500">{assessment.fms.inlineLunge || 0}</span></span>
-                        <span className="text-slate-500">Ombro: <span className="text-brand-500">{assessment.fms.shoulderMobility || 0}</span></span>
-                        <span className="text-slate-500">Perna Est.: <span className="text-brand-500">{assessment.fms.activeStraightLegRaise || 0}</span></span>
-                        <span className="text-slate-500">Est. Rotac.: <span className="text-brand-500">{assessment.fms.rotationalStability || 0}</span></span>
-                      </div>
-                    ) : <p className="text-slate-600 text-xs italic">FMS não disponível</p>}
+                <div className="bg-dark-900/50 p-4 rounded-2xl border border-dark-800">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Massa Muscular</p>
+                    <p className="text-lg text-emerald-500 font-black">{String(assessment.skeletalMuscleMass || '--')}<span className="text-[10px] text-slate-500 ml-1">kg</span></p>
+                </div>
+                <div className="bg-dark-900/50 p-4 rounded-2xl border border-dark-800">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Gordura Visceral</p>
+                    <p className="text-lg text-white font-black">{String(assessment.visceralFatLevel || '--')}</p>
                 </div>
               </div>
 
-              {assessment.circumferences && (
-                <div className="mt-6 pt-6 border-t border-dark-800">
+              <div className="mt-6 pt-6 border-t border-dark-800">
                   <button 
                       onClick={() => setExpandedAssessment(expandedAssessment === assessment.id ? null : assessment.id)}
-                      className="flex items-center gap-2 text-brand-500 font-black text-[10px] uppercase tracking-widest hover:text-brand-400 transition-colors"
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-dark-900 hover:bg-dark-800 text-brand-500 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all border border-dark-800 hover:border-brand-500/30"
                   >
                       {expandedAssessment === assessment.id ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                      {expandedAssessment === assessment.id ? 'Ocultar Medidas Detalhadas' : 'Ver Perímetros Bilaterais (D/E)'}
+                      {expandedAssessment === assessment.id ? 'Ocultar Detalhes' : 'Ver Histórico Completo'}
                   </button>
+
                   {expandedAssessment === assessment.id && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-xs text-slate-300 mt-6 animate-fade-in p-6 bg-dark-900/30 rounded-3xl border border-dark-800">
-                        <div className="space-y-2">
-                            <p className="text-[9px] font-black text-brand-500 uppercase tracking-widest mb-3 border-b border-dark-800 pb-1">Tronco</p>
-                            <p>Tórax: <span className="text-white">{assessment.circumferences.chest || 0} cm</span></p>
-                            <p>Cintura: <span className="text-white">{assessment.circumferences.waist || 0} cm</span></p>
-                            <p>Abdômen: <span className="text-white">{assessment.circumferences.abdomen || 0} cm</span></p>
-                            <p>Quadril: <span className="text-white">{assessment.circumferences.hips || 0} cm</span></p>
+                    <div className="mt-8 space-y-8 animate-fade-in">
+                        {/* Seção 1: Bioimpedância & Saúde */}
+                        <div className="space-y-4">
+                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
+                                <Activity size={16} className="text-brand-500" /> Bioimpedância & Metabolismo
+                            </h5>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <MetricDetail label="TMB (Calorias)" value={assessment.basalMetabolicRate} unit="kcal" />
+                                <MetricDetail label="Hidratação" value={assessment.hydrationPercentage} unit="%" />
+                                <MetricDetail label="VO2 Máx" value={assessment.vo2Max} unit="ml/kg/min" />
+                                <MetricDetail label="Altura" value={assessment.height} unit="cm" />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <p className="text-[9px] font-black text-brand-500 uppercase tracking-widest mb-3 border-b border-dark-800 pb-1">Superiores</p>
-                            <p>Braço D: <span className="text-white">{assessment.circumferences.rightArm || 0} cm</span></p>
-                            <p>Braço E: <span className="text-white">{assessment.circumferences.leftArm || 0} cm</span></p>
-                            <p>Ant.Braço D: <span className="text-white">{assessment.circumferences.rightForearm || 0} cm</span></p>
-                            <p>Ant.Braço E: <span className="text-white">{assessment.circumferences.leftForearm || 0} cm</span></p>
+
+                        {/* Seção 2: Potência & Saltos */}
+                        <div className="space-y-4">
+                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
+                                <Zap size={16} className="text-brand-500" /> Potência & Performance
+                            </h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <MetricDetail label="Salto Horizontal" value={assessment.horizontalJump} unit="cm" />
+                                <MetricDetail label="Salto Vertical" value={assessment.verticalJump} unit="cm" />
+                                <MetricDetail label="Arr. Med. Ball" value={assessment.medicineBallThrow} unit="m" />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <p className="text-[9px] font-black text-brand-500 uppercase tracking-widest mb-3 border-b border-dark-800 pb-1">Coxas</p>
-                            <p>Coxa D: <span className="text-white">{assessment.circumferences.rightThigh || 0} cm</span></p>
-                            <p>Coxa E: <span className="text-white">{assessment.circumferences.leftThigh || 0} cm</span></p>
+
+                        {/* Seção 3: Protocolo FMS */}
+                        <div className="space-y-4">
+                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
+                                <ClipboardList size={16} className="text-brand-500" /> Protocolo FMS (Functional Movement Screen)
+                            </h5>
+                            <div className="bg-dark-900/30 rounded-2xl p-6 border border-dark-800">
+                                {assessment.fms ? (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+                                        <FMSScore label="Agachamento Profundo" score={assessment.fms.deepSquat} />
+                                        <FMSScore label="Passo Sobre Barreira" score={assessment.fms.hurdleStep} />
+                                        <FMSScore label="Avanço em Linha Reta" score={assessment.fms.inlineLunge} />
+                                        <FMSScore label="Mobilidade de Ombro" score={assessment.fms.shoulderMobility} />
+                                        <FMSScore label="Elevação Perna Estendida" score={assessment.fms.activeStraightLegRaise} />
+                                        <FMSScore label="Estabilidade Rotacional" score={assessment.fms.rotationalStability} />
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-600 text-xs italic">Nenhum dado FMS registrado.</p>
+                                )}
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <p className="text-[9px] font-black text-brand-500 uppercase tracking-widest mb-3 border-b border-dark-800 pb-1">Panturrilhas</p>
-                            <p>Pant. D: <span className="text-white">{assessment.circumferences.rightCalf || 0} cm</span></p>
-                            <p>Pant. E: <span className="text-white">{assessment.circumferences.leftCalf || 0} cm</span></p>
+
+                        {/* Seção 4: Perímetros */}
+                        <div className="space-y-4">
+                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
+                                <Ruler size={16} className="text-brand-500" /> Perímetros Musculares (cm)
+                            </h5>
+                            {assessment.circumferences ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 p-6 bg-dark-900/30 rounded-2xl border border-dark-800 text-[11px]">
+                                    <div className="space-y-2">
+                                        <p className="text-[9px] font-black text-brand-500 uppercase mb-2">Tronco</p>
+                                        <p className="flex justify-between">Tórax: <span className="text-white">{assessment.circumferences.chest || 0}</span></p>
+                                        <p className="flex justify-between">Cintura: <span className="text-white">{assessment.circumferences.waist || 0}</span></p>
+                                        <p className="flex justify-between">Abdômen: <span className="text-white">{assessment.circumferences.abdomen || 0}</span></p>
+                                        <p className="flex justify-between">Quadril: <span className="text-white">{assessment.circumferences.hips || 0}</span></p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[9px] font-black text-brand-500 uppercase mb-2">Membros Superiores</p>
+                                        <p className="flex justify-between">Braço D: <span className="text-white">{assessment.circumferences.rightArm || 0}</span></p>
+                                        <p className="flex justify-between">Braço E: <span className="text-white">{assessment.circumferences.leftArm || 0}</span></p>
+                                        <p className="flex justify-between">Ant.Braço D: <span className="text-white">{assessment.circumferences.rightForearm || 0}</span></p>
+                                        <p className="flex justify-between">Ant.Braço E: <span className="text-white">{assessment.circumferences.leftForearm || 0}</span></p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <p className="text-[9px] font-black text-brand-500 uppercase mb-2">Membros Inferiores</p>
+                                        <p className="flex justify-between">Coxa D: <span className="text-white">{assessment.circumferences.rightThigh || 0}</span></p>
+                                        <p className="flex justify-between">Coxa E: <span className="text-white">{assessment.circumferences.leftThigh || 0}</span></p>
+                                        <p className="flex justify-between">Pant. D: <span className="text-white">{assessment.circumferences.rightCalf || 0}</span></p>
+                                        <p className="flex justify-between">Pant. E: <span className="text-white">{assessment.circumferences.leftCalf || 0}</span></p>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <p className="text-[9px] font-black text-brand-500 uppercase mb-2">Anotações Extras</p>
+                                        <p className="text-slate-400 italic leading-relaxed">{assessment.notes || 'Sem observações.'}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-slate-600 text-xs italic">Nenhum perímetro registrado.</p>
+                            )}
                         </div>
                     </div>
                   )}
-                </div>
-              )}
+              </div>
             </div>
           ))
         ) : (
           <div className="py-20 text-center bg-dark-950 rounded-[2.5rem] border border-dashed border-dark-800">
              <Activity className="mx-auto text-dark-800 mb-4" size={48} />
-             <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Selecione um aluno para visualizar o histórico.</p>
+             <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Selecione um aluno para visualizar o histórico completo.</p>
           </div>
         )}
       </div>
     </div>
   );
 };
+
+// Componentes Auxiliares de UI
+const MetricDetail = ({ label, value, unit }: { label: string, value?: number | string, unit: string }) => (
+    <div className="bg-dark-900/50 p-3 rounded-xl border border-dark-800">
+        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-sm text-white font-bold">{value || '--'} <span className="text-[9px] text-slate-500">{unit}</span></p>
+    </div>
+);
+
+const FMSScore = ({ label, score }: { label: string, score?: number }) => (
+    <div className="space-y-1">
+        <p className="text-[9px] font-bold text-slate-500 uppercase">{label}</p>
+        <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-dark-800 rounded-full overflow-hidden">
+                <div 
+                    className={`h-full rounded-full ${Number(score) === 3 ? 'bg-emerald-500' : Number(score) === 2 ? 'bg-brand-500' : 'bg-red-500'}`}
+                    style={{ width: `${(Number(score || 0) / 3) * 100}%` }}
+                />
+            </div>
+            <span className="text-xs font-black text-white">{score || 0}</span>
+        </div>
+    </div>
+);
 
 interface AssessmentFormProps {
   assessment: Assessment | null;
@@ -288,6 +367,11 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       weight: 0,
       height: 0,
       bodyFatPercentage: 0,
+      skeletalMuscleMass: 0,
+      visceralFatLevel: 0,
+      basalMetabolicRate: 0,
+      hydrationPercentage: 0,
+      vo2Max: 0,
       horizontalJump: 0,
       verticalJump: 0,
       medicineBallThrow: 0,
@@ -334,7 +418,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       
       <form onSubmit={handleSubmit} className="space-y-10">
         <section className="space-y-6">
-            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><UsersIcon size={18}/> Seleção de Aluno & Data</h4>
+            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Users size={18}/> Seleção de Aluno & Data</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Aluno Avaliado</label>
@@ -364,8 +448,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
         </section>
 
         <section className="space-y-6 pt-6 border-t border-dark-800">
-            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Scale size={18}/> Composição Corporal</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Scale size={18}/> Composição Corporal & Bioimpedância</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Peso (kg)</label>
                     <input required type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.weight || ''} onChange={e => setFormData({ ...formData, weight: Number(e.target.value) })} />
@@ -378,23 +462,39 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">% de Gordura</label>
                     <input required type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.bodyFatPercentage || ''} onChange={e => setFormData({ ...formData, bodyFatPercentage: Number(e.target.value) })} />
                 </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Massa Muscular (kg)</label>
+                    <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.skeletalMuscleMass || ''} onChange={e => setFormData({ ...formData, skeletalMuscleMass: Number(e.target.value) })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Gord. Visceral (Nível)</label>
+                    <input type="number" step="1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.visceralFatLevel || ''} onChange={e => setFormData({ ...formData, visceralFatLevel: Number(e.target.value) })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">TMB (kcal)</label>
+                    <input type="number" step="1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.basalMetabolicRate || ''} onChange={e => setFormData({ ...formData, basalMetabolicRate: Number(e.target.value) })} />
+                </div>
             </div>
         </section>
 
         <section className="space-y-6 pt-6 border-t border-dark-800">
-            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Zap size={18}/> Potência & Saltos</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Zap size={18}/> Potência & Performance</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Horizontal (cm)</label>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Horiz. (cm)</label>
                     <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.horizontalJump || ''} onChange={e => setFormData({ ...formData, horizontalJump: Number(e.target.value) })} />
                 </div>
                 <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Vertical (cm)</label>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Vert. (cm)</label>
                     <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.verticalJump || ''} onChange={e => setFormData({ ...formData, verticalJump: Number(e.target.value) })} />
                 </div>
                 <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Arremesso Med. Ball (m)</label>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Med. Ball (m)</label>
                     <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.medicineBallThrow || ''} onChange={e => setFormData({ ...formData, medicineBallThrow: Number(e.target.value) })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">VO2 Máx</label>
+                    <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.vo2Max || ''} onChange={e => setFormData({ ...formData, vo2Max: Number(e.target.value) })} />
                 </div>
             </div>
         </section>
@@ -447,6 +547,11 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
           </div>
         </section>
 
+        <section className="pt-6 border-t border-dark-800 space-y-4">
+            <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Observações Técnicas / Laudo</label>
+            <textarea className="w-full h-32 bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none text-sm" placeholder="Descreva observações sobre a postura, dores ou recomendações de treino..." value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
+        </section>
+
         <div className="flex gap-4 pt-4">
           <button type="button" onClick={onCancel} className="flex-1 py-5 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700 transition-all">Cancelar</button>
           <button type="submit" className="flex-1 py-5 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-brand-600/30 hover:bg-brand-500 transition-all active:scale-95">Finalizar Avaliação</button>
@@ -455,5 +560,3 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
     </div>
   );
 };
-
-const UsersIcon = ({ size }: { size: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;

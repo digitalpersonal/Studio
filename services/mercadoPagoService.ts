@@ -1,5 +1,4 @@
 
-
 import { Payment } from "../types";
 import { SettingsService } from "./settingsService";
 
@@ -14,8 +13,8 @@ export const MercadoPagoService = {
     /**
      * Inicializa o SDK do Mercado Pago com a chave pública configurada
      */
-    getMPInstance: () => {
-        const settings = SettingsService.getSettings();
+    getMPInstance: async () => {
+        const settings = await SettingsService.getSettings();
         if (!settings.mercadoPagoPublicKey) {
             console.warn("Mercado Pago: Chave Pública não configurada.");
             return null;
@@ -32,31 +31,33 @@ export const MercadoPagoService = {
     /**
      * Processa um pagamento individual (Checkout Pro ou Pix/Cartão)
      */
-    processPayment: async (payment: Payment): Promise<{ status: 'approved' | 'rejected' | 'pending', id: string, init_point?: string }> => {
-        const settings = SettingsService.getSettings();
-        const mp = MercadoPagoService.getMPInstance();
+    processPayment: async (payment: Payment): Promise<{ 
+        status: 'approved' | 'rejected' | 'pending', 
+        id: string, 
+        init_point?: string,
+        pix_qr_code?: string,
+        pix_copy_paste?: string
+    }> => {
+        const settings = await SettingsService.getSettings();
+        const mp = await MercadoPagoService.getMPInstance();
         
         console.log(`[Mercado Pago] Iniciando checkout de R$ ${payment.amount} para fatura: ${String(payment.description)}`);
 
-        // Em uma integração real com backend, você enviaria os dados para sua API
-        // que criaria uma 'preference' no Mercado Pago usando o Access Token.
-        // Como estamos no frontend, simularemos a chamada de API e o retorno do init_point.
+        // Simula o tempo de resposta da API do Mercado Pago
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        if (!settings.mercadoPagoAccessToken && !settings.mercadoPagoPublicKey) {
-            console.log("Modo Simulação Ativo (Sem chaves configuradas)");
-        }
-
-        // Simula o tempo de resposta da API
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        // Simulação de retorno de um Checkout Pro
-        // Se tivéssemos um backend, aqui retornaríamos o link real do MP
         const mockPreferenceId = `pref_${Math.random().toString(36).substr(2, 9)}`;
         
+        // Se as chaves estiverem configuradas, o init_point seria o link real do Mercado Pago
+        // Aqui simulamos o retorno de um Pix dinâmico usando a chave da academia ou um mock
+        const pixCode = settings.pixKey || "00020126580014BR.GOV.BCB.PIX0136STUDIO-MOCK-PRODUCAO-CHECKOUT-20245204000053039865802BR5913STUDIO_FITNESS6009SAO_PAULO62070503***6304D1E2";
+
         return {
             status: 'pending', 
             id: mockPreferenceId,
-            init_point: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${mockPreferenceId}`
+            init_point: `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${mockPreferenceId}`,
+            pix_qr_code: `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(pixCode)}`,
+            pix_copy_paste: pixCode
         };
     },
 
@@ -64,7 +65,7 @@ export const MercadoPagoService = {
      * Cria uma assinatura recorrente
      */
     createSubscription: async (studentEmail: string, amount: number, planName: string): Promise<{ status: 'created', init_point: string, id: string }> => {
-        const settings = SettingsService.getSettings();
+        const settings = await SettingsService.getSettings();
         console.log(`[Mercado Pago] Criando plano recorrente: ${String(planName)} - R$ ${amount}/mês`);
 
         await new Promise(resolve => setTimeout(resolve, 2000));

@@ -7,8 +7,9 @@ export const INVITE_CODE = "STUDIO2024";
 export const DAYS_OF_WEEK = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
 // Configuração do Administrador Geral
+// Alterado ID para ser uma string simples compatível com a nova estrutura TEXT do banco
 export const SUPER_ADMIN_CONFIG = {
-  id: 'super-admin-01',
+  id: 'super-admin-primary',
   name: 'Administrador Geral',
   email: 'digitalpersonal@gmail.com',
   password: 'Mld3602#?+',

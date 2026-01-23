@@ -26,12 +26,12 @@ import { SettingsService } from './services/settingsService';
 import { MercadoPagoService } from './services/mercadoPagoService';
 import { UserFormPage } from './components/UserFormPage';
 import { SchedulePage } from './components/SchedulePage';
-import { AssessmentsPage } from './components/AssessmentsPage.tsx';
-import { RankingPage } from './components/RankingPage.tsx';
-import { RoutesPage } from './components/RoutesPage.tsx';
-import { PersonalWorkoutsPage } from './components/PersonalWorkoutsPage.tsx';
-import { FeedPage } from './components/FeedPage.tsx';
-import { ReportsPage } from './components/ReportsPage.tsx';
+import { AssessmentsPage } from './components/AssessmentsPage';
+import { RankingPage } from './components/RankingPage';
+import { RoutesPage } from './components/RoutesPage';
+import { PersonalWorkoutsPage } from './components/PersonalWorkoutsPage';
+import { FeedPage } from './components/FeedPage';
+import { ReportsPage } from './components/ReportsPage';
 import { ManageUsersPage } from './components/ManageUsersPage';
 import { RegistrationPage } from './components/RegistrationPage';
 import { CompleteProfilePage } from './components/CompleteProfilePage'; 
@@ -218,7 +218,6 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
                 <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none" value={settings.representativeName} onChange={e => setSettings({...settings, representativeName: e.target.value})} />
               </div>
               
-              {/* NOVOS CAMPOS: TELEFONE E EMAIL */}
               <div>
                 <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Telefone / WhatsApp Comercial</label>
                 <div className="relative">
@@ -231,6 +230,14 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
                   <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-brand-500 outline-none" value={settings.email} onChange={e => setSettings({...settings, email: e.target.value})} placeholder="contato@empresa.com" />
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-emerald-500 text-[10px] font-black uppercase mb-1 tracking-widest">Chave Pix Institucional (Recebimentos Manuais)</label>
+                <div className="relative">
+                  <QrCode className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" size={18}/>
+                  <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-emerald-500 outline-none font-bold" value={settings.pixKey} onChange={e => setSettings({...settings, pixKey: e.target.value})} placeholder="Celular, E-mail, CPF ou Chave Aleatória" />
                 </div>
               </div>
 
@@ -336,7 +343,7 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
   );
 };
 
-// Main App Component (rest of the file remains the same)
+// Main App Component
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('LOGIN');

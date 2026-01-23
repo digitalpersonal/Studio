@@ -1,153 +1,37 @@
 
--- 1. EXTENSÕES NECESSÁRIAS
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- 2. TABELA DE USUÁRIOS (Corrigida e Completa)
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT 'STUDENT',
-    avatar_url TEXT,
-    join_date DATE DEFAULT CURRENT_DATE,
-    phone_number TEXT,
-    birth_date DATE,
-    marital_status TEXT,
-    cpf TEXT,
-    rg TEXT,
-    nationality TEXT,
-    profession TEXT,
-    plan_value NUMERIC(10,2) DEFAULT 0,
-    plan_duration INTEGER DEFAULT 1,
-    billing_day INTEGER DEFAULT 5,
-    plan_start_date DATE,
-    contract_url TEXT,
-    contract_generated_at TIMESTAMP WITH TIME ZONE,
-    profile_completed BOOLEAN DEFAULT FALSE,
-    address JSONB DEFAULT '{}'::jsonb,
-    anamnesis JSONB DEFAULT '{}'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 3. TABELA DE AULAS (Classes)
-CREATE TABLE IF NOT EXISTS classes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title TEXT NOT NULL,
-    description TEXT,
-    day_of_week TEXT NOT NULL,
-    date DATE,
-    start_time TIME NOT NULL,
-    duration_minutes INTEGER DEFAULT 60,
-    instructor TEXT NOT NULL,
-    max_capacity INTEGER DEFAULT 15,
-    enrolled_student_ids JSONB DEFAULT '[]'::jsonb,
-    waitlist_student_ids JSONB DEFAULT '[]'::jsonb,
-    type TEXT NOT NULL DEFAULT 'FUNCTIONAL',
-    is_cancelled BOOLEAN DEFAULT FALSE,
-    wod TEXT,
-    workout_details TEXT,
-    feedback JSONB DEFAULT '[]'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 4. TABELA DE PAGAMENTOS (Payments)
-CREATE TABLE IF NOT EXISTS payments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    amount NUMERIC(10,2) NOT NULL,
-    status TEXT NOT NULL DEFAULT 'PENDING',
-    due_date DATE NOT NULL,
-    description TEXT,
-    installment_number INTEGER,
-    total_installments INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 5. TABELA DE CHAMADA (Attendance)
-CREATE TABLE IF NOT EXISTS attendance (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
-    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    is_present BOOLEAN DEFAULT FALSE,
-    UNIQUE(class_id, student_id, date)
-);
-
--- 6. TABELA DE AVALIAÇÕES (Assessments)
-CREATE TABLE IF NOT EXISTS assessments (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    student_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    date DATE NOT NULL DEFAULT CURRENT_DATE,
-    status TEXT DEFAULT 'DONE',
-    weight NUMERIC(5,2),
-    height NUMERIC(5,2),
-    body_fat_percentage NUMERIC(5,2),
-    skeletal_muscle_mass NUMERIC(5,2),
-    visceral_fat_level INTEGER,
-    basal_metabolic_rate INTEGER,
-    hydration_percentage NUMERIC(5,2),
-    vo2_max NUMERIC(5,2),
-    squat_max NUMERIC(5,2),
-    horizontal_jump NUMERIC(5,2),
-    vertical_jump NUMERIC(5,2),
-    medicine_ball_throw NUMERIC(5,2),
-    fms JSONB DEFAULT '{}'::jsonb,
-    circumferences JSONB DEFAULT '{}'::jsonb,
-    notes TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 7. TABELA DE TREINOS PERSONALIZADOS
-CREATE TABLE IF NOT EXISTS personalized_workouts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title TEXT NOT NULL,
-    description TEXT NOT NULL,
-    video_url TEXT,
-    student_ids JSONB DEFAULT '[]'::jsonb,
-    instructor_name TEXT,
-    created_at DATE DEFAULT CURRENT_DATE
-);
-
--- 8. TABELA DE POSTS (Comunidade)
-CREATE TABLE IF NOT EXISTS posts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    image_url TEXT,
-    caption TEXT,
-    likes JSONB DEFAULT '[]'::jsonb,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 9. TABELA DE DESAFIOS (Challenges)
+-- 1. TABELA DE DESAFIOS (METAS DA ACADEMIA)
 CREATE TABLE IF NOT EXISTS challenges (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
     description TEXT,
-    target_value NUMERIC(15,2) NOT NULL,
+    target_value NUMERIC DEFAULT 0,
     unit TEXT DEFAULT 'km',
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL
+    start_date TEXT,
+    end_date TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 10. TABELA DE ROTAS (Routes)
-CREATE TABLE IF NOT EXISTS routes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title TEXT NOT NULL,
-    distance_km NUMERIC(10,2) NOT NULL,
-    description TEXT,
-    map_link TEXT,
-    difficulty TEXT DEFAULT 'MEDIUM',
-    elevation_gain INTEGER DEFAULT 0
+-- 2. TABELA DE ENTRADAS (PONTUAÇÃO DOS ALUNOS NO RANKING)
+CREATE TABLE IF NOT EXISTS challenge_entries (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    challenge_id UUID REFERENCES challenges(id) ON DELETE CASCADE,
+    student_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    value NUMERIC DEFAULT 0,
+    recorded_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- POLÍTICAS DE ACESSO (Opcional - se quiser desabilitar RLS para testes rápidos)
--- ALTER TABLE users DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE classes DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE attendance DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE assessments DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE personalized_workouts DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE posts DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE challenges DISABLE ROW LEVEL SECURITY;
--- ALTER TABLE routes DISABLE ROW LEVEL SECURITY;
+-- 3. INSERIR DESAFIO INICIAL SE NÃO EXISTIR
+INSERT INTO challenges (title, description, target_value, unit, start_date, end_date)
+SELECT 'Volta ao Mundo', 'Acumular 40.000km corridos somando todos os alunos.', 40000, 'km', '2024-01-01', '2024-12-31'
+WHERE NOT EXISTS (SELECT 1 FROM challenges LIMIT 1);
+
+-- 4. GARANTIR QUE AS COLUNAS DE STATUS EXISTAM NA TABELA USERS
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='status') THEN
+        ALTER TABLE users ADD COLUMN status TEXT DEFAULT 'ACTIVE';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='suspended_at') THEN
+        ALTER TABLE users ADD COLUMN suspended_at TEXT;
+    END IF;
+END $$;

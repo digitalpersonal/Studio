@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClassSession, User, UserRole, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search, User as UserIcon } from 'lucide-react'; 
+import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search, User as UserIcon, Clock, AlertTriangle } from 'lucide-react'; 
 import { DAYS_OF_WEEK } from '../constants';
 import { WORKOUT_TYPES } from '../constants'; 
 
@@ -19,8 +19,9 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
   const [showAttendanceModal, setShowAttendanceModal] = useState<ClassSession | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Define permissions: Staff (Trainers, Admins) can manage classes
   const isStaff = currentUser.role !== UserRole.STUDENT;
-  const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
+  const canManage = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.TRAINER;
 
   const refreshData = async () => {
     setLoading(true);
@@ -44,7 +45,10 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
     return DAYS_OF_WEEK.reduce((acc, day) => {
       acc[day] = classes
         .filter(c => c.dayOfWeek === day)
-        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+        .sort((a, b) => {
+          if (a.date && b.date && a.date !== b.date) return a.date.localeCompare(b.date);
+          return a.startTime.localeCompare(b.startTime);
+        });
       return acc;
     }, {} as Record<string, ClassSession[]>);
   }, [classes]);
@@ -70,11 +74,11 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
   };
 
   const handleDeleteClass = async (id: string) => {
-    if (!confirm("Excluir esta aula permanentemente?")) return;
+    if (!window.confirm("Atenção! Você deseja excluir esta aula permanentemente? Esta ação não pode ser desfeita.")) return;
     setLoading(true);
     try {
       await SupabaseService.deleteClass(id);
-      addToast("Aula removida.", "success");
+      addToast("Aula excluída permanentemente.", "success");
       refreshData();
     } catch (error: any) {
       addToast(`Erro ao excluir: ${error.message}`, "error");
@@ -104,10 +108,10 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Agenda Studio</h2>
-          <p className="text-slate-400 text-sm">Cronograma de aulas e controle de presenças.</p>
+          <p className="text-slate-400 text-sm">Controle de aulas, das datas e presenças.</p>
         </div>
-        {isAdmin && (
-          <button onClick={() => { setEditingClass(null); setShowForm(true); }} className="bg-brand-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all">
+        {canManage && (
+          <button onClick={() => { setEditingClass(null); setShowForm(true); }} className="bg-brand-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center shadow-xl shadow-brand-500/20 hover:bg-brand-500 transition-all">
             <Plus size={16} className="mr-2" /> Nova Aula
           </button>
         )}
@@ -119,47 +123,65 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
             <h3 className="text-lg font-black text-white border-b border-dark-800 pb-3 uppercase tracking-tighter">{day}</h3>
             <div className="space-y-4">
               {classesGroupedByDay[day]?.map(cls => (
-                <div key={cls.id} className="bg-dark-900 border border-dark-800 rounded-2xl p-4 space-y-3 relative group hover:border-brand-500/50 transition-all">
-                  <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div key={cls.id} className="bg-dark-900 border border-dark-800 rounded-2xl p-4 space-y-3 relative group hover:border-brand-500 transition-all overflow-hidden">
+                  {cls.date && (
+                    <div className="absolute top-0 left-0 bg-brand-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-br-lg">
+                      Especial
+                    </div>
+                  )}
+                  {/* Botões de Ação - Permanentemente Visíveis para Staff */}
+                  <div className="absolute top-3 right-3 flex gap-1 z-10">
                     {isStaff && (
                       <button 
                         onClick={() => setShowAttendanceModal(cls)} 
-                        className="p-1.5 bg-emerald-600/10 text-emerald-500 rounded-lg hover:bg-emerald-600 hover:text-white transition-colors"
+                        className="p-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 shadow-lg transition-colors"
                         title="Fazer Chamada"
                       >
                         <Check size={12} />
                       </button>
                     )}
-                    {isAdmin && (
+                    {canManage && (
                       <>
-                        <button onClick={() => { setEditingClass(cls); setShowForm(true); }} className="p-1.5 bg-dark-800 text-slate-400 rounded-lg hover:text-white transition-colors"><Edit size={12} /></button>
-                        <button onClick={() => handleDeleteClass(cls.id)} className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Trash2 size={12} /></button>
+                        <button onClick={() => { setEditingClass(cls); setShowForm(true); }} className="p-1.5 bg-dark-800 text-white rounded-lg hover:bg-brand-600 shadow-lg transition-colors"><Edit size={12} /></button>
+                        <button onClick={() => handleDeleteClass(cls.id)} className="p-1.5 bg-red-600 text-white rounded-lg hover:bg-red-500 shadow-lg transition-colors"><Trash2 size={12} /></button>
                       </>
                     )}
                   </div>
                   <div className="pr-12">
                     <h4 className="text-white font-bold text-sm leading-tight">{cls.title}</h4>
-                    {cls.date && <p className="text-[10px] text-brand-500 font-bold uppercase mt-1">{new Date(cls.date).toLocaleDateString('pt-BR')}</p>}
+                    {cls.date ? (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Calendar size={10} className="text-brand-500" />
+                        <p className="text-[10px] text-brand-500 font-black uppercase">{new Date(cls.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</p>
+                      </div>
+                    ) : (
+                      <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Recorrente</p>
+                    )}
                   </div>
-                  <div className="flex flex-wrap gap-2 text-[10px] text-slate-500 font-bold uppercase">
-                    <span className="flex items-center gap-1"><Calendar size={12}/> {cls.startTime}</span>
-                    <span className="flex items-center gap-1"><UserCheck size={12}/> {cls.instructor.split(' ')[0]}</span>
-                    <span className={`px-2 py-0.5 rounded-md ${cls.type === 'RUNNING' ? 'bg-blue-500/10 text-blue-500' : 'bg-brand-500/10 text-brand-500'}`}>{cls.type}</span>
+                  <div className="flex flex-wrap gap-2 text-[10px] text-slate-400 font-bold uppercase">
+                    <span className="flex items-center gap-1"><Clock size={12} className="text-slate-600"/> {cls.startTime}</span>
+                    <span className="flex items-center gap-1"><UserCheck size={12} className="text-slate-600"/> {cls.instructor.split(' ')[0]}</span>
+                    <span className={`px-2 py-0.5 rounded-md ${cls.type === 'RUNNING' ? 'bg-blue-500/10 text-blue-500' : 'bg-brand-500/10 text-brand-500'}`}>
+                      {cls.type === 'RUNNING' ? 'Corrida' : 'Funcional'}
+                    </span>
                   </div>
                   <div className="pt-2 flex items-center justify-between border-t border-dark-800">
                     <span className="text-[10px] text-slate-500 font-bold">Vagas: <span className="text-white">{cls.enrolledStudentIds.length}/{cls.maxCapacity}</span></span>
                     {cls.enrolledStudentIds.includes(currentUser.id) ? (
                       <span className="text-[9px] text-emerald-500 font-black uppercase flex items-center gap-1"><Check size={12}/> Inscrito</span>
                     ) : (
-                      isStaff && (
-                         <button onClick={() => setShowAttendanceModal(cls)} className="text-[9px] text-emerald-500 font-black uppercase hover:underline">Chamada</button>
+                      !isStaff && (
+                         <span className="text-[9px] text-slate-600 font-black uppercase">Pendente</span>
                       )
                     )}
                   </div>
                 </div>
               ))}
               {(!classesGroupedByDay[day] || classesGroupedByDay[day].length === 0) && (
-                <p className="text-slate-600 text-xs italic py-4">Sem aulas</p>
+                <div className="py-8 flex flex-col items-center justify-center border-2 border-dashed border-dark-900 rounded-2xl">
+                  <Clock className="text-dark-800 mb-2" size={24} />
+                  <p className="text-slate-700 text-[10px] font-black uppercase">Sem Aulas</p>
+                </div>
               )}
             </div>
           </div>
@@ -192,8 +214,6 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
         const map: Record<string, boolean> = {};
         records.forEach(r => { map[r.studentId] = r.isPresent; });
         
-        // Inicializa com false para quem ainda não tem registro
-        // Fix: Changed s.studentId to s.id as studentId does not exist on User type
         students.forEach(s => {
           if (map[s.id] === undefined) map[s.id] = false;
         });
@@ -215,7 +235,6 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Fix: Cast isPresent to boolean and explicitly type records to fix "unknown" type error
       const records: Omit<AttendanceRecord, 'id'>[] = Object.entries(attendance).map(([studentId, isPresent]) => ({
         classId: classSession.id,
         studentId,
@@ -233,7 +252,7 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in">
+    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-6 md:pt-10 animate-fade-in">
       <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
         <div className="p-8 border-b border-dark-800">
            <div className="flex justify-between items-start mb-2">
@@ -254,7 +273,7 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
                  className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${attendance[s.id] ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-dark-950 border-dark-800 hover:border-slate-700'}`}
                >
                  <div className="flex items-center gap-3">
-                   <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-10 h-10 rounded-xl object-cover border border-dark-800" />
+                   <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-10 h-10 rounded-xl object-cover border border-dark-800" alt={s.name} />
                    <div className="text-left">
                       <p className={`text-sm font-bold ${attendance[s.id] ? 'text-emerald-500' : 'text-white'}`}>{String(s.name)}</p>
                       <p className="text-[9px] text-slate-500 uppercase font-black">Aluno Matriculado</p>
@@ -314,11 +333,14 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-dark-950 p-8 rounded-[3rem] border border-dark-800 shadow-2xl space-y-8 animate-fade-in mb-20">
+    <div className="max-w-4xl mx-auto bg-dark-950 p-8 rounded-[3rem] border border-dark-800 shadow-2xl space-y-8 animate-fade-in mb-20 overflow-hidden">
       <div className="flex justify-between items-center border-b border-dark-800 pb-6">
-        <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
-          {classSession ? 'Editar Aula' : 'Novo Agendamento'}
-        </h3>
+        <div>
+          <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+            {classSession ? 'Editar Aula' : 'Novo Agendamento'}
+          </h3>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Defina os parâmetros do treino e alunos inscritos.</p>
+        </div>
         <button onClick={onCancel} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full transition-colors"><X size={24}/></button>
       </div>
 
@@ -331,47 +353,55 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
            </div>
            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Dia Fixo</label>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Dia da Semana</label>
                 <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.dayOfWeek} onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}>
                   {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Início</label>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Data Específica</label>
+                <input type="date" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.date || ''} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Horário Início</label>
                 <input type="time" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
               </div>
               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Capacidade</label>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Duração (Min)</label>
+                <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.durationMinutes} onChange={e => setFormData({ ...formData, durationMinutes: Number(e.target.value) })} />
+              </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Vagas Totais</label>
                 <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.maxCapacity} onChange={e => setFormData({ ...formData, maxCapacity: Number(e.target.value) })} />
               </div>
               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Modalidade</label>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Tipo Treino</label>
                 <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as any })}>
-                  {WORKOUT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {WORKOUT_TYPES.map(t => <option key={t} value={t}>{t === 'RUNNING' ? 'CORRIDA' : 'FUNCIONAL'}</option>)}
                 </select>
               </div>
            </div>
            <div>
-             <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Responsável pela Aula</label>
+             <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Treinador Responsável</label>
              <select required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.instructor} onChange={e => setFormData({ ...formData, instructor: e.target.value })}>
-               <option value="">Selecione o treinador...</option>
+               <option value="">Selecione...</option>
                {instructors.map(inst => <option key={inst.id} value={inst.name}>{inst.name}</option>)}
              </select>
            </div>
         </div>
 
         <div className="space-y-5 flex flex-col h-full bg-dark-900/30 p-6 rounded-[2rem] border border-dark-800">
-           <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><UserPlus size={18}/> Alunos Inscritos ({formData.enrolledStudentIds?.length || 0})</h4>
+           <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><UserPlus size={18}/> Matrículas ({formData.enrolledStudentIds?.length || 0})</h4>
            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14}/>
               <input 
                 className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 pl-10 text-white text-xs focus:border-brand-500 outline-none" 
-                placeholder="Buscar por nome..." 
+                placeholder="Pesquisar aluno..." 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
            </div>
-           <div className="flex-1 overflow-y-auto max-h-[300px] p-2 custom-scrollbar space-y-1">
+           <div className="flex-1 overflow-y-auto max-h-[250px] p-2 custom-scrollbar space-y-1">
               {filteredStudents.map(s => (
                 <button 
                   key={s.id} 
@@ -380,19 +410,24 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
                   className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${formData.enrolledStudentIds?.includes(s.id) ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/20' : 'hover:bg-dark-800 text-slate-400 bg-dark-950/50'}`}
                 >
                   <div className="flex items-center gap-2">
-                     <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-6 h-6 rounded-lg" />
+                     <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-6 h-6 rounded-lg" alt={s.name} />
                      <span className="text-xs font-bold truncate max-w-[150px]">{s.name}</span>
                   </div>
                   {formData.enrolledStudentIds?.includes(s.id) ? <Check size={14} strokeWidth={3}/> : <Plus size={14}/>}
                 </button>
               ))}
            </div>
+           
            <div className="pt-6 mt-4 border-t border-dark-800 flex gap-3">
-              <button onClick={onCancel} className="flex-1 py-4 bg-dark-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all">Cancelar</button>
-              <button onClick={() => onSave(formData)} className="flex-1 py-4 bg-brand-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all">Salvar Aula</button>
+              <button onClick={onCancel} className="flex-1 py-4 bg-dark-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all">Sair</button>
+              <button onClick={() => onSave(formData)} className="flex-1 py-4 bg-brand-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all flex items-center justify-center gap-2">
+                <SaveIcon size={14}/> Salvar Aula
+              </button>
            </div>
         </div>
       </div>
     </div>
   );
 };
+
+const SaveIcon = ({ size }: { size: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;

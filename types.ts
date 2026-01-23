@@ -1,9 +1,19 @@
 
 export enum UserRole {
-  SUPER_ADMIN = 'SUPER_ADMIN', // Administrador Geral
-  ADMIN = 'ADMIN',             // Administrador
-  TRAINER = 'TRAINER',         // Treinador
-  STUDENT = 'STUDENT'          // Aluno
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  ADMIN = 'ADMIN',
+  TRAINER = 'TRAINER',
+  STUDENT = 'STUDENT'
+}
+
+export interface Comment {
+  id: string;
+  postId: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface Anamnesis {
@@ -42,26 +52,34 @@ export interface User {
   joinDate: string;
   phoneNumber?: string;
   birthDate?: string;
-  
-  // Contrato e Documentos
   cpf?: string;
   rg?: string;
   nationality?: string; 
   maritalStatus?: string; 
   profession?: string; 
   address?: Address;
-  
-  // Recorrência e Financeiro
   planValue?: number;
-  planDuration?: number; // em meses
+  planDuration?: number; 
   billingDay?: number;
   planStartDate?: string;
-  
   anamnesis?: Anamnesis;
   contractUrl?: string;
   contractGeneratedAt?: string;
+  profileCompleted?: boolean;
+  status?: 'ACTIVE' | 'SUSPENDED';
+  suspendedAt?: string;
+}
 
-  profileCompleted?: boolean; // Sinaliza se o perfil do aluno está completo
+export interface Post {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  imageUrl: string;
+  caption: string;
+  likes: string[]; 
+  timestamp: string;
+  comments?: Comment[];
 }
 
 export interface ClassSession {
@@ -69,25 +87,25 @@ export interface ClassSession {
   title: string;
   description: string;
   dayOfWeek: string;
-  date?: string; // Data específica (opcional, para aulas não recorrentes ou fixas)
   startTime: string;
   durationMinutes: number;
   instructor: string;
   maxCapacity: number;
-  enrolledStudentIds: string[]; // JSONB array no Supabase
-  waitlistStudentIds?: string[]; // JSONB array no Supabase
+  enrolledStudentIds: string[];
+  waitlistStudentIds: string[];
   type: 'FUNCTIONAL' | 'RUNNING';
+  wod: string;
+  workoutDetails: string;
+  feedback?: { studentId: string, rating: number }[];
+  date?: string;
   isCancelled?: boolean;
-  wod?: string; // Workout Of the Day
-  workoutDetails?: string; // Detalhes adicionais sobre o treino
-  feedback?: { studentId: string, rating: number, comment?: string }[]; // JSONB array no Supabase
 }
 
 export interface AttendanceRecord {
   id: string;
   classId: string;
   studentId: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   isPresent: boolean;
 }
 
@@ -95,7 +113,7 @@ export interface Assessment {
   id: string;
   studentId: string;
   date: string;
-  status: 'DONE' | 'SCHEDULED'; // 'Concluído' | 'Agendado'
+  status: 'DONE' | 'SCHEDULED';
   notes: string;
   weight: number;
   height: number;
@@ -106,11 +124,9 @@ export interface Assessment {
   hydrationPercentage?: number;
   vo2Max?: number;
   squatMax?: number;
-  // Campos de potência
   horizontalJump?: number;
   verticalJump?: number;
   medicineBallThrow?: number;
-  // Protocolo FMS
   fms?: {
     deepSquat?: number;
     hurdleStep?: number;
@@ -119,7 +135,7 @@ export interface Assessment {
     activeStraightLegRaise?: number;
     rotationalStability?: number;
   };
-  circumferences?: { // Objeto JSONB no Supabase
+  circumferences?: {
     chest?: number;
     waist?: number;
     abdomen?: number;
@@ -141,8 +157,8 @@ export interface Route {
   distanceKm: number;
   description: string;
   mapLink: string;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD'; // 'FÁCIL' | 'MÉDIA' | 'DIFÍCIL'
-  elevationGain: number; // em metros
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  elevationGain: number;
 }
 
 export interface Challenge {
@@ -150,10 +166,10 @@ export interface Challenge {
   title: string;
   description: string;
   targetValue: number;
-  unit: string; // ex: 'km', 'reps'
-  startDate: string; // YYYY-MM-DD
-  endDate: string;   // YYYY-MM-DD
-  currentProgress?: number; // Para ser atualizado ou buscado separadamente
+  unit: string;
+  startDate: string;
+  endDate: string;
+  currentProgress?: number;
 }
 
 export interface PersonalizedWorkout {
@@ -161,8 +177,8 @@ export interface PersonalizedWorkout {
   title: string;
   description: string;
   videoUrl?: string;
-  studentIds: string[]; // JSONB array no Supabase
-  createdAt: string; // YYYY-MM-DD
+  studentIds: string[];
+  createdAt: string;
   instructorName: string;
 }
 
@@ -175,32 +191,23 @@ export interface AcademySettings {
   representativeName: string;
   mercadoPagoPublicKey: string;
   mercadoPagoAccessToken: string;
+  pixKey: string;
   customDomain: string; 
   monthlyFee: number;
   inviteCode: string;
-  registrationInviteCode: string; // Novo campo para código de convite de cadastro de aluno
-}
-
-export interface Post {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  imageUrl: string;
-  caption: string;
-  likes: string[]; // IDs dos usuários que curtiram
-  timestamp: string;
+  registrationInviteCode: string;
 }
 
 export interface Payment {
   id: string;
   studentId: string;
   amount: number;
-  status: 'PAID' | 'PENDING' | 'OVERDUE'; // 'PAGO' | 'PENDENTE' | 'ATRASADO'
+  discount?: number;
+  status: 'PAID' | 'PENDING' | 'OVERDUE';
   dueDate: string;
   description: string;
   installmentNumber?: number;
-  totalInstallments?: number;
+  total_installments?: number;
 }
 
 export type ViewState = 

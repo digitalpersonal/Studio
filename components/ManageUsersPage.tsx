@@ -6,7 +6,7 @@ import {
   Edit, FileText, Receipt, DollarSign, Dumbbell, Activity,
   AlertTriangle, MessageCircle, CheckCheck, UserPlus, AlertCircle, 
   CheckCircle2, Loader2, Send, Users as UsersIcon, Trash2, 
-  Calendar, ListOrdered, ClipboardList, BookOpen
+  Calendar, ListOrdered, ClipboardList, BookOpen, Zap, ZapOff, BadgePercent
 } from 'lucide-react';
 import { SupabaseService } from '../services/supabaseService';
 import { ContractService } from '../services/contractService';
@@ -24,6 +24,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     const [isLoading, setIsLoading] = useState(false);
     const [showWhatsAppModal, setShowWhatsAppModal] = useState<User | null>(null);
     const [showEnrolledClasses, setShowEnrolledClasses] = useState<User | null>(null);
+    const [manualPaymentModal, setManualPaymentModal] = useState<{ student: User, payment: Payment } | null>(null);
     const { addToast } = useToast();
 
     const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
@@ -45,6 +46,46 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
             setClasses(cData);
         } catch (error: any) {
             addToast(`Erro ao sincronizar dados: ${error.message}`, "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const toggleSuspension = async (user: User) => {
+        const newStatus = user.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
+        const msg = newStatus === 'SUSPENDED' 
+            ? `Deseja suspender o aluno ${user.name}? Isso sinalizará inatividade e paralisará cobranças automáticas.` 
+            : `Deseja reativar o aluno ${user.name}?`;
+        
+        if (!confirm(msg)) return;
+
+        setIsLoading(true);
+        try {
+            await SupabaseService.updateUser({ 
+                ...user, 
+                status: newStatus, 
+                suspendedAt: newStatus === 'SUSPENDED' ? new Date().toISOString() : undefined 
+            });
+            addToast(`Aluno ${newStatus === 'SUSPENDED' ? 'suspenso' : 'reativado'} com sucesso!`, "success");
+            refreshList();
+        } catch (e) {
+            addToast("Erro ao alterar status.", "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleMarkPaidWithDiscount = async (payment: Payment, discount: number) => {
+        setIsLoading(true);
+        try {
+            await SupabaseService.markPaymentAsPaid(payment.id, discount);
+            const student = users.find(s => s.id === payment.studentId);
+            if (student) WhatsAppAutomation.sendConfirmation(student, payment);
+            addToast("Baixa realizada com sucesso!", "success");
+            setManualPaymentModal(null);
+            refreshList();
+        } catch (e: any) {
+            addToast(`Erro ao processar baixa: ${e.message}`, "error");
         } finally {
             setIsLoading(false);
         }
@@ -97,7 +138,8 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         setInitialFormData(u ? { ...u } : { 
             name: '', email: '', role: UserRole.STUDENT,
             planDuration: 12, planValue: 150, billingDay: 5,
-            joinDate: new Date().toISOString().split('T')[0]
+            joinDate: new Date().toISOString().split('T')[0],
+            status: 'ACTIVE'
         });
         setInitialFormTab(tab);
         setShowUserForm(true);
@@ -152,17 +194,21 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                 const nextDue = sPayments.filter(p => p.status === 'PENDING').sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
                                 const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())[0];
                                 const enrolledCount = classes.filter(c => c.enrolledStudentIds.includes(s.id)).length;
+                                const isSuspended = s.status === 'SUSPENDED';
 
                                 return (
-                                    <tr key={s.id} className="hover:bg-dark-900/40 transition-colors group">
+                                    <tr key={s.id} className={`hover:bg-dark-900/40 transition-colors group ${isSuspended ? 'opacity-60 grayscale-[0.5]' : ''}`}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="relative">
                                                     <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-12 h-12 rounded-2xl border-2 border-dark-800 shadow-lg object-cover" />
-                                                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-dark-950 ${s.role === UserRole.STUDENT ? 'bg-brand-500' : 'bg-blue-500'}`}></div>
+                                                    <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-dark-950 ${isSuspended ? 'bg-red-600' : (s.role === UserRole.STUDENT ? 'bg-brand-500' : 'bg-blue-500')}`}></div>
                                                 </div>
                                                 <div>
-                                                    <p className="text-white font-bold text-base">{String(s.name)}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="text-white font-bold text-base">{String(s.name)}</p>
+                                                        {isSuspended && <span className="bg-red-500/20 text-red-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-red-500/30">Suspenso</span>}
+                                                    </div>
                                                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{getRoleLabel(s.role)}</p>
                                                 </div>
                                             </div>
@@ -196,7 +242,17 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                             )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex justify-end items-center gap-1.5 flex-wrap max-w-[550px] ml-auto">
+                                            <div className="flex justify-end items-center gap-1.5 flex-wrap max-w-[650px] ml-auto">
+                                                {/* Categoria: Status & Suspensão */}
+                                                <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
+                                                    <ActionButton 
+                                                        icon={isSuspended ? Zap : ZapOff} 
+                                                        color={isSuspended ? "green" : "red"} 
+                                                        onClick={() => toggleSuspension(s)} 
+                                                        title={isSuspended ? "Reativar Aluno" : "Suspender Aluno"} 
+                                                    />
+                                                </div>
+
                                                 {/* Categoria: Gestão Cadastral */}
                                                 <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                     <ActionButton icon={Edit} color="blue" onClick={() => handleOpenForm(s)} title="Editar Cadastro" />
@@ -221,16 +277,18 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                         <ActionButton icon={DollarSign} color="emerald" onClick={() => onNavigate('FINANCIAL', { studentId: s.id })} title="Fluxo Financeiro" />
                                                         <ActionButton icon={FileText} color="indigo" onClick={() => handleGenerateContract(s)} disabled={!isContractReady} title={isContractReady ? "Imprimir Contrato" : "Faltam Dados p/ Contrato"} />
                                                         <ActionButton icon={Receipt} color="amber" onClick={() => {
-                                                            if(sPayments.length > 0) {
-                                                                if(confirm("Este aluno já possui faturas. Deseja gerar novas parcelas complementares?")) {
+                                                            if (nextDue) {
+                                                                setManualPaymentModal({ student: s, payment: nextDue });
+                                                            } else if (sPayments.length > 0) {
+                                                                if (confirm("Nenhum vencimento próximo. Deseja gerar nova fatura avulsa?")) {
                                                                     SupabaseService.addPayment({ 
                                                                         studentId: s.id, amount: s.planValue || 150, status: 'PENDING', dueDate: new Date().toISOString().split('T')[0], description: "Mensalidade Avulsa"
                                                                     }).then(() => refreshList());
                                                                 }
                                                             } else {
-                                                                addToast("Use o menu de faturas completas", "info");
+                                                                addToast("Nenhum plano ativo encontrado.", "info");
                                                             }
-                                                        }} title="Gerar Fatura Rápida" />
+                                                        }} title="Receber / Gerar Fatura" />
                                                     </div>
                                                 )}
 
@@ -256,6 +314,17 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 </div>
             </div>
 
+            {/* Modal de Baixa Manual com Desconto */}
+            {manualPaymentModal && (
+                <ManualPaymentModal 
+                    student={manualPaymentModal.student}
+                    payment={manualPaymentModal.payment}
+                    onConfirm={handleMarkPaidWithDiscount}
+                    onCancel={() => setManualPaymentModal(null)}
+                    isLoading={isLoading}
+                />
+            )}
+
             {/* Modal de Aulas do Aluno */}
             {showEnrolledClasses && (
                 <EnrolledClassesModal 
@@ -273,6 +342,64 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                     onCancel={() => setShowWhatsAppModal(null)}
                 />
             )}
+        </div>
+    );
+};
+
+// Modal de Baixa Manual com Desconto
+const ManualPaymentModal = ({ student, payment, onConfirm, onCancel, isLoading }: { student: User, payment: Payment, onConfirm: (p: Payment, discount: number) => void, onCancel: () => void, isLoading: boolean }) => {
+    const [discount, setDiscount] = useState(0);
+    const finalAmount = Math.max(0, payment.amount - discount);
+
+    return (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
+            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <BadgePercent size={22} className="text-brand-500" /> Receber Pagamento
+                        </h3>
+                        <p className="text-slate-500 text-[10px] mt-1 uppercase font-black tracking-widest">{String(student.name)}</p>
+                    </div>
+                    <button onClick={onCancel} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full"><X size={20} /></button>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800 flex justify-between items-center">
+                        <span className="text-slate-400 text-xs font-bold uppercase">Valor da Fatura:</span>
+                        <span className="text-white font-black">R$ {payment.amount.toFixed(2)}</span>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Aplicar Desconto (R$)</label>
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white font-black text-lg focus:border-brand-500 outline-none"
+                            placeholder="0.00"
+                            value={discount || ''}
+                            onChange={e => setDiscount(Number(e.target.value))}
+                        />
+                    </div>
+
+                    <div className="bg-brand-600/10 p-5 rounded-2xl border border-brand-500/20 flex justify-between items-center animate-pulse">
+                        <span className="text-brand-500 text-xs font-black uppercase">Total a Receber:</span>
+                        <span className="text-white font-black text-xl">R$ {finalAmount.toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    <button onClick={onCancel} className="py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700">Cancelar</button>
+                    <button 
+                        onClick={() => onConfirm(payment, discount)} 
+                        disabled={isLoading}
+                        className="py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-600/20 hover:bg-emerald-500 flex items-center justify-center gap-2"
+                    >
+                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
+                        Confirmar
+                    </button>
+                </div>
+            </div>
         </div>
     );
 };

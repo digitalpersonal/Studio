@@ -1,13 +1,12 @@
 
-
 import { jsPDF } from "jspdf";
-import { User } from "../types";
+import { User, AcademySettings } from "../types";
 import { SettingsService } from "./settingsService";
 
 export const ContractService = {
-  _createContractDoc: (student: User) => {
+  // Fix: Made helper accept settings as an argument to avoid async issues inside sync logic
+  _createContractDoc: (student: User, settings: AcademySettings) => {
     const doc = new jsPDF();
-    const settings = SettingsService.getSettings(); 
     let cursorY = 20;
 
     const addText = (text: string, fontSize: number = 10, fontStyle: string = 'normal', align: 'left' | 'center' | 'right' = 'left') => {
@@ -41,6 +40,7 @@ export const ContractService = {
       : 'Não informado';
 
     // Endereço da Academia (Contratada)
+    // Fix: Properly accessed settings which is now passed as an argument
     const academyAddr = settings.academyAddress;
     const academyAddressStr = academyAddr
       ? `${String(academyAddr.street)}, nº ${String(academyAddr.number)}${academyAddr.complement ? ', ' + String(academyAddr.complement) : ''}, ${String(academyAddr.neighborhood)}, ${String(academyAddr.city)}-${String(academyAddr.state)}, CEP: ${String(academyAddr.zipCode)}`
@@ -53,6 +53,7 @@ export const ContractService = {
 
     addText("1. IDENTIFICAÇÃO DAS PARTES", 11, "bold");
     
+    // Fix: Properly accessed settings which is now passed as an argument
     const contractorInfo = `CONTRATADA: ${String(settings.name).toUpperCase()}, CNPJ nº ${String(settings.cnpj)}, com sede em ${academyAddressStr}, representada neste ato por ${String(settings.representativeName)}.`;
     addText(contractorInfo);
 
@@ -67,6 +68,7 @@ export const ContractService = {
     addText(`Este contrato terá vigência de ${duration} meses, iniciando em ${startDateStr} e encerrando-se em ${endDateStr}.`);
 
     addText("4. DOS VALORES E FORMA DE PAGAMENTO", 11, "bold");
+    // Fix: Properly accessed settings which is now passed as an argument
     const planValue = student.planValue || settings.monthlyFee;
     const formattedFee = planValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     addText(`O CONTRATANTE pagará à CONTRATADA o valor mensal de ${formattedFee}, com vencimento todo dia ${String(student.billingDay || 5)} de cada mês, durante a vigência deste instrumento.`);
@@ -83,14 +85,17 @@ export const ContractService = {
     cursorY += 5;
     
     doc.setFontSize(8);
+    // Fix: Properly accessed settings which is now passed as an argument
     doc.text(String(settings.name).toUpperCase(), 55, cursorY, { align: "center" });
     doc.text(String(student.name).toUpperCase(), 145, cursorY, { align: "center" });
 
     return doc;
   },
 
-  generateContract: (student: User) => {
-    const doc = ContractService._createContractDoc(student);
+  // Fix: Made generateContract async to correctly await settings from SettingsService
+  generateContract: async (student: User) => {
+    const settings = await SettingsService.getSettings();
+    const doc = ContractService._createContractDoc(student, settings);
     doc.save(`Contrato_${String(student.name).replace(/\s+/g, '_')}.pdf`);
   }
 };

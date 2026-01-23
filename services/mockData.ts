@@ -1,5 +1,4 @@
 
-
 import { ClassSession, Assessment, Post, Payment, User, Anamnesis, Route, Challenge, PersonalizedWorkout } from '../types';
 
 // --- DATA HELPERS ---
@@ -303,7 +302,7 @@ let personalizedWorkouts: PersonalizedWorkout[] = [
     {
         id: 'pw2',
         title: 'Fortalecimento de Core (Extra)',
-        description: "Realizar 3x na semana após a corrida:\n\n- 3x 15 Abdominal Remador\n- 3x 40seg Prancha Lateral (cada lado)\n- 3x 15 Elevação de Perna\n- 3x 12 Perdigueiro (cada lado)",
+        description: "Realizar 3x na semana após a corrida:\n\n- 3x 15 Abdominal Remador\n- 3x 40seg Prancha Lateral (cada lado)\n- 3x 12 Perdigueiro (cada lado)",
         studentIds: ['student-1', 'student-2', 'student-4'],
         createdAt: '2024-05-12',
         instructorName: 'Treinadora Sarah'
@@ -459,7 +458,8 @@ const createMockPayments = () => {
                 dueDate: formatDate(dueDate),
                 description: `Mensalidade ${i}/${12} - Plano Anual`,
                 installmentNumber: i,
-                totalInstallments: 12
+                // Fix: corrected totalInstallments to total_installments to match Payment type
+                total_installments: 12
             });
         }
     });

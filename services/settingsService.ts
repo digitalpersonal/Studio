@@ -1,9 +1,7 @@
 
-
 import { AcademySettings } from "../types";
 import { DEFAULT_REGISTRATION_INVITE_CODE } from "../constants"; 
-
-const SETTINGS_KEY = 'studio_settings';
+import { SupabaseService } from "./supabaseService";
 
 const DEFAULT_SETTINGS: AcademySettings = {
     name: 'Studio',
@@ -22,6 +20,7 @@ const DEFAULT_SETTINGS: AcademySettings = {
     representativeName: 'Alexandre Coach',
     mercadoPagoPublicKey: '',
     mercadoPagoAccessToken: '',
+    pixKey: '',
     customDomain: 'studiosemovimento.com.br',
     monthlyFee: 150.00,
     inviteCode: 'STUDIO2024',
@@ -29,22 +28,31 @@ const DEFAULT_SETTINGS: AcademySettings = {
 };
 
 export const SettingsService = {
-    getSettings: (): AcademySettings => {
-        const stored = localStorage.getItem(SETTINGS_KEY);
-        if (stored) {
-            const parsedSettings = JSON.parse(stored);
-            return { 
-                ...DEFAULT_SETTINGS, 
-                ...parsedSettings,
-                academyAddress: typeof parsedSettings.academyAddress === 'string' 
-                                ? DEFAULT_SETTINGS.academyAddress 
-                                : { ...DEFAULT_SETTINGS.academyAddress, ...parsedSettings.academyAddress }
-            };
+    /**
+     * Busca as configurações diretamente do Supabase.
+     * Não utiliza mais o cache local (localStorage).
+     */
+    getSettings: async (): Promise<AcademySettings> => {
+        try {
+            const remote = await SupabaseService.getAcademySettings();
+            if (remote) {
+                return remote;
+            }
+        } catch (e) {
+            console.error("Erro ao buscar configurações no Supabase:", e);
         }
         return DEFAULT_SETTINGS;
     },
 
-    saveSettings: (settings: AcademySettings) => {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    /**
+     * Salva as configurações exclusivamente no banco de dados.
+     */
+    saveSettings: async (settings: AcademySettings) => {
+        try {
+            await SupabaseService.updateAcademySettings(settings);
+        } catch (e) {
+            console.error("Erro ao persistir configurações no Supabase:", e);
+            throw e;
+        }
     }
 };

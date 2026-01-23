@@ -1,6 +1,6 @@
 {
   "name": "Studio - Gestão Fitness",
-  "description": "Studio: Uma plataforma completa para gestão de academias, treinos funcionais e grupos de corrida.",
+  "description": "Plataforma completa para gestão de treinos, avaliações físicas e comunidade do Studio.",
   "requestFramePermissions": [
     "camera",
     "microphone"
