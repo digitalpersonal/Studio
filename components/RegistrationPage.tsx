@@ -28,9 +28,8 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
         e.preventDefault();
         setIsLoading(true);
         try {
-            // Fix: Added await to correctly resolve settings from SettingsService
             const settings = await SettingsService.getSettings();
-            if (inviteCode === settings.registrationInviteCode) {
+            if (inviteCode.toUpperCase() === settings.registrationInviteCode.toUpperCase()) {
                 addToast("Código de convite validado! Prossiga com seu cadastro.", "success");
                 setStep('FORM_INPUT');
             } else {
