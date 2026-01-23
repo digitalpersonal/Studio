@@ -232,14 +232,14 @@ export const Layout: React.FC<LayoutProps> = ({
                     <span className="text-xs font-bold">Suporte</span>
                 </a>
              </div>
-             <p className="text-slate-600 text-sm mb-2">Desenvolvido por <span className="text-brand-500 font-bold">Multiplus</span> - Silvio Torres de Sá Filho</p>
+             <p className="text-slate-600 text-sm mb-2">Desenvolvido por <span className="text-brand-500 font-bold">Multiplus</span> - Silvio T. de Sá Filho</p>
              <p className="text-slate-700 text-xs">&copy; {new Date().getFullYear()} Studio. Todos os direitos reservados.</p>
           </footer>
         </main>
       </div>
 
       {showInstallModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in">
+          <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-20 animate-fade-in">
               <div className="bg-dark-900 border border-dark-700 rounded-[3rem] w-full max-w-sm shadow-2xl relative overflow-hidden">
                   <div className="bg-brand-600 p-8 text-center">
                       <img src={LOGO_URL} alt="Studio Logo" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl" />

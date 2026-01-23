@@ -1,4 +1,3 @@
-
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { User, ClassSession, Assessment, Payment, AttendanceRecord, Route, Challenge, PersonalizedWorkout, Post, Comment, UserRole, AcademySettings } from '../types';
 
@@ -170,15 +169,29 @@ export const SupabaseService = {
   // --- ACADEMY SETTINGS ---
   getAcademySettings: async (): Promise<AcademySettings | null> => {
     if (!supabase) return null;
-    const { data, error } = await supabase.from('academy_settings').select('*').limit(1).maybeSingle();
-    if (error) return null;
-    return data ? mapAcademySettingsFromDb(data) : null;
+    try {
+      const { data, error } = await supabase.from('academy_settings').select('*').limit(1).maybeSingle();
+      if (error) {
+        console.warn("Tabela academy_settings não encontrada ou inacessível:", error.message);
+        return null;
+      }
+      return data ? mapAcademySettingsFromDb(data) : null;
+    } catch (e) {
+      return null;
+    }
   },
 
   updateAcademySettings: async (s: AcademySettings): Promise<void> => {
-    if (!supabase) return;
-    const { data: current } = await supabase.from('academy_settings').select('id').limit(1).maybeSingle();
+    if (!supabase) throw new Error("Sem conexão com o banco de dados.");
     
+    // Tenta encontrar a linha existente para atualizar ou inserir
+    const { data: current, error: fetchError } = await supabase.from('academy_settings').select('id').limit(1).maybeSingle();
+    
+    if (fetchError) {
+      console.error("Erro ao verificar configurações existentes:", fetchError);
+      throw new Error(`Erro de banco: ${fetchError.message}`);
+    }
+
     const payload = {
       name: s.name,
       cnpj: s.cnpj,
@@ -196,11 +209,17 @@ export const SupabaseService = {
     };
 
     if (current) {
-      const { error } = await supabase.from('academy_settings').update(payload).eq('id', current.id);
-      if (error) throw error;
+      const { error: updateError } = await supabase.from('academy_settings').update(payload).eq('id', current.id);
+      if (updateError) {
+        console.error("Erro no Update de Configurações:", updateError);
+        throw updateError;
+      }
     } else {
-      const { error } = await supabase.from('academy_settings').insert([payload]);
-      if (error) throw error;
+      const { error: insertError } = await supabase.from('academy_settings').insert([payload]);
+      if (insertError) {
+        console.error("Erro no Insert de Configurações:", insertError);
+        throw insertError;
+      }
     }
     invalidateCache();
   },
@@ -284,17 +303,22 @@ export const SupabaseService = {
     const { data, error } = await supabase.from('classes').insert([{
       title: c.title,
       description: c.description,
+      // Fix: Use camelCase properties from ClassSession type
       day_of_week: c.dayOfWeek,
       date: c.date,
       start_time: c.startTime,
       duration_minutes: c.durationMinutes,
       instructor: c.instructor,
       max_capacity: c.maxCapacity,
+      // Fix: Use camelCase properties from ClassSession type
       enrolled_student_ids: c.enrolledStudentIds || [],
+      // Fix: Use camelCase properties from ClassSession type
       waitlist_student_ids: c.waitlistStudentIds || [],
       type: c.type,
+      // Fix: Use camelCase properties from ClassSession type
       is_cancelled: c.isCancelled,
       wod: c.wod,
+      // Fix: Use camelCase properties from ClassSession type
       workout_details: c.workoutDetails,
       feedback: c.feedback
     }]).select().single();
@@ -308,17 +332,24 @@ export const SupabaseService = {
     const { data, error } = await supabase.from('classes').update({
       title: c.title,
       description: c.description,
+      // Fix: Use camelCase properties from ClassSession type
       day_of_week: c.dayOfWeek,
       date: c.date,
+      // Fix: Use camelCase properties from ClassSession type
       start_time: c.startTime,
+      // Fix: Use camelCase properties from ClassSession type
       duration_minutes: c.durationMinutes,
       instructor: c.instructor,
       max_capacity: c.maxCapacity,
+      // Fix: Use camelCase properties from ClassSession type
       enrolled_student_ids: c.enrolledStudentIds || [],
+      // Fix: Use camelCase properties from ClassSession type
       waitlist_student_ids: c.waitlistStudentIds || [],
       type: c.type,
+      // Fix: Use camelCase properties from ClassSession type
       is_cancelled: c.isCancelled,
       wod: c.wod,
+      // Fix: Use camelCase properties from ClassSession type
       workout_details: c.workoutDetails,
       feedback: c.feedback
     }).eq('id', c.id).select().single();
@@ -395,7 +426,6 @@ export const SupabaseService = {
         _cache['challenge'] = { data: result, timestamp: now };
         return result;
     } catch (e) {
-        console.error("Ranking Fetch Error:", e);
         return { challenge: null, totalDistance: 0 };
     }
   },

@@ -145,12 +145,16 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         setShowUserForm(true);
     };
 
-    const handleGenerateContract = (user: User) => {
+    const handleGenerateContract = async (user: User) => {
+        setIsLoading(true);
         try {
-            ContractService.generateContract(user);
+            await ContractService.generateContract(user);
             addToast("Contrato gerado com sucesso!", "success");
         } catch (error: any) {
+            console.error("Erro ao gerar contrato:", error);
             addToast(`Erro ao gerar contrato: ${error.message}`, "error");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -275,7 +279,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                 {isAdmin && s.role === UserRole.STUDENT && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         <ActionButton icon={DollarSign} color="emerald" onClick={() => onNavigate('FINANCIAL', { studentId: s.id })} title="Fluxo Financeiro" />
-                                                        <ActionButton icon={FileText} color="indigo" onClick={() => handleGenerateContract(s)} disabled={!isContractReady} title={isContractReady ? "Imprimir Contrato" : "Faltam Dados p/ Contrato"} />
+                                                        <ActionButton icon={FileText} color="indigo" onClick={() => handleGenerateContract(s)} disabled={!isContractReady || isLoading} title={isContractReady ? "Imprimir Contrato" : "Faltam Dados p/ Contrato"} />
                                                         <ActionButton icon={Receipt} color="amber" onClick={() => {
                                                             if (nextDue) {
                                                                 setManualPaymentModal({ student: s, payment: nextDue });
@@ -296,7 +300,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                 {(isAdmin || isTrainer) && s.phoneNumber && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         {isAdmin && latestDebt && (
-                                                            <ActionButton icon={AlertTriangle} color="red" onClick={() => WhatsAppAutomation.sendPaymentReminder(s, latestDebt)} title="WhatsApp: Cobrar Atraso" />
+                                                            <ActionButton icon={AlertTriangle} color="red" onClick={() => WhatsAppAutomation.sendOverdueNotice(s, latestDebt)} title="WhatsApp: Cobrar Atraso" />
                                                         )}
                                                         {isAdmin && nextDue && !latestDebt && (
                                                             <ActionButton icon={MessageCircle} color="amber" onClick={() => WhatsAppAutomation.sendPaymentReminder(s, nextDue)} title="WhatsApp: Lembrar Vencimento" />
@@ -352,7 +356,7 @@ const ManualPaymentModal = ({ student, payment, onConfirm, onCancel, isLoading }
     const finalAmount = Math.max(0, payment.amount - discount);
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-20 animate-fade-in">
             <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden">
                 <div className="flex justify-between items-center">
                     <div>
@@ -433,7 +437,7 @@ const ActionButton = ({ icon: Icon, color, onClick, disabled, title }: { icon: a
 
 const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, classes: ClassSession[], onClose: () => void }) => {
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[110] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-20 animate-fade-in">
             <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-lg w-full space-y-6 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
                 <div className="flex justify-between items-center">
@@ -483,7 +487,7 @@ const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, cl
 const WhatsAppMessageModal = ({ student, onSend, onCancel }: { student: User, onSend: (s: User, m: string) => void, onCancel: () => void }) => {
     const [message, setMessage] = useState('');
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/90 backdrop-blur-sm p-6 pt-20 animate-fade-in">
             <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full space-y-5">
                 <div className="flex justify-between items-center">
                     <h3 className="text-white font-bold flex items-center gap-2"><MessageCircle className="text-brand-500" size={20}/> Mensagem p/ {String(student.name).split(' ')[0]}</h3>

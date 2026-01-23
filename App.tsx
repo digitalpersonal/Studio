@@ -17,7 +17,7 @@ import {
   CalendarPlus, ShieldCheck, Eye, EyeOff, GraduationCap, MapPinned, CreditCard as CardIcon,
   Info, Sparkles, Target, ZapOff, ChevronRight, TrendingUp as TrendUp, Wallet, Receipt,
   BadgePercent, HandCoins, ExternalLink as LinkIcon, Copy as CopyIcon, Globe as GlobeIcon,
-  Zap as ZapIcon, Mail
+  Zap as ZapIcon, Mail, MoveRight
 } from 'lucide-react';
 import { SupabaseService, SUPABASE_PROJECT_ID } from './services/supabaseService';
 import { GeminiService } from './services/geminiService';
@@ -26,12 +26,12 @@ import { SettingsService } from './services/settingsService';
 import { MercadoPagoService } from './services/mercadoPagoService';
 import { UserFormPage } from './components/UserFormPage';
 import { SchedulePage } from './components/SchedulePage';
-import { AssessmentsPage } from './components/AssessmentsPage.tsx';
-import { RankingPage } from './components/RankingPage.tsx';
-import { RoutesPage } from './components/RoutesPage.tsx';
-import { PersonalWorkoutsPage } from './components/PersonalWorkoutsPage.tsx';
-import { FeedPage } from './components/FeedPage.tsx';
-import { ReportsPage } from './components/ReportsPage.tsx';
+import { AssessmentsPage } from './components/AssessmentsPage';
+import { RankingPage } from './components/RankingPage';
+import { RoutesPage } from './components/RoutesPage';
+import { PersonalWorkoutsPage } from './components/PersonalWorkoutsPage';
+import { FeedPage } from './components/FeedPage';
+import { ReportsPage } from './components/ReportsPage';
 import { ManageUsersPage } from './components/ManageUsersPage';
 import { RegistrationPage } from './components/RegistrationPage';
 import { CompleteProfilePage } from './components/CompleteProfilePage'; 
@@ -94,7 +94,12 @@ export const WhatsAppAutomation = {
     window.open(url, '_blank');
   },
   sendPaymentReminder: (student: User, payment: Payment) => {
-    const message = `Olá ${String(student.name).split(' ')[0]}! 👋 Passando para lembrar que sua mensalidade vence em breve (${payment.dueDate}). Valor: R$ ${payment.amount.toFixed(2)}. Evite juros e mantenha seu acesso liberado! 🏃‍♂️💨`;
+    const message = `Olá ${String(student.name).split(' ')[0]}! 👋 Lembrete amigável sobre sua mensalidade com vencimento em ${payment.dueDate}, no valor de R$ ${payment.amount.toFixed(2)}. Pague em dia e mantenha seu acesso liberado! 😉💪`;
+    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  },
+  sendOverdueNotice: (student: User, payment: Payment) => {
+    const message = `Olá ${String(student.name).split(' ')[0]}! 🚨 Notamos um débito em aberto referente à mensalidade com vencimento em ${payment.dueDate}, no valor de R$ ${payment.amount.toFixed(2)}. Por favor, regularize sua situação para evitar a suspensão do acesso. Se já pagou, desconsidere.`;
     const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   },
@@ -149,7 +154,8 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
       await SettingsService.saveSettings(settings);
       addToast("Configurações atualizadas com sucesso!", "success");
     } catch (error: any) {
-      addToast(`Falha ao salvar as alterações no banco de dados.`, "error");
+      console.error("ERRO AO SALVAR CONFIGURAÇÕES:", error);
+      addToast(`Erro ao salvar: ${error.message || 'Verifique a conexão com o banco.'}`, "error");
     } finally {
       setSaving(false);
     }
@@ -218,7 +224,6 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
                 <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none" value={settings.representativeName} onChange={e => setSettings({...settings, representativeName: e.target.value})} />
               </div>
               
-              {/* NOVOS CAMPOS: TELEFONE E EMAIL */}
               <div>
                 <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Telefone / WhatsApp Comercial</label>
                 <div className="relative">
@@ -231,6 +236,14 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
                   <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-brand-500 outline-none" value={settings.email} onChange={e => setSettings({...settings, email: e.target.value})} placeholder="contato@empresa.com" />
+                </div>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-emerald-500 text-[10px] font-black uppercase mb-1 tracking-widest">Chave Pix Institucional (Recebimentos Manuais)</label>
+                <div className="relative">
+                  <QrCode className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500" size={18}/>
+                  <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-emerald-500 outline-none font-bold" value={settings.pixKey} onChange={e => setSettings({...settings, pixKey: e.target.value})} placeholder="Celular, E-mail, CPF ou Chave Aleatória" />
                 </div>
               </div>
 
@@ -336,15 +349,13 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
   );
 };
 
-// Main App Component (rest of the file remains the same)
+// Main App Component
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState<ViewState>('LOGIN');
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextToastId = useRef(0);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = nextToastId.current++;
@@ -382,65 +393,146 @@ export function App() {
     setCurrentView('DASHBOARD');
   };
 
+  const LandingPage = ({ onLogin, onNavigateToRegistration, addToast }: { onLogin: (u:User) => void, onNavigateToRegistration: () => void, addToast: (msg:string, type?:ToastType) => void }) => {
+    const [showPassword, setShowPassword] = useState(false);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
+  
+    const handleLoginFormSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (isLoggingIn) return;
+      
+      const target = e.target as any;
+      const email = target.email.value;
+      const password = target.password.value;
+      
+      setIsLoggingIn(true);
+      try {
+        const allUsers = await SupabaseService.getAllUsers(true);
+        const user = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password) || null;
+        
+        if (user) {
+          onLogin(user);
+        } else {
+          addToast("E-mail ou senha incorretos.", "error");
+        }
+      } catch (error: any) {
+        console.error("Login Error:", error);
+        addToast(`Erro de conexão com o Supabase.`, "error");
+      } finally {
+        setIsLoggingIn(false);
+      }
+    };
+  
+    const handleScrollToLogin = (e: React.MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      const loginSection = document.getElementById('login-section');
+      if (loginSection) {
+        loginSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+
+    return (
+      <div className="bg-dark-950 text-white min-h-screen font-sans animate-fade-in">
+        <div className="absolute inset-0 h-[80vh] bg-gradient-to-b from-black/80 to-dark-950 z-10"></div>
+        <video 
+          autoPlay 
+          loop 
+          muted 
+          playsInline
+          className="absolute inset-0 w-full h-[80vh] object-cover z-0"
+          src="https://videos.pexels.com/video-files/4762961/4762961-hd_1920_1080_25fps.mp4"
+        ></video>
+  
+        <main className="relative z-20">
+          <section className="min-h-[80vh] flex flex-col items-center justify-center text-center p-8">
+            <img src={LOGO_URL} alt="Logo do Studio" className="w-48 h-auto mb-8 rounded-3xl shadow-2xl" />
+            <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter animate-fade-in" style={{ animationDelay: '0.2s' }}>
+              Sua Jornada <span className="text-brand-500">Começa Agora</span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-lg text-slate-300 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+              Treinos funcionais, corrida de rua e uma comunidade que te impulsiona. Tudo em um só lugar.
+            </p>
+            <a href="#login-section" onClick={handleScrollToLogin} className="mt-8 bg-brand-600 text-white font-black py-4 px-8 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/40 hover:bg-brand-500 transition-all text-sm flex items-center justify-center gap-2 group animate-fade-in" style={{ animationDelay: '0.6s' }}>
+                Começar Agora <ArrowRight className="group-hover:translate-x-1 transition-transform" />
+            </a>
+          </section>
+  
+          <section className="py-20 px-8 bg-dark-950">
+            <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 items-center">
+              <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-dark-900 group">
+                <div className="relative">
+                  <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&q=80&w=1470" alt="Mulher levantando peso em treino funcional" className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                  <div className="absolute bottom-0 left-0 p-8">
+                    <h3 className="text-3xl font-black uppercase text-white tracking-tighter">Treino Funcional</h3>
+                    <p className="text-slate-300 mt-2">Ganhe força, agilidade e resistência com treinos dinâmicos e desafiadores.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-dark-900 group">
+                <div className="relative">
+                  <img src="https://images.pexels.com/photos/1271619/pexels-photo-1271619.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" alt="Grupo de pessoas correndo em uma trilha" className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                  <div className="absolute bottom-0 left-0 p-8">
+                    <h3 className="text-3xl font-black uppercase text-white tracking-tighter">Clube de Corrida</h3>
+                    <p className="text-slate-300 mt-2">Explore novos percursos, supere seus limites e corra com o nosso time.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+  
+          <section className="py-24 bg-dark-900 text-center px-8">
+             <h2 className="text-4xl font-black text-white uppercase tracking-tighter">Por que esperar pelo amanhã?</h2>
+             <p className="max-w-3xl mx-auto mt-4 text-slate-400">
+               Dar o primeiro passo é o movimento mais importante na sua busca por saúde e bem-estar. No Studio, você não encontra apenas equipamentos, mas uma comunidade pronta para te apoiar em cada etapa.
+             </p>
+          </section>
+  
+          <section id="login-section" className="py-24 bg-dark-950 px-8 scroll-mt-20">
+            <div className="max-w-md mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Área do Membro</h2>
+                <p className="text-slate-500 mt-2 text-sm uppercase font-bold tracking-widest">Acesse sua conta para ver seus treinos e evolução.</p>
+              </div>
+              <form onSubmit={handleLoginFormSubmit} className="space-y-4">
+                <input type="email" name="email" required className="w-full bg-dark-900 border-2 border-dark-800 rounded-2xl p-5 text-white placeholder:text-slate-500 focus:border-brand-500 outline-none transition-colors" placeholder="Seu e-mail" />
+                <div className="relative">
+                  <input type={showPassword ? "text" : "password"} name="password" required className="w-full bg-dark-900 border-2 border-dark-800 rounded-2xl p-5 text-white placeholder:text-slate-500 focus:border-brand-500 outline-none pr-14 transition-colors" placeholder="Sua senha" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={isLoggingIn}
+                  className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/40 hover:bg-brand-500 transition-all text-sm mt-6 disabled:opacity-50 flex items-center justify-center gap-2 group"
+                >
+                  {isLoggingIn ? <Loader2 className="animate-spin" size={20}/> : <MoveRight className="group-hover:translate-x-1 transition-transform" size={20}/>}
+                  {isLoggingIn ? 'Autenticando...' : 'Acessar Plataforma'}
+                </button>
+                <div className="pt-8 text-center">
+                    <button type="button" onClick={onNavigateToRegistration} className="w-full text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-2 group">
+                      <UserPlus size={14} className="group-hover:scale-110 transition-transform"/> Novo por aqui? Cadastre-se
+                    </button>
+                </div>
+              </form>
+            </div>
+          </section>
+
+          <footer className="py-12 bg-dark-900 text-center border-t border-dark-800">
+            <p className="text-slate-500 text-sm">© {new Date().getFullYear()} Studio - Todos os direitos reservados.</p>
+            <p className="text-xs text-slate-600 mt-2">Desenvolvido por Multiplus - Silvio T. de Sá Filho</p>
+          </footer>
+        </main>
+      </div>
+    );
+  };
+
   const renderContent = () => {
     if (!currentUser) {
       if (currentView === 'REGISTRATION') {
         return <RegistrationPage onLogin={handleLogin} onCancelRegistration={() => handleNavigate('LOGIN')} />;
       }
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/20 blur-[120px] rounded-full"></div>
-          <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl w-full max-w-md border border-gray-200 text-center animate-fade-in relative z-10">
-            <div className="mb-14 flex justify-center">
-               <img src={LOGO_URL} alt="Logo do Studio" className="w-full max-w-[400px] h-auto object-contain rounded-2xl" />
-            </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (isLoggingIn) return;
-              
-              const target = e.target as any;
-              const email = target.email.value;
-              const password = target.password.value;
-              
-              setIsLoggingIn(true);
-              try {
-                const allUsers = await SupabaseService.getAllUsers(true);
-                const user = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password) || null;
-                
-                if (user) {
-                  handleLogin(user);
-                } else {
-                  addToast("E-mail ou senha incorretos.", "error");
-                }
-              } catch (error: any) {
-                console.error("Login Error:", error);
-                addToast(`Erro de conexão com o Supabase.`, "error");
-              } finally {
-                setIsLoggingIn(false);
-              }
-            }} className="space-y-4">
-              <input type="email" name="email" required className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none" placeholder="E-mail cadastrado" />
-              <div className="relative">
-                <input type={showPassword ? "text" : "password"} name="password" required className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none pr-14" placeholder="Sua senha" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
-              </div>
-              <button 
-                type="submit" 
-                disabled={isLoggingIn}
-                className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/40 hover:bg-brand-500 transition-all text-sm mt-6 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isLoggingIn ? <Loader2 className="animate-spin" size={20}/> : null}
-                {isLoggingIn ? 'Autenticando...' : 'Entrar no Studio'}
-              </button>
-              <div className="pt-8">
-                  <button type="button" onClick={() => handleNavigate('REGISTRATION')} className="w-full text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-2 group">
-                    <UserPlus size={14} className="group-hover:scale-110 transition-transform"/> Novo por aqui? Cadastre-se
-                  </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      );
+      return <LandingPage onLogin={handleLogin} onNavigateToRegistration={() => handleNavigate('REGISTRATION')} addToast={addToast} />;
     }
 
     return (

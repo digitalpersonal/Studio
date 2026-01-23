@@ -235,7 +235,7 @@ const PostDetailModal = ({ post, currentUser, onClose, onLike, addToast, onUpdat
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-12 animate-fade-in">
             <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-5xl h-[85vh] shadow-2xl flex flex-col md:flex-row overflow-hidden relative">
                 <button onClick={onClose} className="absolute top-6 right-6 z-10 p-2 bg-dark-950/80 text-white rounded-full hover:bg-white hover:text-black transition-all shadow-xl">
                     <X size={24} />

@@ -134,14 +134,14 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
 
       {isStaff && (
         <div className="bg-dark-950 p-6 rounded-3xl border border-dark-800 shadow-xl flex flex-col md:flex-row items-center gap-4">
-          <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest shrink-0">Filtrar por Usuário:</label> 
+          <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest shrink-0">Filtrar por Aluno:</label> 
           <select
             className="flex-1 bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold text-sm"
             value={selectedUserId || ''}
             onChange={e => setSelectedUserId(e.target.value === '' ? null : e.target.value)}
           >
-            <option value="">Todos os Usuários</option> 
-            {users.map(u => ( 
+            <option value="">Todos os Alunos</option> 
+            {users.filter(u => u.role === UserRole.STUDENT).map(u => ( 
               <option key={u.id} value={u.id}>{String(u.name)}</option>
             ))}
           </select>
@@ -221,10 +221,9 @@ const PersonalWorkoutForm: React.FC<PersonalWorkoutFormProps> = ({ workout, user
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(workout?.studentIds || []); 
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Filtro otimizado estritamente pelo campo 'name' conforme solicitado
   const filteredUsers = useMemo(() => {
     return users.filter(u => 
-      u.name.toLowerCase().includes(searchTerm.toLowerCase())
+      u.role === UserRole.STUDENT && u.name.toLowerCase().includes(searchTerm.toLowerCase())
     ).sort((a, b) => a.name.localeCompare(b.name));
   }, [users, searchTerm]);
 
@@ -285,7 +284,6 @@ const PersonalWorkoutForm: React.FC<PersonalWorkoutFormProps> = ({ workout, user
         <div className="flex flex-col space-y-5 bg-dark-900/30 p-6 rounded-[2.5rem] border border-dark-800">
           <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2">Alunos Destinatários ({selectedUserIds.length})</h4>
           
-          {/* Campo de Busca Real-time (Filtro por Nome) */}
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
             <input 

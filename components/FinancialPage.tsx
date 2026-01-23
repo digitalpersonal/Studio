@@ -220,7 +220,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
       </div>
 
       {showCheckoutModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-20 animate-fade-in">
            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center space-y-6 relative overflow-hidden">
               <button onClick={() => setShowCheckoutModal(null)} className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white bg-dark-800 rounded-full"><X size={20}/></button>
               
