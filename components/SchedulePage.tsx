@@ -174,7 +174,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
                         <div className="flex items-center gap-1.5 mt-1 bg-brand-500/10 px-2 py-1 rounded-md w-fit">
                             <Calendar size={12} className="text-brand-500" />
                             <p className="text-[10px] text-brand-500 font-black uppercase">
-                                {new Date(cls.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' })}, {new Date(cls.date + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit' })}
+                                {new Date(`${cls.date}T03:00:00`).toLocaleDateString('pt-BR', { weekday: 'long'})}, {new Date(`${cls.date}T03:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                             </p>
                         </div>
                     ) : (
@@ -505,11 +505,9 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
 
   useEffect(() => {
     if (formData.date) {
-      // Use UTC date to avoid timezone issues.
-      const date = new Date(formData.date + 'T00:00:00');
-      // getUTCDay() returns 0 for Sun, 1 for Mon...
-      // We map it to our array where 'Segunda' is index 0.
-      const dayIndex = date.getUTCDay() === 0 ? 6 : date.getUTCDay() - 1;
+      // Create a date object interpreting the date string as local time to avoid timezone shifts.
+      const date = new Date(formData.date + 'T03:00:00'); // Use T03:00:00 for Brazil timezone
+      const dayIndex = date.getDay() === 0 ? 6 : date.getDay() - 1;
       const correctDayOfWeek = DAYS_OF_WEEK[dayIndex];
       
       if (formData.dayOfWeek !== correctDayOfWeek) {

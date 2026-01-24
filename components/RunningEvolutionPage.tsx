@@ -63,7 +63,7 @@ export const RunningEvolutionPage: React.FC<RunningEvolutionPageProps> = ({ curr
             setLoading(true);
             try {
                 const [performanceData, summaryData] = await Promise.all([
-                    SupabaseService.getAttendanceForStudent(selectedStudentId),
+                    SupabaseService.getAttendanceForStudent(selectedStudentId, 'RUNNING'),
                     SupabaseService.getCycleSummariesForStudent(selectedStudentId)
                 ]);
                 setPerformanceRecords(performanceData);
@@ -115,7 +115,6 @@ export const RunningEvolutionPage: React.FC<RunningEvolutionPageProps> = ({ curr
     }, [performanceRecords, filterDistance]);
 
     const availableDistances = useMemo(() => {
-        // FIX: Refactored to prevent type errors on sort by explicitly handling undefined values before creating the Set.
         const distances = new Set<number>();
         performanceRecords.forEach(r => {
             if (typeof r.classDetails?.distanceKm === 'number') {

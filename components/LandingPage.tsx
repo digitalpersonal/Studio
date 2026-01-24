@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { User } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, CheckCircle2 } from 'lucide-react';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+const RUNNING_BANNER_URL = "https://digitalfreeshop.com.br/logostudio/corrida.jpeg";
 
 interface LandingPageProps {
   onLogin: (user: User) => void;
@@ -185,11 +185,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
               </div>
               <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-dark-900 group">
                 <div className="relative">
-                  <img src="https://images.pexels.com/photos/1271619/pexels-photo-1271619.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" alt="Grupo de pessoas correndo em uma trilha" className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={RUNNING_BANNER_URL} alt="Grupo de pessoas correndo ao ar livre" className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 p-8">
                     <h3 className="text-3xl font-black uppercase text-white tracking-tighter">Clube de Corrida</h3>
-                    <p className="text-slate-300 mt-2">Explore novos percursos, supere seus limites e corra com o nosso time.</p>
+                    <p className="text-slate-300 mt-2">Explore novos percursos, supere seus limites e corra com o nosso team.</p>
                   </div>
                 </div>
               </div>

@@ -96,7 +96,7 @@ export const WhatsAppAutomation = {
     window.open(url, '_blank');
   },
   sendPaymentReminder: (student: User, payment: Payment) => {
-    const message = `Olá ${String(student.name).split(' ')[0]}! 👋 Lembrete amigável sobre sua mensalidade com vencimento em ${payment.dueDate}, no valor de R$ ${payment.amount.toFixed(2)}. Pague em dia e mantenha seu acesso liberado! 😉💪`;
+    const message = `Olá ${String(student.name).split(' ')[0]}! 👋 Passando para lembrar que sua mensalidade vence em breve (${payment.dueDate}). Valor: R$ ${payment.amount.toFixed(2)}. Evite juros e mantenha seu acesso liberado! 🏃‍♂️💨`;
     const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   },

@@ -26,6 +26,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [isLive, setIsLive] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [recentActivities, setRecentActivities] = useState<(AttendanceRecord & { classDetails?: ClassSession })[]>([]);
 
   const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
   const isStudent = currentUser.role === UserRole.STUDENT;
@@ -68,6 +69,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     });
     return () => unsubscribe();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!selectedStudentId) {
+        setRecentActivities([]);
+        return;
+    }
+
+    const fetchActivities = async () => {
+        setLoading(true);
+        try {
+            const activities = await SupabaseService.getAttendanceForStudent(selectedStudentId);
+            setRecentActivities(activities.slice(0, 5));
+        } catch (error) {
+            addToast("Erro ao buscar atividades recentes do aluno.", "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchActivities();
+  }, [selectedStudentId, addToast]);
 
   const todayName = DAYS_OF_WEEK[(new Date().getDay() + 6) % 7];
   const currentMonth = new Date().getMonth();
@@ -115,27 +137,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       lastRunPerformance
     };
   }, [allUsers, classes, payments, todayName, currentMonth, attendance, currentUser.id]);
-  
-  const enrolledClasses = useMemo(() => {
-    if (!selectedStudentId) return [];
-    
-    const getClassDate = (c: ClassSession) => {
-        if (c.date) return new Date(c.date);
-        const today = new Date();
-        const currentDayIndex = (today.getDay() + 6) % 7;
-        const classDayIndex = DAYS_OF_WEEK.indexOf(c.dayOfWeek);
-        let dayDiff = classDayIndex - currentDayIndex;
-        if (dayDiff < 0) dayDiff += 7;
-        const nextDate = new Date(today);
-        nextDate.setDate(today.getDate() + dayDiff);
-        return nextDate;
-    };
-
-    return classes
-        .filter(c => c.enrolledStudentIds.includes(selectedStudentId))
-        .sort((a, b) => getClassDate(b).getTime() - getClassDate(a).getTime())
-        .slice(0, 5);
-  }, [selectedStudentId, classes]);
 
   if (loading && allUsers.length === 0) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
@@ -254,7 +255,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                     value={selectedStudentId || ''}
                     onChange={e => setSelectedStudentId(e.target.value || null)}
                   >
-                    <option value="">Selecione um aluno para ver suas últimas matrículas...</option>
+                    <option value="">Selecione um aluno para ver suas últimas atividades...</option>
                     {allUsers
                       .filter(u => u.role === UserRole.STUDENT)
                       .sort((a, b) => a.name.localeCompare(b.name))
@@ -265,28 +266,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                 </div>
                 {selectedStudentId && (
                   <div className="space-y-4">
-                    {loading ? <div className="flex justify-center py-4"><Loader2 className="animate-spin text-brand-500" /></div> : enrolledClasses.length > 0 ? (
-                      enrolledClasses.map(c => (
-                        <div key={c.id} className="bg-dark-950 p-5 rounded-[2rem] border border-dark-800 flex justify-between items-center hover:border-brand-500/40 transition-all group">
-                          <div className="flex items-center gap-5">
-                            <div className="bg-dark-900 px-5 py-3 rounded-2xl border border-dark-800 text-center min-w-[80px]">
-                              <p className="text-brand-500 font-black text-sm">{c.date ? new Date(c.date).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) : c.dayOfWeek.substring(0,3).toUpperCase()}</p>
-                              <p className="text-slate-400 font-bold text-xs">{c.startTime}</p>
-                            </div>
-                            <div>
-                              <p className="text-white font-bold text-base">{c.title}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">Prof. {c.instructor?.split(' ')[0]}</span>
+                    {loading ? <div className="flex justify-center py-4"><Loader2 className="animate-spin text-brand-500" /></div> : recentActivities.length > 0 ? (
+                      recentActivities.map(activity => {
+                        const c = activity.classDetails;
+                        if (!c) return null;
+                        return (
+                          <div key={activity.id} className="bg-dark-950 p-5 rounded-[2rem] border border-dark-800 flex justify-between items-center hover:border-brand-500/40 transition-all group">
+                            <div className="flex items-center gap-5">
+                              <div className="bg-dark-900 px-5 py-3 rounded-2xl border border-dark-800 text-center min-w-[80px]">
+                                <p className="text-brand-500 font-black text-sm">{new Date(activity.date + 'T03:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'short'})}</p>
+                                <p className="text-slate-400 font-bold text-xs">{new Date(activity.date + 'T03:00:00').toLocaleDateString('pt-BR', {weekday: 'short'})}</p>
+                              </div>
+                              <div>
+                                <p className="text-white font-bold text-base">{c.title}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${ c.type === 'RUNNING' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20' : 'text-brand-500 bg-brand-500/10 border-brand-500/20' }`}>
+                                    {c.type}
+                                  </span>
+                                  {activity.averagePace && (
+                                    <span className="text-[9px] text-emerald-500 uppercase font-black tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">
+                                      {activity.averagePace}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
+                            <button onClick={() => c.type === 'RUNNING' ? onNavigate('RUNNING_EVOLUTION', { studentId: selectedStudentId }) : onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all"><ArrowRight size={20}/></button>
                           </div>
-                          <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all"><ArrowRight size={20}/></button>
-                        </div>
-                      ))
+                        )
+                      })
                     ) : (
                       <div className="py-10 text-center bg-dark-950 rounded-[2rem] border border-dashed border-dark-800">
-                        <Calendar className="mx-auto text-dark-800 mb-2" size={32} />
-                        <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Nenhuma matrícula encontrada para este aluno.</p>
+                        <Activity className="mx-auto text-dark-800 mb-2" size={32} />
+                        <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Nenhuma atividade recente encontrada para este aluno.</p>
                       </div>
                     )}
                   </div>

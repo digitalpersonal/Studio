@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Assessment, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { GeminiService } from '../services/geminiService';
-import { Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, X, Gauge, TrendingUp, Users, AlertCircle } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, X, Gauge, TrendingUp, Users, AlertCircle, Camera, Image as ImageIcon } from 'lucide-react';
 
 interface AssessmentsPageProps {
   currentUser: User;
@@ -232,11 +232,28 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                             <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
                                 <Activity size={16} className="text-brand-500" /> Bioimpedância & Metabolismo
                             </h5>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                 <MetricDetail label="TMB (Calorias)" value={assessment.basalMetabolicRate} unit="kcal" />
                                 <MetricDetail label="Hidratação" value={assessment.hydrationPercentage} unit="%" />
-                                <MetricDetail label="VO2 Máx" value={assessment.vo2Max} unit="ml/kg/min" />
                                 <MetricDetail label="Altura" value={assessment.height} unit="cm" />
+                            </div>
+                        </div>
+
+                        {/* Seção de Fotos */}
+                        <div className="space-y-4">
+                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
+                                <Camera size={16} className="text-brand-500" /> Registro Fotográfico
+                            </h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                {(assessment.photoFrontUrl || assessment.photoSideUrl || assessment.photoBackUrl) ? (
+                                    <>
+                                        <PhotoDisplay label="Frontal" url={assessment.photoFrontUrl} />
+                                        <PhotoDisplay label="Lateral" url={assessment.photoSideUrl} />
+                                        <PhotoDisplay label="Costas" url={assessment.photoBackUrl} />
+                                    </>
+                                ) : (
+                                    <p className="col-span-3 text-slate-600 text-xs italic text-center py-4">Nenhuma foto registrada para esta avaliação.</p>
+                                )}
                             </div>
                         </div>
 
@@ -245,7 +262,8 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                             <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
                                 <Zap size={16} className="text-brand-500" /> Potência & Performance
                             </h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <MetricDetail label="Abdominal" value={assessment.abdominalTest} unit="reps" />
                                 <MetricDetail label="Salto Horizontal" value={assessment.horizontalJump} unit="cm" />
                                 <MetricDetail label="Salto Vertical" value={assessment.verticalJump} unit="cm" />
                                 <MetricDetail label="Arr. Med. Ball" value={assessment.medicineBallThrow} unit="m" />
@@ -334,6 +352,19 @@ const MetricDetail = ({ label, value, unit }: { label: string, value?: number | 
     </div>
 );
 
+const PhotoDisplay = ({ label, url }: { label: string, url?: string }) => (
+    <div className="bg-dark-900/50 p-3 rounded-2xl border border-dark-800 space-y-2">
+        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{label}</p>
+        <div className="h-48 bg-dark-900 rounded-lg overflow-hidden flex items-center justify-center">
+            {url ? (
+                <img src={url} alt={`Foto ${label}`} className="w-full h-full object-cover" />
+            ) : (
+                <ImageIcon size={24} className="text-dark-800" />
+            )}
+        </div>
+    </div>
+);
+
 const FMSScore = ({ label, score }: { label: string, score?: number }) => (
     <div className="space-y-1">
         <p className="text-[9px] font-bold text-slate-500 uppercase">{label}</p>
@@ -371,10 +402,13 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       visceralFatLevel: 0,
       basalMetabolicRate: 0,
       hydrationPercentage: 0,
-      vo2Max: 0,
+      abdominalTest: 0,
       horizontalJump: 0,
       verticalJump: 0,
       medicineBallThrow: 0,
+      photoFrontUrl: '',
+      photoSideUrl: '',
+      photoBackUrl: '',
       fms: {
         deepSquat: 0, hurdleStep: 0, inlineLunge: 0,
         shoulderMobility: 0, activeStraightLegRaise: 0, rotationalStability: 0
@@ -478,8 +512,31 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
         </section>
 
         <section className="space-y-6 pt-6 border-t border-dark-800">
+            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Camera size={18}/> Fotos de Acompanhamento</h4>
+            <p className="text-slate-500 text-xs -mt-4">Opcional. Cole os links das imagens para registro visual.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">URL Foto Frontal</label>
+                    <input type="url" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="https://..." value={formData.photoFrontUrl || ''} onChange={e => setFormData({ ...formData, photoFrontUrl: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">URL Foto Lateral</label>
+                    <input type="url" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="https://..." value={formData.photoSideUrl || ''} onChange={e => setFormData({ ...formData, photoSideUrl: e.target.value })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">URL Foto Costas</label>
+                    <input type="url" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="https://..." value={formData.photoBackUrl || ''} onChange={e => setFormData({ ...formData, photoBackUrl: e.target.value })} />
+                </div>
+            </div>
+        </section>
+
+        <section className="space-y-6 pt-6 border-t border-dark-800">
             <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Zap size={18}/> Potência & Performance</h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Abdominal (reps)</label>
+                    <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.abdominalTest || ''} onChange={e => setFormData({ ...formData, abdominalTest: Number(e.target.value) })} />
+                </div>
                 <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Horiz. (cm)</label>
                     <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.horizontalJump || ''} onChange={e => setFormData({ ...formData, horizontalJump: Number(e.target.value) })} />
@@ -491,10 +548,6 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                 <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Med. Ball (m)</label>
                     <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.medicineBallThrow || ''} onChange={e => setFormData({ ...formData, medicineBallThrow: Number(e.target.value) })} />
-                </div>
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">VO2 Máx</label>
-                    <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.vo2Max || ''} onChange={e => setFormData({ ...formData, vo2Max: Number(e.target.value) })} />
                 </div>
             </div>
         </section>

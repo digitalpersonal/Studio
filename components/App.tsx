@@ -37,6 +37,8 @@ import { RegistrationPage } from './components/RegistrationPage';
 import { CompleteProfilePage } from './components/CompleteProfilePage'; 
 import { FinancialPage } from './components/FinancialPage';
 import { DashboardPage } from './components/DashboardPage';
+import { RunningEvolutionPage } from './components/RunningEvolutionPage';
+import { LandingPage } from './components/LandingPage';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
@@ -98,6 +100,11 @@ export const WhatsAppAutomation = {
     const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   },
+  sendOverdueNotice: (student: User, payment: Payment) => {
+    const message = `Olá ${String(student.name).split(' ')[0]}! 🚨 Notamos um débito em aberto referente à mensalidade com vencimento em ${payment.dueDate}, no valor de R$ ${payment.amount.toFixed(2)}. Por favor, regularize sua situação para evitar a suspensão do acesso. Se já pagou, desconsidere.`;
+    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  },
   sendConfirmation: (student: User, payment: Payment) => {
     const message = `Olá ${String(student.name).split(' ')[0]}! Recebemos seu pagamento de R$ ${payment.amount.toFixed(2)} referente a ${payment.description}. Obrigado e bom treino! 🔥`;
     const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
@@ -149,7 +156,8 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
       await SettingsService.saveSettings(settings);
       addToast("Configurações atualizadas com sucesso!", "success");
     } catch (error: any) {
-      addToast(`Falha ao salvar as alterações no banco de dados.`, "error");
+      console.error("ERRO AO SALVAR CONFIGURAÇÕES:", error);
+      addToast(`Erro ao salvar: ${error.message || 'Verifique a conexão com o banco.'}`, "error");
     } finally {
       setSaving(false);
     }
@@ -350,8 +358,6 @@ export function App() {
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextToastId = useRef(0);
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = nextToastId.current++;
@@ -394,60 +400,7 @@ export function App() {
       if (currentView === 'REGISTRATION') {
         return <RegistrationPage onLogin={handleLogin} onCancelRegistration={() => handleNavigate('LOGIN')} />;
       }
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 relative overflow-hidden">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-brand-500/20 blur-[120px] rounded-full"></div>
-          <div className="bg-white p-8 md:p-12 rounded-[3rem] shadow-xl w-full max-w-md border border-gray-200 text-center animate-fade-in relative z-10">
-            <div className="mb-14 flex justify-center">
-               <img src={LOGO_URL} alt="Logo do Studio" className="w-full max-w-[400px] h-auto object-contain rounded-2xl" />
-            </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (isLoggingIn) return;
-              
-              const target = e.target as any;
-              const email = target.email.value;
-              const password = target.password.value;
-              
-              setIsLoggingIn(true);
-              try {
-                const allUsers = await SupabaseService.getAllUsers(true);
-                const user = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password) || null;
-                
-                if (user) {
-                  handleLogin(user);
-                } else {
-                  addToast("E-mail ou senha incorretos.", "error");
-                }
-              } catch (error: any) {
-                console.error("Login Error:", error);
-                addToast(`Erro de conexão com o Supabase.`, "error");
-              } finally {
-                setIsLoggingIn(false);
-              }
-            }} className="space-y-4">
-              <input type="email" name="email" required className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none" placeholder="E-mail cadastrado" />
-              <div className="relative">
-                <input type={showPassword ? "text" : "password"} name="password" required className="w-full bg-gray-100 border border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none pr-14" placeholder="Sua senha" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
-              </div>
-              <button 
-                type="submit" 
-                disabled={isLoggingIn}
-                className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-brand-600/40 hover:bg-brand-500 transition-all text-sm mt-6 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {isLoggingIn ? <Loader2 className="animate-spin" size={20}/> : null}
-                {isLoggingIn ? 'Autenticando...' : 'Entrar no Studio'}
-              </button>
-              <div className="pt-8">
-                  <button type="button" onClick={() => handleNavigate('REGISTRATION')} className="w-full text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-2 group">
-                    <UserPlus size={14} className="group-hover:scale-110 transition-transform"/> Novo por aqui? Cadastre-se
-                  </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      );
+      return <LandingPage onLogin={handleLogin} onNavigateToRegistration={() => handleNavigate('REGISTRATION')} addToast={addToast} />;
     }
 
     return (
@@ -464,6 +417,7 @@ export function App() {
           {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'FEED' && <FeedPage currentUser={currentUser} addToast={addToast} />}
           {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
+          {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
             <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
           )}

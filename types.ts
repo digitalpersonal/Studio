@@ -179,11 +179,14 @@ export interface Assessment {
   visceralFatLevel?: number;
   basalMetabolicRate?: number;
   hydrationPercentage?: number;
-  vo2Max?: number;
+  abdominalTest?: number;
   squatMax?: number;
   horizontalJump?: number;
   verticalJump?: number;
   medicineBallThrow?: number;
+  photoFrontUrl?: string;
+  photoSideUrl?: string;
+  photoBackUrl?: string;
   fms?: {
     deepSquat?: number;
     hurdleStep?: number;

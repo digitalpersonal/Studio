@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, Anamnesis, Address, Payment, ViewState, AppNavParams, ClassSession } from '../types';
 import {
@@ -52,7 +51,22 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         }
     };
 
+    // Definição de Peso Hierárquico para permissões
+    const roleRank = {
+        [UserRole.SUPER_ADMIN]: 4,
+        [UserRole.ADMIN]: 3,
+        [UserRole.TRAINER]: 2,
+        [UserRole.STUDENT]: 1,
+    };
+
+    const canManageUser = (targetUser: User) => {
+        if (targetUser.id === currentUser.id) return false; // Não edita a si mesmo na lista
+        return roleRank[currentUser.role] > roleRank[targetUser.role];
+    };
+
     const toggleSuspension = async (user: User) => {
+        if (!canManageUser(user)) return addToast("Você não tem permissão para suspender este nível de usuário.", "error");
+
         const newStatus = user.status === 'SUSPENDED' ? 'ACTIVE' : 'SUSPENDED';
         const msg = newStatus === 'SUSPENDED' 
             ? `Deseja suspender o aluno ${user.name}? Isso sinalizará inatividade e paralisará cobranças automáticas.` 
@@ -102,7 +116,9 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     };
 
     const handleDeleteUser = async (user: User) => {
+        if (!canManageUser(user)) return addToast("Você não tem permissão para excluir este nível de usuário.", "error");
         if (!confirm(`CUIDADO: Deseja excluir permanentemente o usuário ${user.name}? Todos os registros financeiros e de treinos serão apagados.`)) return;
+        
         setIsLoading(true);
         try {
             await SupabaseService.deleteUser(user.id);
@@ -173,7 +189,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         }
     };
 
-    const filteredUsers = users.filter(u => u.role !== UserRole.SUPER_ADMIN);
+    const filteredUsers = users.filter(u => u.role !== UserRole.SUPER_ADMIN || isSuperAdmin);
 
     if (showUserForm) {
         return <UserFormPage editingUser={editingUser} initialFormData={initialFormData} initialActiveTab={initialFormTab} onSave={handleSaveUser} onCancel={() => setShowUserForm(false)} addToast={addToast} currentUserRole={currentUser.role} />;
@@ -211,9 +227,12 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                 const hasDebt = sPayments.some(p => p.status === 'OVERDUE');
                                 const paidCount = sPayments.filter(p => p.status === 'PAID').length;
                                 const nextDue = sPayments.filter(p => p.status === 'PENDING').sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
-                                const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())[0];
+                                const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
                                 const enrolledCount = classes.filter(c => c.enrolledStudentIds.includes(s.id)).length;
                                 const isSuspended = s.status === 'SUSPENDED';
+
+                                // Hierarquia de permissões rigorosa
+                                const canEdit = canManageUser(s);
 
                                 return (
                                     <tr key={s.id} className={`hover:bg-dark-900/40 transition-colors group ${isSuspended ? 'opacity-60 grayscale-[0.5]' : ''}`}>
@@ -236,7 +255,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                             {s.role === UserRole.STUDENT && (
                                                 <div className="flex flex-col gap-1.5">
                                                     <div className="flex items-center gap-2">
-                                                        {/* Fix: Changed hasInjury to hasRecentSurgeryOrInjury to match Anamnesis type */}
                                                         <span className={`p-1 rounded-md ${s.anamnesis?.hasRecentSurgeryOrInjury ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                                                             {s.anamnesis?.hasRecentSurgeryOrInjury ? <AlertTriangle size={12}/> : <CheckCheck size={12}/>}
                                                         </span>
@@ -264,22 +282,26 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                         <td className="px-6 py-4">
                                             <div className="flex justify-end items-center gap-1.5 flex-wrap max-w-[650px] ml-auto">
                                                 {/* Categoria: Status & Suspensão */}
-                                                <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
-                                                    <ActionButton 
-                                                        icon={isSuspended ? Zap : ZapOff} 
-                                                        color={isSuspended ? "green" : "red"} 
-                                                        onClick={() => toggleSuspension(s)} 
-                                                        title={isSuspended ? "Reativar Aluno" : "Suspender Aluno"} 
-                                                    />
-                                                </div>
+                                                {canEdit && s.role === UserRole.STUDENT && (
+                                                    <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
+                                                        <ActionButton 
+                                                            icon={isSuspended ? Zap : ZapOff} 
+                                                            color={isSuspended ? "green" : "red"} 
+                                                            onClick={() => toggleSuspension(s)} 
+                                                            title={isSuspended ? "Reativar Aluno" : "Suspender Aluno"} 
+                                                        />
+                                                    </div>
+                                                )}
 
                                                 {/* Categoria: Gestão Cadastral */}
-                                                <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
-                                                    <ActionButton icon={Edit} color="blue" onClick={() => handleOpenForm(s)} title="Editar Cadastro" />
-                                                    {isSuperAdmin && s.id !== currentUser.id && (
-                                                        <ActionButton icon={Trash2} color="red" onClick={() => handleDeleteUser(s)} title="Excluir do Sistema" />
-                                                    )}
-                                                </div>
+                                                {canEdit && (
+                                                    <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
+                                                        <ActionButton icon={Edit} color="blue" onClick={() => handleOpenForm(s)} title="Editar Cadastro" />
+                                                        {isSuperAdmin && (
+                                                            <ActionButton icon={Trash2} color="red" onClick={() => handleDeleteUser(s)} title="Excluir do Sistema" />
+                                                        )}
+                                                    </div>
+                                                )}
 
                                                 {/* Categoria: Performance & Aulas */}
                                                 {s.role === UserRole.STUDENT && (

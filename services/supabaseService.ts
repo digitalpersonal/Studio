@@ -125,10 +125,13 @@ const mapAssessmentFromDb = (a: any): Assessment => ({
   visceralFatLevel: a.visceral_fat_level,
   basalMetabolicRate: a.basal_metabolic_rate,
   hydrationPercentage: a.hydration_percentage,
-  vo2Max: a.vo2_max,
+  abdominalTest: a.abdominal_test,
   horizontalJump: a.horizontal_jump,
   verticalJump: a.vertical_jump,
-  medicineBallThrow: a.medicine_ball_throw
+  medicineBallThrow: a.medicine_ball_throw,
+  photoFrontUrl: a.photo_front_url,
+  photoSideUrl: a.photo_side_url,
+  photoBackUrl: a.photo_back_url,
 });
 
 const mapRouteFromDb = (r: any): Route => ({
@@ -596,16 +599,22 @@ export const SupabaseService = {
     invalidateCache();
   },
 
-  getAttendanceForStudent: async (studentId: string): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
+  getAttendanceForStudent: async (studentId: string, type?: 'RUNNING' | 'FUNCTIONAL'): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
     if (!supabase) return [];
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('attendance')
         .select('*, class:classes!inner(*)')
         .eq('student_id', studentId)
         .eq('is_present', true)
-        .eq('class.type', 'RUNNING')
         .order('date', { ascending: false });
+
+      if (type) {
+        query = query.eq('class.type', type);
+      }
+      
+      const { data, error } = await query;
+      
       if (error) throw error;
       
       return (data || []).map(r => {
@@ -707,10 +716,13 @@ export const SupabaseService = {
       visceral_fat_level: a.visceralFatLevel,
       basal_metabolic_rate: a.basalMetabolicRate,
       hydration_percentage: a.hydrationPercentage,
-      vo2_max: a.vo2Max,
+      abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump,
       vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow,
+      photo_front_url: a.photoFrontUrl,
+      photo_side_url: a.photoSideUrl,
+      photo_back_url: a.photoBackUrl,
       fms: a.fms || {},
       circumferences: a.circumferences || {},
       notes: a.notes
@@ -732,10 +744,13 @@ export const SupabaseService = {
       visceral_fat_level: a.visceralFatLevel,
       basal_metabolic_rate: a.basalMetabolicRate,
       hydration_percentage: a.hydrationPercentage,
-      vo2_max: a.vo2Max,
+      abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump,
       vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow,
+      photo_front_url: a.photoFrontUrl,
+      photo_side_url: a.photoSideUrl,
+      photo_back_url: a.photoBackUrl,
       fms: a.fms || {},
       circumferences: a.circumferences || {},
       notes: a.notes
