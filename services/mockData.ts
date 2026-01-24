@@ -138,10 +138,11 @@ let students: User[] = [
         city: 'Guaranésia', 
         state: 'MG' 
       },
+// Fix: Replaced incorrect properties like `hasInjury` with type-correct ones such as `hasRecentSurgeryOrInjury`.
       anamnesis: {
-          hasInjury: true, injuryDescription: 'Condromalácia Patelar Grau 1',
+          hasRecentSurgeryOrInjury: true, recentSurgeryOrInjuryDetails: 'Condromalácia Patelar Grau 1',
           takesMedication: true, medicationDescription: 'Losartana (Pressão)',
-          hadSurgery: false, hasHeartCondition: false, heartConditionDescription: '', // NEW: initialized
+          hasMedicalCondition: true, medicalConditionDescription: 'Hipertensão Arterial',
           emergencyContactName: 'Maria Souza', emergencyContactPhone: '11988887777',
           updatedAt: '2023-06-12'
       }

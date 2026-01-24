@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, UserRole, Anamnesis, Address } from '../types';
 import {
-  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck, AlertCircle
+  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck, AlertCircle, HeartPulse, Dumbbell, BookOpen, User as UserIcon, Phone, FileHeart
 } from 'lucide-react';
 
 interface UserFormPageProps {
@@ -31,9 +31,17 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
       neighborhood: '', city: '', state: ''
     },
     anamnesis: initialFormData.anamnesis || {
-      hasInjury: false, takesMedication: false, hadSurgery: false,
-      hasHeartCondition: false, emergencyContactName: '', emergencyContactPhone: '',
-      updatedAt: new Date().toISOString().split('T')[0]
+      hasMedicalCondition: false, medicalConditionDescription: '',
+      hasRecentSurgeryOrInjury: false, recentSurgeryOrInjuryDetails: '',
+      takesMedication: false, medicationDescription: '',
+      hasAllergies: false, allergiesDescription: '',
+      recentExamsResults: '',
+      mainGoal: '', trainingFrequency: '3-4x', activityLevel: 'MODERATE',
+      trainingExperience: '', availableEquipment: '', preferredTrainingTimes: '',
+      smokesOrDrinks: false, smokingDrinkingFrequency: '',
+      sleepQuality: '', currentDiet: '', bodyMeasurements: '',
+      emergencyContactName: '', emergencyContactPhone: '',
+      updatedAt: new Date().toISOString().split('T')[0],
     },
     planValue: initialFormData.planValue !== undefined ? initialFormData.planValue : 150,
     planDuration: initialFormData.planDuration !== undefined ? initialFormData.planDuration : 12,
@@ -62,9 +70,17 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
         neighborhood: '', city: '', state: ''
       },
       anamnesis: initialFormData.anamnesis || {
-        hasInjury: false, takesMedication: false, hadSurgery: false,
-        hasHeartCondition: false, emergencyContactName: '', emergencyContactPhone: '',
-        updatedAt: new Date().toISOString().split('T')[0]
+        hasMedicalCondition: false, medicalConditionDescription: '',
+        hasRecentSurgeryOrInjury: false, recentSurgeryOrInjuryDetails: '',
+        takesMedication: false, medicationDescription: '',
+        hasAllergies: false, allergiesDescription: '',
+        recentExamsResults: '',
+        mainGoal: '', trainingFrequency: '3-4x', activityLevel: 'MODERATE',
+        trainingExperience: '', availableEquipment: '', preferredTrainingTimes: '',
+        smokesOrDrinks: false, smokingDrinkingFrequency: '',
+        sleepQuality: '', currentDiet: '', bodyMeasurements: '',
+        emergencyContactName: '', emergencyContactPhone: '',
+        updatedAt: new Date().toISOString().split('T')[0],
       },
       planValue: initialFormData.planValue !== undefined ? initialFormData.planValue : 150,
       planDuration: initialFormData.planDuration !== undefined ? initialFormData.planDuration : 12,
@@ -89,8 +105,20 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
       if (!anamnesis?.emergencyContactName?.trim()) return "O nome do contato de emergência é obrigatório.";
       if (!anamnesis?.emergencyContactPhone?.trim()) return "O telefone de emergência é obrigatório.";
       
-      if (anamnesis?.hasInjury && !anamnesis?.injuryDescription?.trim()) {
-        return "Por favor, descreva a lesão/restrição médica.";
+      if (anamnesis?.hasMedicalCondition && !anamnesis.medicalConditionDescription?.trim()) {
+        return "Por favor, descreva a condição médica.";
+      }
+      if (anamnesis?.hasRecentSurgeryOrInjury && !anamnesis.recentSurgeryOrInjuryDetails?.trim()) {
+          return "Por favor, detalhe as cirurgias ou lesões recentes.";
+      }
+      if (anamnesis?.takesMedication && !anamnesis.medicationDescription?.trim()) {
+          return "Por favor, liste os medicamentos em uso.";
+      }
+      if (anamnesis?.hasAllergies && !anamnesis.allergiesDescription?.trim()) {
+          return "Por favor, descreva suas alergias.";
+      }
+      if (anamnesis?.smokesOrDrinks && !anamnesis.smokingDrinkingFrequency?.trim()) {
+          return "Por favor, informe a frequência do consumo de álcool/cigarro.";
       }
     }
     
@@ -105,7 +133,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
       addToast(error, "error");
       // Tentar mudar para a aba onde está o erro
       if (error.includes("CPF") || error.includes("RG")) setActiveTab('basic');
-      else if (error.includes("emergência") || error.includes("lesão")) setActiveTab('anamnesis');
+      else if (error.includes("emergência") || error.includes("condição") || error.includes("lesão")) setActiveTab('anamnesis');
       return;
     }
 
@@ -146,7 +174,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
 
       <div className="flex border-b border-dark-800">
         {[
-          { id: 'basic', label: 'Dados Pessoais', icon: Info },
+          { id: 'basic', label: 'Dados Pessoais', icon: UserIcon },
           { id: 'plan', label: 'Plano Financeiro', icon: Repeat, visible: formData.role === UserRole.STUDENT || !isSuperAdmin },
           { id: 'anamnesis', label: 'Saúde & Ficha', icon: Stethoscope, visible: formData.role === UserRole.STUDENT || !isSuperAdmin },
         ].filter(tab => tab.visible === undefined || tab.visible).map((tab) => (
@@ -264,34 +292,95 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
           )}
 
           {activeTab === 'anamnesis' && (formData.role === UserRole.STUDENT || !isSuperAdmin) && (
-            <div className="space-y-6 animate-fade-in">
+            <div className="space-y-8 animate-fade-in">
               <div className="p-4 bg-brand-500/10 border border-brand-500/20 rounded-2xl flex gap-3 items-start">
                   <AlertCircle size={20} className="text-brand-500 shrink-0 mt-0.5" />
                   <p className="text-xs text-brand-200 leading-relaxed font-medium">As informações de saúde e contato de emergência são <b>obrigatórias</b> para a segurança do aluno durante as atividades físicas.</p>
               </div>
 
-              <label className="flex items-center gap-3 cursor-pointer group bg-dark-900 p-5 rounded-2xl border border-dark-800 hover:border-brand-500/30 transition-all">
-                <input type="checkbox" checked={formData.anamnesis?.hasInjury || false} onChange={(e) => handleAnamnesisChange('hasInjury', e.target.checked)} className="w-6 h-6 rounded-lg accent-brand-500" />
-                <span className="text-slate-200 text-sm font-bold">Possui alguma lesão ou restrição médica?</span>
-              </label>
-              
-              {formData.anamnesis?.hasInjury && (
-                <div className="animate-fade-in">
-                  <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Descrição da Restrição"/></label>
-                  <textarea placeholder="Ex: Condromalácia, Hérnia de Disco, etc..." className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-4 text-white text-sm focus:border-brand-500 outline-none resize-none" value={formData.anamnesis?.injuryDescription || ''} onChange={(e) => handleAnamnesisChange('injuryDescription', e.target.value)} />
+              {/* Seção de Saúde */}
+              <div className="space-y-6">
+                <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><HeartPulse size={16} className="text-brand-500"/>Saúde e Histórico Médico</h4>
+                
+                <ConditionalTextarea 
+                    label="Você tem alguma condição médica (ex: hipertensão, diabetes, lesões crônicas)?"
+                    isChecked={!!formData.anamnesis?.hasMedicalCondition}
+                    onCheckboxChange={(c) => handleAnamnesisChange('hasMedicalCondition', c)}
+                    placeholder="Descreva a condição médica..."
+                    value={formData.anamnesis?.medicalConditionDescription || ''}
+                    onTextChange={(v) => handleAnamnesisChange('medicalConditionDescription', v)}
+                />
+                <ConditionalTextarea 
+                    label="Cirurgias ou lesões recentes (últimos 12 meses)?"
+                    isChecked={!!formData.anamnesis?.hasRecentSurgeryOrInjury}
+                    onCheckboxChange={(c) => handleAnamnesisChange('hasRecentSurgeryOrInjury', c)}
+                    placeholder="Detalhes sobre a cirurgia ou lesão..."
+                    value={formData.anamnesis?.recentSurgeryOrInjuryDetails || ''}
+                    onTextChange={(v) => handleAnamnesisChange('recentSurgeryOrInjuryDetails', v)}
+                />
+                <ConditionalTextarea 
+                    label="Medicamentos em uso?"
+                    isChecked={!!formData.anamnesis?.takesMedication}
+                    onCheckboxChange={(c) => handleAnamnesisChange('takesMedication', c)}
+                    placeholder="Quais medicamentos?"
+                    value={formData.anamnesis?.medicationDescription || ''}
+                    onTextChange={(v) => handleAnamnesisChange('medicationDescription', v)}
+                />
+                 <ConditionalTextarea 
+                    label="Alergias (medicamentos, alimentos)?"
+                    isChecked={!!formData.anamnesis?.hasAllergies}
+                    onCheckboxChange={(c) => handleAnamnesisChange('hasAllergies', c)}
+                    placeholder="Descreva suas alergias..."
+                    value={formData.anamnesis?.allergiesDescription || ''}
+                    onTextChange={(v) => handleAnamnesisChange('allergiesDescription', v)}
+                />
+                <div>
+                  <label className="block text-slate-400 text-sm font-bold mb-2">Realizou exames recentes (ex: FMS, composição corporal)?</label>
+                  <textarea placeholder="Resultados relevantes..." className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.recentExamsResults || ''} onChange={(e) => handleAnamnesisChange('recentExamsResults', e.target.value)} />
                 </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-dark-800">
-                  <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Contato de Emergência (Nome)"/></label>
-                    <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" placeholder="Nome do familiar ou amigo" value={formData.anamnesis?.emergencyContactName || ''} onChange={e => handleAnamnesisChange('emergencyContactName', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Telefone de Emergência"/></label>
-                    <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" placeholder="(00) 00000-0000" value={formData.anamnesis?.emergencyContactPhone || ''} onChange={e => handleAnamnesisChange('emergencyContactPhone', e.target.value)} />
-                  </div>
               </div>
+
+              {/* Seção de Objetivos */}
+              <div className="space-y-6 pt-6 border-t border-dark-800">
+                <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><Dumbbell size={16} className="text-brand-500"/>Objetivos e Estilo de Vida</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2"><label className="block text-slate-400 text-sm font-bold mb-2">Principal objetivo (ex: melhorar corrida, ganho de força, perda de peso)?</label><textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.mainGoal || ''} onChange={(e) => handleAnamnesisChange('mainGoal', e.target.value)} /></div>
+                    <div><label className="block text-slate-400 text-sm font-bold mb-2">Frequência de treinos (semana)</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.anamnesis?.trainingFrequency || '3-4x'} onChange={e => handleAnamnesisChange('trainingFrequency', e.target.value)}><option value="1-2x">1-2 vezes</option><option value="3-4x">3-4 vezes</option><option value="5x+">5 ou mais</option></select></div>
+                    <div><label className="block text-slate-400 text-sm font-bold mb-2">Nível de atividade</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.anamnesis?.activityLevel || 'MODERATE'} onChange={e => handleAnamnesisChange('activityLevel', e.target.value)}><option value="SEDENTARY">Sedentário</option><option value="MODERATE">Moderado</option><option value="ATHLETE">Atleta</option></select></div>
+                    <div className="sm:col-span-2"><label className="block text-slate-400 text-sm font-bold mb-2">Experiência com treinamento funcional ou corrida?</label><textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.trainingExperience || ''} onChange={(e) => handleAnamnesisChange('trainingExperience', e.target.value)} /></div>
+                </div>
+              </div>
+
+              {/* Seção de Hábitos */}
+              <div className="space-y-6 pt-6 border-t border-dark-800">
+                <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><BookOpen size={16} className="text-brand-500"/>Hábitos e Avaliação</h4>
+                <ConditionalTextarea 
+                    label="Fuma ou consome álcool?"
+                    isChecked={!!formData.anamnesis?.smokesOrDrinks}
+                    onCheckboxChange={(c) => handleAnamnesisChange('smokesOrDrinks', c)}
+                    placeholder="Qual a frequência?"
+                    value={formData.anamnesis?.smokingDrinkingFrequency || ''}
+                    onTextChange={(v) => handleAnamnesisChange('smokingDrinkingFrequency', v)}
+                />
+                 <div><label className="block text-slate-400 text-sm font-bold mb-2">Qualidade do sono (horas/noite)</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.sleepQuality || ''} onChange={(e) => handleAnamnesisChange('sleepQuality', e.target.value)} /></div>
+                 <div><label className="block text-slate-400 text-sm font-bold mb-2">Dieta atual (ex: restritiva, balanceada)?</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.currentDiet || ''} onChange={(e) => handleAnamnesisChange('currentDiet', e.target.value)} /></div>
+              </div>
+
+              {/* Seção de Emergência */}
+              <div className="space-y-4 pt-6 border-t border-dark-800">
+                <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><Phone size={16} className="text-brand-500"/>Contato de Emergência</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Nome"/></label>
+                    <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.anamnesis?.emergencyContactName || ''} onChange={e => handleAnamnesisChange('emergencyContactName', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Telefone"/></label>
+                    <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.anamnesis?.emergencyContactPhone || ''} onChange={e => handleAnamnesisChange('emergencyContactPhone', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
             </div>
           )}
         </form>
@@ -310,3 +399,17 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     </div>
   );
 };
+
+const ConditionalTextarea = ({ label, isChecked, onCheckboxChange, placeholder, value, onTextChange }: any) => (
+  <div>
+    <label className="flex items-center gap-3 cursor-pointer group bg-dark-900 p-4 rounded-2xl border border-dark-800 hover:border-brand-500/30 transition-all">
+      <input type="checkbox" checked={isChecked} onChange={(e) => onCheckboxChange(e.target.checked)} className="w-6 h-6 rounded-lg accent-brand-500" />
+      <span className="text-slate-200 text-sm font-bold">{label}</span>
+    </label>
+    {isChecked && (
+      <div className="mt-3 animate-fade-in">
+        <textarea required placeholder={placeholder} className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-4 text-white text-sm focus:border-brand-500 outline-none resize-none" value={value} onChange={(e) => onTextChange(e.target.value)} />
+      </div>
+    )}
+  </div>
+);

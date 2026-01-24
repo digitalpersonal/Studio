@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { User, UserRole, ViewState } from '../types';
 import { 
   Dumbbell, 
@@ -48,6 +48,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const mainContentRef = useRef<HTMLElement>(null);
 
   const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
@@ -68,6 +69,17 @@ export const Layout: React.FC<LayoutProps> = ({
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, []);
+
+  // Efeito para rolar a tela para o topo ao trocar de página
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo(0, 0);
+    }
+    // Fecha o menu mobile ao navegar
+    if (mobileMenuOpen) {
+      setMobileMenuOpen(false);
+    }
+  }, [currentView]);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
@@ -213,7 +225,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         )}
 
-        <main className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto bg-dark-900 scroll-smooth">
+        <main ref={mainContentRef} className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto bg-dark-900 scroll-smooth">
           <div className="max-w-6xl mx-auto min-h-[calc(100vh-150px)]">
             {children}
           </div>
@@ -292,3 +304,4 @@ export const Layout: React.FC<LayoutProps> = ({
     </div>
   );
 };
+    

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight } from 'lucide-react';
+import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, CheckCircle2 } from 'lucide-react';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
@@ -11,6 +11,101 @@ interface LandingPageProps {
   onNavigateToRegistration: () => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
+
+const PricingSection = () => {
+  const plans = [
+    {
+      title: "Trimestral",
+      description: "Ideal para quem busca comprometimento a médio prazo com desconto.",
+      prices: [
+        { freq: "2x na semana", value: "100,00" },
+        { freq: "3x na semana", value: "110,00" },
+        { freq: "4x na semana", value: "120,00" },
+        { freq: "5x na semana", value: "130,00" },
+      ],
+      contract: "3 meses de contrato",
+      highlight: false,
+    },
+    {
+      title: "Mensal",
+      description: "Flexibilidade total para treinar no seu ritmo, sem compromisso.",
+      prices: [
+        { freq: "2x na semana", value: "110,00" },
+        { freq: "3x na semana", value: "140,00" },
+        { freq: "4x na semana", value: "150,00" },
+        { freq: "5x na semana", value: "160,00" },
+      ],
+      contract: "Plano mensal sem contrato",
+      highlight: true,
+    },
+    {
+      title: "Semestral",
+      description: "O melhor custo-benefício para quem está focado nos resultados.",
+      prices: [
+        { freq: "2x na semana", value: "95,00" },
+        { freq: "3x na semana", value: "105,00" },
+        { freq: "4x na semana", value: "115,00" },
+        { freq: "5x na semana", value: "125,00" },
+      ],
+      contract: "6 meses de contrato",
+      highlight: false,
+    },
+  ];
+
+  return (
+    <section className="py-20 px-8 bg-dark-900">
+      <div className="max-w-6xl mx-auto text-center">
+        <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter">
+          Conheça Nossos <span className="text-brand-500">Planos</span>
+        </h2>
+        <p className="mt-4 max-w-2xl mx-auto text-slate-400">
+          Escolha o plano que melhor se adapta à sua rotina e objetivos. Todos os planos incluem acompanhamento profissional e acesso à nossa comunidade.
+        </p>
+
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+          {plans.map((plan, index) => (
+            <div
+              key={index}
+              className={`text-left rounded-[2.5rem] p-8 border transition-all duration-300 ${
+                plan.highlight
+                  ? 'bg-dark-950 border-brand-500 lg:scale-105 shadow-2xl shadow-brand-500/20'
+                  : 'bg-dark-950 border-dark-800 hover:border-dark-700'
+              }`}
+            >
+              <h3 className="text-2xl font-black uppercase tracking-tighter text-brand-500">{plan.title}</h3>
+              <p className="text-xs text-slate-500 font-bold h-8 mt-1">{plan.description}</p>
+              
+              <ul className="mt-6 space-y-4">
+                {plan.prices.map((price, pIndex) => (
+                  <li key={pIndex} className="flex justify-between items-center border-t border-dark-800 pt-4">
+                    <span className="text-slate-300">{price.freq}</span>
+                    <span className="text-white font-bold text-lg">R$ {price.value}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <p className="text-center text-[10px] text-slate-600 font-black uppercase tracking-widest mt-8 bg-dark-900 py-2 px-4 rounded-full border border-dark-800">
+                {plan.contract}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            <div className="bg-dark-950 border border-dark-800 rounded-2xl p-6 flex justify-between items-center">
+                <h4 className="font-bold text-white">Treinamento Kids <span className="text-slate-400 font-medium text-xs">(2x na semana)</span></h4>
+                <span className="text-brand-500 font-black text-2xl">R$90,00</span>
+            </div>
+            <div className="bg-dark-950 border border-dark-800 rounded-2xl p-6 flex justify-between items-center">
+                <h4 className="font-bold text-white">Treinamento Avulso</h4>
+                <span className="text-brand-500 font-black text-2xl">R$30,00</span>
+            </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToRegistration, addToast }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -21,8 +116,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
     if (isLoggingIn) return;
 
     const target = e.target as any;
-    const email = target.email.value; // Removido .trim() para restaurar comportamento original
-    const password = target.password.value; // Removido .trim() para restaurar comportamento original
+    const email = target.email.value;
+    const password = target.password.value;
 
     setIsLoggingIn(true);
     try {
@@ -100,6 +195,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
               </div>
             </div>
           </section>
+
+          <PricingSection />
   
           <section className="py-24 bg-dark-900 text-center px-8">
              <h2 className="text-4xl font-black text-white uppercase tracking-tighter">Por que esperar pelo amanhã?</h2>

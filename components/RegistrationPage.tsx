@@ -62,9 +62,15 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 address: {
                     zipCode: '', street: '', number: '', neighborhood: '', city: '', state: ''
                 },
+// Fix: Replaced incorrect properties like `hasInjury` with type-correct ones from the Anamnesis interface.
                 anamnesis: {
-                    hasInjury: false, takesMedication: false, hadSurgery: false, hasHeartCondition: false,
-                    emergencyContactName: '', emergencyContactPhone: '', updatedAt: new Date().toISOString()
+                    hasMedicalCondition: false,
+                    hasRecentSurgeryOrInjury: false,
+                    takesMedication: false,
+                    hasAllergies: false,
+                    emergencyContactName: '', 
+                    emergencyContactPhone: '', 
+                    updatedAt: new Date().toISOString()
                 }
             };
 

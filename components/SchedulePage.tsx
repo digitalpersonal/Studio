@@ -21,6 +21,22 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
 
   // Permissions check: Admins and Trainers can manage all aspects of the schedule.
   const canManageSchedule = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.TRAINER;
+  
+  const getNextOccurrenceDate = (dayOfWeek: string): string => {
+    const today = new Date();
+    const dayIndex = DAYS_OF_WEEK.indexOf(dayOfWeek);
+    const todayIndex = (today.getDay() + 6) % 7; // Monday = 0
+
+    let dayDifference = dayIndex - todayIndex;
+    if (dayDifference < 0) {
+        dayDifference += 7;
+    }
+
+    const nextDate = new Date();
+    nextDate.setDate(today.getDate() + dayDifference);
+
+    return nextDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  };
 
   const refreshData = async () => {
     setLoading(true);
@@ -154,13 +170,20 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
                   </div>
                   <div className="pr-12">
                     <h4 className="text-white font-bold text-sm leading-tight">{cls.title}</h4>
-                    {cls.date ? (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Calendar size={10} className="text-brand-500" />
-                        <p className="text-[10px] text-brand-500 font-black uppercase">{new Date(cls.date).toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit' })}</p>
-                      </div>
+                     {cls.date ? (
+                        <div className="flex items-center gap-1.5 mt-1 bg-brand-500/10 px-2 py-1 rounded-md w-fit">
+                            <Calendar size={12} className="text-brand-500" />
+                            <p className="text-[10px] text-brand-500 font-black uppercase">
+                                {new Date(cls.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', timeZone: 'UTC' })}, {new Date(cls.date + 'T00:00:00').toLocaleDateString('pt-BR', { timeZone: 'UTC', day: '2-digit', month: '2-digit' })}
+                            </p>
+                        </div>
                     ) : (
-                      <p className="text-[9px] text-slate-500 font-bold uppercase mt-1">Recorrente</p>
+                        <div className="flex items-center gap-1.5 mt-1 bg-dark-800 px-2 py-1 rounded-md w-fit">
+                            <Calendar size={12} className="text-slate-400" />
+                            <p className="text-[10px] text-slate-400 font-black uppercase">
+                                Próxima em {getNextOccurrenceDate(cls.dayOfWeek)}
+                            </p>
+                        </div>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-2 text-[10px] text-slate-400 font-bold uppercase">

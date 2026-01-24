@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { User, UserRole, Address, Anamnesis } from '../types';
 import { UserFormPage } from './UserFormPage';
@@ -41,9 +40,17 @@ export const CompleteProfilePage: React.FC<CompleteProfilePageProps> = ({
       neighborhood: '', city: '', state: ''
     },
     anamnesis: currentUser.anamnesis || {
-      hasInjury: false, takesMedication: false, hadSurgery: false,
-      hasHeartCondition: false, emergencyContactName: '', emergencyContactPhone: '',
-      updatedAt: new Date().toISOString().split('T')[0]
+      hasMedicalCondition: false, medicalConditionDescription: '',
+      hasRecentSurgeryOrInjury: false, recentSurgeryOrInjuryDetails: '',
+      takesMedication: false, medicationDescription: '',
+      hasAllergies: false, allergiesDescription: '',
+      recentExamsResults: '',
+      mainGoal: '', trainingFrequency: '3-4x', activityLevel: 'MODERATE',
+      trainingExperience: '', availableEquipment: '', preferredTrainingTimes: '',
+      smokesOrDrinks: false, smokingDrinkingFrequency: '',
+      sleepQuality: '', currentDiet: '', bodyMeasurements: '',
+      emergencyContactName: '', emergencyContactPhone: '',
+      updatedAt: new Date().toISOString().split('T')[0],
     },
     // Ensure basic profile fields like name, email, phone are pre-filled
     name: currentUser.name || '',

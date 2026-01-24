@@ -17,20 +17,38 @@ export interface Comment {
 }
 
 export interface Anamnesis {
-  hasInjury: boolean;
-  injuryDescription?: string;
-  takesMedication: boolean;
+  // Saúde e Histórico Médico
+  hasMedicalCondition?: boolean;
+  medicalConditionDescription?: string;
+  hasRecentSurgeryOrInjury?: boolean;
+  recentSurgeryOrInjuryDetails?: string;
+  takesMedication?: boolean;
   medicationDescription?: string;
-  hadSurgery: boolean;
-  surgeryDescription?: string;
-  hasHeartCondition: boolean;
-  heartConditionDescription?: string; 
+  hasAllergies?: boolean;
+  allergiesDescription?: string;
+  recentExamsResults?: string;
+
+  // Objetivos e Estilo de Vida
+  mainGoal?: string;
+  trainingFrequency?: '1-2x' | '3-4x' | '5x+';
+  activityLevel?: 'SEDENTARY' | 'MODERATE' | 'ATHLETE';
+  trainingExperience?: string;
+  availableEquipment?: string;
+  preferredTrainingTimes?: string;
+
+  // Hábitos e Avaliação
+  smokesOrDrinks?: boolean;
+  smokingDrinkingFrequency?: string;
+  sleepQuality?: string;
+  currentDiet?: string;
+  bodyMeasurements?: string;
+
+  // Contato de Emergência
   emergencyContactName: string;
   emergencyContactPhone: string;
-  bloodType?: string;
-  notes?: string;
   updatedAt: string;
 }
+
 
 export interface Address {
   zipCode: string;
