@@ -99,6 +99,15 @@ export interface ClassSession {
   feedback?: { studentId: string, rating: number }[];
   date?: string;
   isCancelled?: boolean;
+  // Campos específicos para Corrida
+  cycleStartDate?: string; // NOVO CAMPO
+  weekOfCycle?: number;
+  weekFocus?: string;
+  estimatedVolumeMinutes?: number;
+  weekObjective?: string;
+  referenceWorkouts?: string;
+  mainWorkout?: string;
+  distanceKm?: number;
 }
 
 export interface AttendanceRecord {
@@ -107,6 +116,23 @@ export interface AttendanceRecord {
   studentId: string;
   date: string;
   isPresent: boolean;
+  // Campos de desempenho para Corrida
+  totalTimeSeconds?: number;
+  averagePace?: string;
+  ageGroupClassification?: string;
+  instructorNotes?: string;
+  generatedFeedback?: string;
+}
+
+export interface CycleSummary {
+  id: string;
+  studentId: string;
+  cycleEndDate: string;
+  summaryText: string;
+  startPace?: string;
+  endPace?: string;
+  performanceData?: any;
+  createdAt: string;
 }
 
 export interface Assessment {
@@ -224,7 +250,8 @@ export type ViewState =
   | 'ROUTES'
   | 'PERSONAL_WORKOUTS'
   | 'FEED'
-  | 'REPORTS';
+  | 'REPORTS'
+  | 'RUNNING_EVOLUTION';
 
 export interface AppNavParams {
   studentId?: string;

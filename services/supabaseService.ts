@@ -1,5 +1,7 @@
+
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import { User, ClassSession, Assessment, Payment, AttendanceRecord, Route, Challenge, PersonalizedWorkout, Post, Comment, UserRole, AcademySettings } from '../types';
+import { User, ClassSession, Assessment, Payment, AttendanceRecord, Route, Challenge, PersonalizedWorkout, Post, Comment, UserRole, AcademySettings, CycleSummary } from '../types';
+import { SUPER_ADMIN_CONFIG } from '../constants';
 
 export const SUPABASE_PROJECT_ID = "xdjrrxrepnnkvpdbbtot";
 export const SUPABASE_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co`;
@@ -80,7 +82,16 @@ const mapClassFromDb = (c: any): ClassSession => ({
   enrolledStudentIds: c.enrolled_student_ids || [],
   waitlistStudentIds: c.waitlist_student_ids || [],
   workoutDetails: c.workout_details,
-  isCancelled: c.is_cancelled
+  isCancelled: c.is_cancelled,
+  // Corrida
+  cycleStartDate: c.cycle_start_date,
+  weekOfCycle: c.week_of_cycle,
+  weekFocus: c.week_focus,
+  estimatedVolumeMinutes: c.estimated_volume_minutes,
+  weekObjective: c.week_objective,
+  referenceWorkouts: c.reference_workouts,
+  mainWorkout: c.main_workout,
+  distanceKm: c.distance_km,
 });
 
 const mapPaymentFromDb = (p: any): Payment => ({
@@ -130,6 +141,30 @@ const mapChallengeFromDb = (c: any): Challenge => ({
     unit: c.unit || 'km',
     startDate: c.start_date,
     endDate: c.end_date
+});
+
+const mapAttendanceFromDb = (r: any): AttendanceRecord => ({
+  id: r.id,
+  classId: r.class_id,
+  studentId: r.student_id,
+  date: r.date,
+  isPresent: r.is_present,
+  totalTimeSeconds: r.total_time_seconds,
+  averagePace: r.average_pace,
+  ageGroupClassification: r.age_group_classification,
+  instructorNotes: r.instructor_notes,
+  generatedFeedback: r.generated_feedback,
+});
+
+const mapCycleSummaryFromDb = (s: any): CycleSummary => ({
+  id: s.id,
+  studentId: s.student_id,
+  cycleEndDate: s.cycle_end_date,
+  summaryText: s.summary_text,
+  startPace: s.start_pace,
+  endPace: s.end_pace,
+  performanceData: s.performance_data,
+  createdAt: s.created_at,
 });
 
 // --- SISTEMA DE CACHE ---
@@ -225,20 +260,38 @@ export const SupabaseService = {
   },
 
   getAllUsers: async (force: boolean = false): Promise<User[]> => {
-    if (!supabase) return [];
     const now = Date.now();
-    if (!force && _cache['users'] && (now - _cache['users'].timestamp < CACHE_TTL)) return _cache['users'].data;
     
-    try {
+    if (!force && _cache['users'] && (now - _cache['users'].timestamp < CACHE_TTL)) {
+      return _cache['users'].data;
+    }
+
+    let dbUsers: User[] = [];
+    if (supabase) {
+      try {
         const { data, error } = await supabase.from('users').select('*').order('name');
         if (error) throw error;
-        const mapped = (data || []).map(mapUserFromDb);
-        _cache['users'] = { data: mapped, timestamp: now };
-        return mapped;
-    } catch (e) {
-        console.error("Erro ao buscar usuários:", e);
-        return [];
+        dbUsers = (data || []).map(mapUserFromDb);
+      } catch (e) {
+        console.error("Erro ao buscar usuários do DB:", e);
+        // Em caso de erro, a lista do banco fica vazia, mas o app continua com o admin geral
+        dbUsers = [];
+      }
     }
+    
+    // A fonte da verdade é o banco de dados. O admin geral do código é um fallback.
+    // Verificamos se o admin geral já existe na lista vinda do banco.
+    const superAdminInDb = dbUsers.some(user => user.email === SUPER_ADMIN_CONFIG.email);
+
+    let finalUserList = dbUsers;
+    // Se o admin geral NÃO estiver no banco de dados, nós o adicionamos.
+    // Se ele JÁ ESTIVER, usamos a lista do banco como está, garantindo que a senha e dados do banco sejam usados.
+    if (!superAdminInDb) {
+      finalUserList = [...dbUsers, SUPER_ADMIN_CONFIG as User];
+    }
+
+    _cache['users'] = { data: finalUserList, timestamp: now };
+    return finalUserList;
   },
 
   getAllStudents: async (force: boolean = false): Promise<User[]> => {
@@ -303,24 +356,28 @@ export const SupabaseService = {
     const { data, error } = await supabase.from('classes').insert([{
       title: c.title,
       description: c.description,
-      // Fix: Use camelCase properties from ClassSession type
       day_of_week: c.dayOfWeek,
       date: c.date,
       start_time: c.startTime,
       duration_minutes: c.durationMinutes,
       instructor: c.instructor,
       max_capacity: c.maxCapacity,
-      // Fix: Use camelCase properties from ClassSession type
       enrolled_student_ids: c.enrolledStudentIds || [],
-      // Fix: Use camelCase properties from ClassSession type
       waitlist_student_ids: c.waitlistStudentIds || [],
       type: c.type,
-      // Fix: Use camelCase properties from ClassSession type
       is_cancelled: c.isCancelled,
       wod: c.wod,
-      // Fix: Use camelCase properties from ClassSession type
       workout_details: c.workoutDetails,
-      feedback: c.feedback
+      feedback: c.feedback,
+      // Corrida
+      cycle_start_date: c.cycleStartDate,
+      week_of_cycle: c.weekOfCycle,
+      week_focus: c.weekFocus,
+      estimated_volume_minutes: c.estimatedVolumeMinutes,
+      week_objective: c.weekObjective,
+      reference_workouts: c.referenceWorkouts,
+      main_workout: c.mainWorkout,
+      distance_km: c.distanceKm,
     }]).select().single();
     if (error) throw error;
     invalidateCache();
@@ -332,26 +389,28 @@ export const SupabaseService = {
     const { data, error } = await supabase.from('classes').update({
       title: c.title,
       description: c.description,
-      // Fix: Use camelCase properties from ClassSession type
       day_of_week: c.dayOfWeek,
       date: c.date,
-      // Fix: Use camelCase properties from ClassSession type
       start_time: c.startTime,
-      // Fix: Use camelCase properties from ClassSession type
       duration_minutes: c.durationMinutes,
       instructor: c.instructor,
       max_capacity: c.maxCapacity,
-      // Fix: Use camelCase properties from ClassSession type
       enrolled_student_ids: c.enrolledStudentIds || [],
-      // Fix: Use camelCase properties from ClassSession type
       waitlist_student_ids: c.waitlistStudentIds || [],
       type: c.type,
-      // Fix: Use camelCase properties from ClassSession type
       is_cancelled: c.isCancelled,
       wod: c.wod,
-      // Fix: Use camelCase properties from ClassSession type
       workout_details: c.workoutDetails,
-      feedback: c.feedback
+      feedback: c.feedback,
+      // Corrida
+      cycle_start_date: c.cycleStartDate,
+      week_of_cycle: c.weekOfCycle,
+      week_focus: c.weekFocus,
+      estimated_volume_minutes: c.estimatedVolumeMinutes,
+      week_objective: c.weekObjective,
+      reference_workouts: c.referenceWorkouts,
+      main_workout: c.mainWorkout,
+      distance_km: c.distanceKm,
     }).eq('id', c.id).select().single();
     if (error) throw error;
     invalidateCache();
@@ -430,12 +489,21 @@ export const SupabaseService = {
     }
   },
 
+  addChallengeEntry: async (studentId: string, value: number) => {
+    if (!supabase) return;
+    const { data: challenge } = await supabase.from('challenges').select('id').limit(1).single();
+    if (!challenge) return;
+    const { error } = await supabase.from('challenge_entries').insert([{ challenge_id: challenge.id, student_id: studentId, value }]);
+    if (error) throw error;
+    invalidateCache('challenge');
+  },
+
   getAttendanceByClassAndDate: async (classId: string, date: string): Promise<AttendanceRecord[]> => {
     if (!supabase) return [];
     try {
         const { data, error } = await supabase.from('attendance').select('*').eq('class_id', classId).eq('date', date);
         if (error) throw error;
-        return (data || []).map(r => ({ ...r, classId: r.class_id, studentId: r.student_id, isPresent: r.is_present }));
+        return (data || []).map(mapAttendanceFromDb);
     } catch (e) {
         return [];
     }
@@ -443,10 +511,99 @@ export const SupabaseService = {
 
   saveAttendance: async (records: Omit<AttendanceRecord, 'id'>[]) => {
     if (!supabase) return;
-    const bulkPayload = records.map(r => ({ class_id: r.classId, student_id: r.studentId, date: r.date, is_present: r.isPresent }));
+    const bulkPayload = records.map(r => ({ 
+      class_id: r.classId, 
+      student_id: r.studentId, 
+      date: r.date, 
+      is_present: r.isPresent,
+      total_time_seconds: r.totalTimeSeconds,
+      average_pace: r.averagePace,
+      age_group_classification: r.ageGroupClassification,
+      instructor_notes: r.instructorNotes,
+      generated_feedback: r.generatedFeedback,
+    }));
     const { error } = await supabase.from('attendance').upsert(bulkPayload, { onConflict: 'class_id, student_id, date' });
     if (error) throw error;
     invalidateCache();
+  },
+
+  getAttendanceForStudent: async (studentId: string): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*, class:classes!inner(*)')
+        .eq('student_id', studentId)
+        .eq('is_present', true)
+        .eq('class.type', 'RUNNING')
+        .order('date', { ascending: false });
+      if (error) throw error;
+      
+      return (data || []).map(r => {
+          const record = mapAttendanceFromDb(r);
+          const classDetails = r.class ? mapClassFromDb(r.class) : undefined;
+          return { ...record, classDetails };
+      });
+    } catch (e) {
+      console.error('Error fetching student attendance:', e);
+      return [];
+    }
+  },
+
+  getAttendanceForStudentInDateRange: async (studentId: string, startDate: string, endDate: string): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*, class:classes!inner(*)')
+        .eq('student_id', studentId)
+        .eq('is_present', true)
+        .eq('class.type', 'RUNNING')
+        .gte('date', startDate)
+        .lte('date', endDate)
+        .order('date', { ascending: true });
+      if (error) throw error;
+
+      return (data || []).map(r => {
+        const record = mapAttendanceFromDb(r);
+        const classDetails = r.class ? mapClassFromDb(r.class) : undefined;
+        return { ...record, classDetails };
+      });
+    } catch (e) {
+      console.error('Error fetching student attendance in date range:', e);
+      return [];
+    }
+  },
+  
+  addCycleSummary: async (summary: Omit<CycleSummary, 'id' | 'createdAt'>): Promise<CycleSummary> => {
+    if (!supabase) throw new Error("Sem conexão");
+    const { data, error } = await supabase.from('cycle_summaries').insert([{
+      student_id: summary.studentId,
+      cycle_end_date: summary.cycleEndDate,
+      summary_text: summary.summaryText,
+      start_pace: summary.startPace,
+      end_pace: summary.endPace,
+      performance_data: summary.performanceData,
+    }]).select().single();
+    if (error) throw error;
+    invalidateCache();
+    return mapCycleSummaryFromDb(data);
+  },
+
+  getCycleSummariesForStudent: async (studentId: string): Promise<CycleSummary[]> => {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase
+        .from('cycle_summaries')
+        .select('*')
+        .eq('student_id', studentId)
+        .order('cycle_end_date', { ascending: false });
+      if (error) throw error;
+      return (data || []).map(mapCycleSummaryFromDb);
+    } catch (e) {
+      console.error('Error fetching cycle summaries:', e);
+      return [];
+    }
   },
 
   getAssessments: async (userId?: string, force: boolean = false): Promise<Assessment[]> => {

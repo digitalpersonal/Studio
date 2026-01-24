@@ -25,7 +25,8 @@ import {
   ArrowLeft,
   FileText,
   PlusSquare,
-  Share2
+  Share2,
+  TrendingUp
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -130,6 +131,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <NavItem view="RANKING" icon={Trophy} label="Ranking" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="SCHEDULE" icon={Calendar} label="Agenda de Aulas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+          <NavItem view="RUNNING_EVOLUTION" icon={TrendingUp} label="Aulas de Corrida" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="FEED" icon={Camera} label="Comunidade" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
@@ -191,6 +193,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <NavItem view="RANKING" icon={Trophy} label="Ranking" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="ROUTES" icon={Map} label="Rotas & Mapas" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="SCHEDULE" icon={Calendar} label="Agenda" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="RUNNING_EVOLUTION" icon={TrendingUp} label="Aulas de Corrida" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="FEED" icon={Camera} label="Comunidade" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />

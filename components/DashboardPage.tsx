@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { User, UserRole, ClassSession, Payment, Challenge } from '../types';
+import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
-  CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff
+  CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
@@ -20,24 +20,28 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [classes, setClasses] = useState<ClassSession[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [challengeData, setChallengeData] = useState<{ challenge: Challenge | null, totalDistance: number }>({ challenge: null, totalDistance: 0 });
   const [isLive, setIsLive] = useState(false);
 
   const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
+  const isStudent = currentUser.role === UserRole.STUDENT;
 
   const loadData = useCallback(async (force: boolean = false) => {
     if (force) setLoading(true);
     try {
-      const [uData, cData, pData, chalData] = await Promise.all([
+      const [uData, cData, pData, chalData, aData] = await Promise.all([
         SupabaseService.getAllUsers(force),
         SupabaseService.getClasses(force),
         isManagement ? SupabaseService.getPayments(undefined, force) : SupabaseService.getPayments(currentUser.id, force),
-        SupabaseService.getGlobalChallengeProgress(force)
+        SupabaseService.getGlobalChallengeProgress(force),
+        isStudent ? SupabaseService.getAttendanceByClassAndDate('', '') : Promise.resolve([]) // Simplificado, ideal seria buscar por studentId
       ]);
       setAllUsers(uData || []);
       setClasses(cData || []);
       setPayments(pData || []);
       setChallengeData(chalData || { challenge: null, totalDistance: 0 });
+      setAttendance(aData || []);
       setIsLive(true);
       setTimeout(() => setIsLive(false), 2000); 
     } catch (error: any) {
@@ -45,7 +49,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     } finally {
       setLoading(false);
     }
-  }, [currentUser.id, isManagement]);
+  }, [currentUser.id, isManagement, isStudent]);
 
   useEffect(() => {
     loadData(true);
@@ -65,6 +69,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     const todayClasses = classes.filter(c => c.dayOfWeek === todayName);
     const overdue = payments.filter(p => p.status === 'OVERDUE');
     const totalOverdue = overdue.reduce((acc, p) => acc + (p.amount || 0), 0);
+    
+    const lastRunPerformance = attendance
+      .filter(a => a.studentId === currentUser.id && a.totalTimeSeconds)
+      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
     const birthdays = allUsers
       .filter(u => {
@@ -85,9 +93,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       overdueCount: new Set(overdue.map(p => p.studentId)).size,
       totalOverdueAmount: totalOverdue,
       todayClasses,
-      birthdays
+      birthdays,
+      lastRunPerformance
     };
-  }, [allUsers, classes, payments, todayName, currentMonth]);
+  }, [allUsers, classes, payments, todayName, currentMonth, attendance, currentUser.id]);
 
   if (loading && allUsers.length === 0) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
@@ -123,6 +132,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
             <MetricCard icon={AlertTriangle} label="Alunos Devedores" value={stats.overdueCount} color="red" />
             <MetricCard icon={ZapOff} label="Alunos Suspensos" value={stats.suspendedCount} color="purple" />
           </>
+        ) : stats.lastRunPerformance ? (
+           <MetricCard 
+             icon={Flag} 
+             label="Última Corrida" 
+             value={stats.lastRunPerformance.averagePace || 'N/A'} 
+             subValue={new Date(stats.lastRunPerformance.date).toLocaleDateString('pt-BR')}
+             color="emerald"
+           />
         ) : (
           <div className="bg-brand-600 p-6 rounded-[2.5rem] text-white flex flex-col justify-center shadow-xl shadow-brand-600/20 relative overflow-hidden group">
              <Sparkles className="absolute -right-4 -top-4 text-white/10 group-hover:rotate-12 transition-transform" size={100} />
@@ -229,7 +246,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   );
 };
 
-const MetricCard = ({ icon: Icon, label, value, color }: { icon: any, label: string, value: string | number, color: string }) => {
+const MetricCard = ({ icon: Icon, label, value, color, subValue }: { icon: any, label: string, value: string | number, color: string, subValue?: string }) => {
     const colors: any = {
         blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
         brand: "bg-brand-500/10 text-brand-500 border-brand-500/20",
@@ -245,6 +262,7 @@ const MetricCard = ({ icon: Icon, label, value, color }: { icon: any, label: str
             </div>
             <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{label}</p>
             <p className="text-2xl font-black text-white tracking-tighter">{value}</p>
+            {subValue && <p className="text-slate-600 text-[10px] font-bold mt-1">{subValue}</p>}
         </div>
     );
 };

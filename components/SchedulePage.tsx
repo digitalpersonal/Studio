@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClassSession, User, UserRole, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search, User as UserIcon, Clock, AlertTriangle } from 'lucide-react'; 
-import { DAYS_OF_WEEK } from '../constants';
-import { WORKOUT_TYPES } from '../constants'; 
+import { GeminiService } from '../services/geminiService';
+import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search, User as UserIcon, Clock, AlertTriangle, CheckCheck, Save } from 'lucide-react'; 
+import { DAYS_OF_WEEK, WORKOUT_TYPES, RUNNING_CYCLE_METHODOLOGY } from '../constants'; 
 
 interface SchedulePageProps {
   currentUser: User;
@@ -13,7 +12,7 @@ interface SchedulePageProps {
 
 export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToast }) => {
   const [classes, setClasses] = useState<ClassSession[]>([]);
-  const [students, setStudents] = useState<User[]>([]); 
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingClass, setEditingClass] = useState<ClassSession | null>(null);
   const [showAttendanceModal, setShowAttendanceModal] = useState<ClassSession | null>(null);
@@ -31,7 +30,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
         SupabaseService.getAllUsers()
       ]);
       setClasses(classData);
-      setStudents(userData);
+      setAllUsers(userData);
     } catch (error: any) {
       addToast(`Erro ao carregar dados: ${error.message}`, "error");
     } finally {
@@ -40,6 +39,9 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
   };
 
   useEffect(() => { refreshData(); }, []);
+  
+  const students = useMemo(() => allUsers.filter(u => u.role === UserRole.STUDENT), [allUsers]);
+  const instructors = useMemo(() => allUsers.filter(u => u.role !== UserRole.STUDENT), [allUsers]);
 
   const classesGroupedByDay = useMemo(() => {
     return DAYS_OF_WEEK.reduce((acc, day) => {
@@ -56,11 +58,18 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
   const handleSaveClass = async (classData: Omit<ClassSession, 'id'>) => {
     setLoading(true);
     try {
+      // FIX: Convert empty date string to null to prevent database error.
+      const payload = { 
+        ...classData, 
+        date: classData.date || null,
+        cycleStartDate: classData.cycleStartDate || null
+      };
+
       if (editingClass) {
-        await SupabaseService.updateClass({ ...classData as ClassSession, id: editingClass.id });
+        await SupabaseService.updateClass({ ...payload as ClassSession, id: editingClass.id });
         addToast("Aula atualizada com sucesso!", "success");
       } else {
-        await SupabaseService.addClass(classData);
+        await SupabaseService.addClass(payload);
         addToast("Nova aula criada!", "success");
       }
       setShowForm(false);
@@ -97,8 +106,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
         classSession={editingClass}
         onSave={handleSaveClass}
         onCancel={() => { setShowForm(false); setEditingClass(null); }}
-        allStudents={students.filter(s => s.role === UserRole.STUDENT)}
-        instructors={students.filter(s => s.role !== UserRole.STUDENT)}
+        allStudents={students}
+        instructors={instructors}
       />
     );
   }
@@ -129,7 +138,6 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
                       Especial
                     </div>
                   )}
-                  {/* Botões de Ação - Permanentemente Visíveis para Staff */}
                   <div className="absolute top-3 right-3 flex gap-1 z-10">
                     {isStaff && (
                       <button 
@@ -202,22 +210,51 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
 
 const AttendanceModal = ({ classSession, students, onClose, addToast }: { classSession: ClassSession, students: User[], onClose: () => void, addToast: any }) => {
   const today = new Date().toISOString().split('T')[0];
-  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+  const [attendance, setAttendance] = useState<Record<string, Partial<AttendanceRecord>>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const calculateAge = (birthDate?: string): number => {
+      if (!birthDate) return 0;
+      const today = new Date();
+      const birth = new Date(birthDate);
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+          age--;
+      }
+      return age;
+  };
+
+  const getAgeGroup = (age: number): string => {
+      if (age < 20) return "U20";
+      if (age <= 29) return "20-29";
+      if (age <= 39) return "30-39";
+      if (age <= 49) return "40-49";
+      if (age <= 59) return "50-59";
+      return "60+";
+  };
+  
+  const calculatePace = (seconds?: number, distanceKm?: number): string => {
+      if (!seconds || !distanceKm || distanceKm <= 0 || seconds <= 0) return '00:00 /km';
+      const paceDecimal = (seconds / 60) / distanceKm;
+      const paceMinutes = Math.floor(paceDecimal);
+      const paceSeconds = Math.round((paceDecimal - paceMinutes) * 60);
+      return `${String(paceMinutes).padStart(2, '0')}:${String(paceSeconds).padStart(2, '0')} /km`;
+  };
 
   useEffect(() => {
     const fetchExistingAttendance = async () => {
       setLoading(true);
       try {
         const records = await SupabaseService.getAttendanceByClassAndDate(classSession.id, today);
-        const map: Record<string, boolean> = {};
-        records.forEach(r => { map[r.studentId] = r.isPresent; });
-        
+        const map: Record<string, Partial<AttendanceRecord>> = {};
+        records.forEach(r => { map[r.studentId] = r; });
         students.forEach(s => {
-          if (map[s.id] === undefined) map[s.id] = false;
+          if (!map[s.id]) {
+            map[s.id] = { isPresent: false };
+          }
         });
-        
         setAttendance(map);
       } catch (e) {
         console.error(e);
@@ -227,25 +264,111 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
     };
     fetchExistingAttendance();
   }, [classSession.id, today, students]);
+  
+  // FIX: Rewritten to be more explicit and ensure type safety within the state update.
+  const updateStudentAttendance = <K extends keyof AttendanceRecord>(studentId: string, field: K, value: AttendanceRecord[K]) => {
+    setAttendance(prev => {
+        // Create a new top-level object for immutability
+        const newAttendanceState = { ...prev };
+        
+        // Get the current record for the student, or create an empty one
+        const currentStudentData: Partial<AttendanceRecord> = newAttendanceState[studentId] || {};
+        
+        // Create the updated record
+        const updatedStudentData: Partial<AttendanceRecord> = {
+          ...currentStudentData,
+          [field]: value,
+        };
 
-  const togglePresence = (studentId: string) => {
-    setAttendance(prev => ({ ...prev, [studentId]: !prev[studentId] }));
+        // Recalcular pace se o tempo mudar
+        if (field === 'totalTimeSeconds' && classSession.type === 'RUNNING' && typeof value === 'number') {
+            updatedStudentData.averagePace = calculatePace(value, classSession.distanceKm);
+        }
+
+        // Put the updated record back into the new state object
+        newAttendanceState[studentId] = updatedStudentData;
+        
+        return newAttendanceState;
+    });
+  };
+
+  const triggerCycleSummaryGeneration = async (student: User) => {
+    try {
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - 28); // 4 weeks
+        
+        const cyclePerformance = await SupabaseService.getAttendanceForStudentInDateRange(student.id, startDate.toISOString().split('T')[0], endDate.toISOString().split('T')[0]);
+        
+        if(cyclePerformance.length > 0) {
+            const summaryText = await GeminiService.generateCycleSummary(student.name, cyclePerformance);
+            
+            await SupabaseService.addCycleSummary({
+                studentId: student.id,
+                cycleEndDate: endDate.toISOString().split('T')[0],
+                summaryText: summaryText,
+                startPace: cyclePerformance[0]?.averagePace,
+                endPace: cyclePerformance[cyclePerformance.length - 1]?.averagePace,
+                performanceData: cyclePerformance,
+            });
+            addToast(`Resumo do ciclo de ${student.name.split(' ')[0]} gerado com IA!`, 'success');
+        }
+    } catch (e) {
+        console.error(`Falha ao gerar resumo para ${student.name}:`, e);
+        addToast(`Erro na IA para ${student.name.split(' ')[0]}.`, 'error');
+    }
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const records: Omit<AttendanceRecord, 'id'>[] = Object.entries(attendance).map(([studentId, isPresent]) => ({
-        classId: classSession.id,
-        studentId,
-        date: today,
-        isPresent: isPresent as boolean
-      }));
-      await SupabaseService.saveAttendance(records);
+      const recordsPromises = students.map(async (s) => {
+        const studentAge = calculateAge(s.birthDate);
+        const studentAttendance = attendance[s.id] as Partial<AttendanceRecord> | undefined;
+
+        const record: Omit<AttendanceRecord, 'id'> = {
+          classId: classSession.id,
+          studentId: s.id,
+          date: today,
+          isPresent: !!studentAttendance?.isPresent,
+          totalTimeSeconds: studentAttendance?.totalTimeSeconds || undefined,
+          averagePace: studentAttendance?.averagePace || undefined,
+          ageGroupClassification: getAgeGroup(studentAge),
+          instructorNotes: studentAttendance?.instructorNotes || undefined,
+        };
+
+        if (record.isPresent && classSession.type === 'RUNNING' && record.totalTimeSeconds) {
+          try {
+            const feedback = await GeminiService.analyzeRunningPerformance(s, classSession, record as AttendanceRecord);
+            record.generatedFeedback = feedback;
+          } catch (e) {
+            console.error("Error generating AI feedback for student " + s.id, e);
+          }
+        }
+        return record;
+      });
+
+      const recordsToSave: Omit<AttendanceRecord, 'id'>[] = await Promise.all(recordsPromises);
+      
+      await SupabaseService.saveAttendance(recordsToSave);
+
+      // Trigger challenge entry and cycle summary generation
+      for (const record of recordsToSave) {
+        if (record.isPresent) {
+          const student = students.find(s => s.id === record.studentId);
+          if (classSession.type === 'RUNNING' && classSession.distanceKm) {
+            await SupabaseService.addChallengeEntry(record.studentId, classSession.distanceKm);
+          }
+          if (classSession.type === 'RUNNING' && classSession.weekOfCycle === 4 && student) {
+            await triggerCycleSummaryGeneration(student);
+          }
+        }
+      }
+
       addToast("Chamada salva com sucesso!", "success");
       onClose();
     } catch (e: any) {
-      addToast("Erro ao salvar chamada.", "error");
+      addToast(`Erro ao salvar chamada: ${e.message}`, "error");
     } finally {
       setSaving(false);
     }
@@ -253,10 +376,10 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
 
   return (
     <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-6 md:pt-10 animate-fade-in">
-      <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+      <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
         <div className="p-8 border-b border-dark-800">
            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Chamada / Check-in</h3>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Chamada / Performance</h3>
               <button onClick={onClose} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full"><X size={20}/></button>
            </div>
            <p className="text-brand-500 font-bold text-[10px] uppercase tracking-widest">{classSession.title} • {new Date().toLocaleDateString('pt-BR')}</p>
@@ -267,22 +390,52 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
              <div className="flex justify-center py-20"><Loader2 className="animate-spin text-brand-500" /></div>
            ) : students.length > 0 ? (
              students.map(s => (
-               <button 
-                 key={s.id} 
-                 onClick={() => togglePresence(s.id)}
-                 className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${attendance[s.id] ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-dark-950 border-dark-800 hover:border-slate-700'}`}
-               >
-                 <div className="flex items-center gap-3">
-                   <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-10 h-10 rounded-xl object-cover border border-dark-800" alt={s.name} />
-                   <div className="text-left">
-                      <p className={`text-sm font-bold ${attendance[s.id] ? 'text-emerald-500' : 'text-white'}`}>{String(s.name)}</p>
-                      <p className="text-[9px] text-slate-500 uppercase font-black">Aluno Matriculado</p>
+                <div key={s.id} className={`p-4 rounded-2xl border transition-all ${attendance[s.id]?.isPresent ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-dark-950 border-dark-800'}`}>
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                       <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-10 h-10 rounded-xl object-cover border border-dark-800" alt={s.name} />
+                       <div className="text-left">
+                          <p className={`text-sm font-bold ${attendance[s.id]?.isPresent ? 'text-emerald-500' : 'text-white'}`}>{String(s.name)}</p>
+                          <p className="text-[9px] text-slate-500 uppercase font-black">{getAgeGroup(calculateAge(s.birthDate))}</p>
+                       </div>
+                     </div>
+                     <button onClick={() => updateStudentAttendance(s.id, 'isPresent', !attendance[s.id]?.isPresent)} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${attendance[s.id]?.isPresent ? 'bg-emerald-500 text-white' : 'bg-dark-800 text-slate-600'}`}>
+                        {attendance[s.id]?.isPresent ? <Check size={18} strokeWidth={3}/> : <div className="w-2 h-2 rounded-full bg-slate-600"/>}
+                     </button>
                    </div>
-                 </div>
-                 <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${attendance[s.id] ? 'bg-emerald-500 text-white' : 'bg-dark-800 text-slate-600'}`}>
-                    {attendance[s.id] ? <Check size={18} strokeWidth={3}/> : <div className="w-2 h-2 rounded-full bg-slate-600"/>}
-                 </div>
-               </button>
+
+                   {classSession.type === 'RUNNING' && attendance[s.id]?.isPresent && (
+                     <div className="mt-4 pt-4 border-t border-emerald-500/20 space-y-3 animate-fade-in">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[9px] text-slate-400 font-bold uppercase block mb-1">Tempo (segundos)</label>
+                                <input 
+                                    type="number" 
+                                    className="w-full bg-dark-950 border border-dark-800 rounded-lg p-2 text-white text-sm" 
+                                    value={attendance[s.id]?.totalTimeSeconds || ''}
+                                    onChange={(e) => updateStudentAttendance(s.id, 'totalTimeSeconds', Number(e.target.value))}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[9px] text-slate-400 font-bold uppercase block mb-1">Pace Médio</label>
+                                <div className="w-full bg-dark-950 border border-dark-800 rounded-lg p-2 text-brand-500 text-sm font-bold">
+                                    {attendance[s.id]?.averagePace || '00:00 /km'}
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-[9px] text-slate-400 font-bold uppercase block mb-1">Observações do Treinador</label>
+                            <input 
+                                type="text"
+                                placeholder="Desempenho, técnica, etc..."
+                                className="w-full bg-dark-950 border border-dark-800 rounded-lg p-2 text-white text-sm" 
+                                value={attendance[s.id]?.instructorNotes || ''}
+                                onChange={(e) => updateStudentAttendance(s.id, 'instructorNotes', e.target.value)}
+                            />
+                        </div>
+                     </div>
+                   )}
+                </div>
              ))
            ) : (
              <div className="py-20 text-center">
@@ -294,7 +447,8 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
         <div className="p-8 border-t border-dark-800 bg-dark-900/50 flex flex-col gap-3">
            <div className="flex justify-between items-center mb-2">
               <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Resumo:</span>
-              <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">{Object.values(attendance).filter(v => v).length} Presentes</span>
+              {/* Fix: Explicitly type the parameter 'v' to resolve 'unknown' type error from Object.values */}
+              <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">{Object.values(attendance).filter((v: Partial<AttendanceRecord>) => v.isPresent).length} Presentes</span>
            </div>
            <button 
              onClick={handleSave} 
@@ -310,15 +464,34 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
   );
 };
 
-const CheckCheck = ({ size }: { size: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 7 17l-5-5"></path><path d="m22 10-7.5 7.5L13 16"></path></svg>;
-
 const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }: { classSession: ClassSession | null, onSave: (d: any) => void, onCancel: () => void, allStudents: User[], instructors: User[] }) => {
   const [formData, setFormData] = useState<Partial<ClassSession>>(classSession || {
     title: '', description: '', dayOfWeek: 'Segunda', date: '', startTime: '07:00',
     durationMinutes: 60, instructor: '', maxCapacity: 15, enrolledStudentIds: [],
-    type: 'FUNCTIONAL', wod: '', workoutDetails: ''
+    type: 'FUNCTIONAL', wod: '', workoutDetails: '',
+    cycleStartDate: '',
+    weekOfCycle: 1, distanceKm: undefined,
+    estimatedVolumeMinutes: undefined,
+    weekObjective: '',
+    referenceWorkouts: '',
+    mainWorkout: '',
+    weekFocus: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    if (formData.type === 'RUNNING' && formData.weekOfCycle && RUNNING_CYCLE_METHODOLOGY[formData.weekOfCycle]) {
+      const weekData = RUNNING_CYCLE_METHODOLOGY[formData.weekOfCycle];
+      setFormData(prev => ({
+        ...prev,
+        weekFocus: weekData.weekFocus || prev.weekFocus,
+        estimatedVolumeMinutes: weekData.estimatedVolumeMinutes || prev.estimatedVolumeMinutes,
+        weekObjective: weekData.weekObjective || prev.weekObjective,
+        referenceWorkouts: weekData.referenceWorkouts || prev.referenceWorkouts,
+        mainWorkout: weekData.mainWorkout || prev.mainWorkout,
+      }));
+    }
+  }, [formData.type, formData.weekOfCycle]);
 
   const filteredStudents = allStudents.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -353,41 +526,115 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
            </div>
            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Dia da Semana</label>
-                <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.dayOfWeek} onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}>
-                  {DAYS_OF_WEEK.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Data Específica</label>
-                <input type="date" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.date || ''} onChange={e => setFormData({ ...formData, date: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Horário Início</label>
-                <input type="time" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Duração (Min)</label>
-                <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.durationMinutes} onChange={e => setFormData({ ...formData, durationMinutes: Number(e.target.value) })} />
-              </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Vagas Totais</label>
-                <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.maxCapacity} onChange={e => setFormData({ ...formData, maxCapacity: Number(e.target.value) })} />
-              </div>
-              <div>
                 <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Tipo Treino</label>
                 <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value as any })}>
                   {WORKOUT_TYPES.map(t => <option key={t} value={t}>{t === 'RUNNING' ? 'CORRIDA' : 'FUNCIONAL'}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Treinador</label>
+                <select required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.instructor} onChange={e => setFormData({ ...formData, instructor: e.target.value })}>
+                  <option value="">Selecione...</option>
+                  {instructors.map(inst => <option key={inst.id} value={inst.name}>{inst.name}</option>)}
+                </select>
+              </div>
            </div>
-           <div>
-             <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Treinador Responsável</label>
-             <select required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.instructor} onChange={e => setFormData({ ...formData, instructor: e.target.value })}>
-               <option value="">Selecione...</option>
-               {instructors.map(inst => <option key={inst.id} value={inst.name}>{inst.name}</option>)}
-             </select>
+
+           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Dia da Semana</label>
+                <select
+                    required
+                    className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold"
+                    value={formData.dayOfWeek}
+                    onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}
+                >
+                    {DAYS_OF_WEEK.map(day => <option key={day} value={day}>{day}</option>)}
+                </select>
+              </div>
+              <div>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Horário</label>
+                  <input
+                      required
+                      type="time"
+                      className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold"
+                      value={formData.startTime}
+                      onChange={e => setFormData({ ...formData, startTime: e.target.value })}
+                  />
+              </div>
+              <div>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Data Específica</label>
+                  <input
+                      type="date"
+                      className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold"
+                      value={formData.date || ''}
+                      onChange={e => setFormData({ ...formData, date: e.target.value })}
+                  />
+                  <p className="text-slate-600 text-[9px] mt-1">Opcional (aula única).</p>
+              </div>
            </div>
+           <div className="grid grid-cols-2 gap-4">
+              <div>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Duração (minutos)</label>
+                  <input
+                      required
+                      type="number"
+                      className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm"
+                      value={formData.durationMinutes}
+                      onChange={e => setFormData({ ...formData, durationMinutes: Number(e.target.value) })}
+                  />
+              </div>
+              <div>
+                  <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Máx. Vagas</label>
+                  <input
+                      required
+                      type="number"
+                      className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm"
+                      value={formData.maxCapacity}
+                      onChange={e => setFormData({ ...formData, maxCapacity: Number(e.target.value) })}
+                  />
+              </div>
+           </div>
+
+           {formData.type === 'RUNNING' && (
+              <div className="space-y-4 pt-4 border-t border-dark-800 animate-fade-in">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Início do Ciclo</label>
+                        <input type="date" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.cycleStartDate || ''} onChange={e => setFormData({ ...formData, cycleStartDate: e.target.value })} />
+                         <p className="text-slate-600 text-[9px] mt-1">Opcional. Ajuda a agrupar e visualizar o ciclo.</p>
+                      </div>
+                      <div>
+                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Semana (1-4)</label>
+                        <input type="number" min="1" max="4" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.weekOfCycle} onChange={e => setFormData({ ...formData, weekOfCycle: Number(e.target.value) })} />
+                      </div>
+                      <div>
+                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Distância (km)</label>
+                        <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.distanceKm || ''} onChange={e => setFormData({ ...formData, distanceKm: e.target.value ? Number(e.target.value) : undefined })} />
+                      </div>
+                      <div className="sm:col-span-3">
+                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Volume Estimado (min)</label>
+                        <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.estimatedVolumeMinutes || ''} onChange={e => setFormData({ ...formData, estimatedVolumeMinutes: e.target.value ? Number(e.target.value) : undefined })} />
+                      </div>
+                  </div>
+                  <div>
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Foco da Semana</label>
+                      <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.weekFocus || ''} onChange={e => setFormData({ ...formData, weekFocus: e.target.value })} />
+                  </div>
+                  <div>
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Objetivo da Semana</label>
+                      <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm" value={formData.weekObjective || ''} onChange={e => setFormData({ ...formData, weekObjective: e.target.value })} />
+                  </div>
+                   <div>
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Treinos de Referência</label>
+                      <textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm h-24" value={formData.referenceWorkouts || ''} onChange={e => setFormData({ ...formData, referenceWorkouts: e.target.value })} />
+                  </div>
+                  <div>
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Treino Principal da Aula</label>
+                      <textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm h-24" value={formData.mainWorkout || ''} onChange={e => setFormData({ ...formData, mainWorkout: e.target.value })} />
+                  </div>
+              </div>
+           )}
         </div>
 
         <div className="space-y-5 flex flex-col h-full bg-dark-900/30 p-6 rounded-[2rem] border border-dark-800">
@@ -419,9 +666,9 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
            </div>
            
            <div className="pt-6 mt-4 border-t border-dark-800 flex gap-3">
-              <button onClick={onCancel} className="flex-1 py-4 bg-dark-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all">Sair</button>
-              <button onClick={() => onSave(formData)} className="flex-1 py-4 bg-brand-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all flex items-center justify-center gap-2">
-                <SaveIcon size={14}/> Salvar Aula
+              <button onClick={onCancel} type="button" className="flex-1 py-4 bg-dark-800 text-white rounded-xl font-black uppercase text-[10px] tracking-widest transition-all">Sair</button>
+              <button onClick={() => onSave(formData)} type="button" className="flex-1 py-4 bg-brand-600 text-white font-black rounded-xl uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all flex items-center justify-center gap-2">
+                <Save size={14}/> Salvar Aula
               </button>
            </div>
         </div>
@@ -429,5 +676,3 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
     </div>
   );
 };
-
-const SaveIcon = ({ size }: { size: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>;
