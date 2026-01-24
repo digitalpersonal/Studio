@@ -4,7 +4,8 @@ import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord } fr
 import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
-  CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag
+  CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag,
+  User as UserIcon
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
@@ -23,9 +24,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [challengeData, setChallengeData] = useState<{ challenge: Challenge | null, totalDistance: number }>({ challenge: null, totalDistance: 0 });
   const [isLive, setIsLive] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
   const isStudent = currentUser.role === UserRole.STUDENT;
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Atualiza a cada minuto para verificar o status da aula
+    return () => clearInterval(timer);
+  }, []);
 
   const loadData = useCallback(async (force: boolean = false) => {
     if (force) setLoading(true);
@@ -62,6 +72,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const todayName = DAYS_OF_WEEK[(new Date().getDay() + 6) % 7];
   const currentMonth = new Date().getMonth();
 
+  const isClassInProgress = (cls: ClassSession, now: Date): boolean => {
+    const [startHour, startMinute] = cls.startTime.split(':').map(Number);
+    const classStartDate = new Date(now);
+    classStartDate.setHours(startHour, startMinute, 0, 0);
+    const classEndDate = new Date(classStartDate.getTime() + cls.durationMinutes * 60000);
+    return now >= classStartDate && now < classEndDate;
+  };
+
   const stats = useMemo(() => {
     const students = allUsers.filter(u => u.role === UserRole.STUDENT);
     const activeStudents = students.filter(u => u.status !== 'SUSPENDED');
@@ -97,6 +115,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       lastRunPerformance
     };
   }, [allUsers, classes, payments, todayName, currentMonth, attendance, currentUser.id]);
+  
+  const enrolledClasses = useMemo(() => {
+    if (!selectedStudentId) return [];
+    
+    const getClassDate = (c: ClassSession) => {
+        if (c.date) return new Date(c.date);
+        const today = new Date();
+        const currentDayIndex = (today.getDay() + 6) % 7;
+        const classDayIndex = DAYS_OF_WEEK.indexOf(c.dayOfWeek);
+        let dayDiff = classDayIndex - currentDayIndex;
+        if (dayDiff < 0) dayDiff += 7;
+        const nextDate = new Date(today);
+        nextDate.setDate(today.getDate() + dayDiff);
+        return nextDate;
+    };
+
+    return classes
+        .filter(c => c.enrolledStudentIds.includes(selectedStudentId))
+        .sort((a, b) => getClassDate(b).getTime() - getClassDate(a).getTime())
+        .slice(0, 5);
+  }, [selectedStudentId, classes]);
 
   if (loading && allUsers.length === 0) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
@@ -159,10 +198,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
             </div>
             <div className="space-y-4">
                 {stats.todayClasses.length > 0 ? (
-                  stats.todayClasses.map(c => (
-                    <div key={c.id} className="bg-dark-950 p-5 rounded-[2rem] border border-dark-800 flex justify-between items-center hover:border-brand-500/40 transition-all group">
+                  stats.todayClasses.map(c => {
+                    const inProgress = isClassInProgress(c, currentTime);
+                    return (
+                      <div 
+                        key={c.id} 
+                        className={`bg-dark-950 p-5 rounded-[2rem] border flex justify-between items-center group transition-all duration-300 relative ${
+                          inProgress 
+                            ? 'border-brand-500 shadow-xl shadow-brand-500/20' 
+                            : 'border-dark-800 hover:border-brand-500/40'
+                        }`}
+                      >
+                        {inProgress && (
+                          <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full animate-fade-in">
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                            <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">AO VIVO</span>
+                          </div>
+                        )}
                         <div className="flex items-center gap-5">
-                            <div className="bg-dark-900 px-5 py-3 rounded-2xl border border-dark-800 text-center min-w-[80px] group-hover:bg-brand-600/10 transition-colors">
+                            <div className={`px-5 py-3 rounded-2xl border text-center min-w-[80px] transition-colors ${
+                                inProgress ? 'bg-brand-600/10 border-brand-500/20' : 'bg-dark-900 border-dark-800 group-hover:bg-brand-600/10'
+                            }`}>
                                 <p className="text-brand-500 font-black text-lg">{c.startTime}</p>
                             </div>
                             <div>
@@ -174,8 +230,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                             </div>
                         </div>
                         <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all"><ArrowRight size={20}/></button>
-                    </div>
-                  ))
+                      </div>
+                    )
+                  })
                 ) : (
                   <div className="py-20 text-center bg-dark-950 rounded-[3rem] border border-dashed border-dark-800">
                       <Calendar className="mx-auto text-dark-800 mb-4" size={48} />
@@ -183,6 +240,59 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                   </div>
                 )}
             </div>
+
+            {isManagement && (
+              <div className="mt-8 space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
+                    <UserIcon className="text-brand-500" size={24}/> Atividade Recente do Aluno
+                  </h3>
+                </div>
+                <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800">
+                  <select
+                    className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm font-bold"
+                    value={selectedStudentId || ''}
+                    onChange={e => setSelectedStudentId(e.target.value || null)}
+                  >
+                    <option value="">Selecione um aluno para ver suas últimas matrículas...</option>
+                    {allUsers
+                      .filter(u => u.role === UserRole.STUDENT)
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                  </select>
+                </div>
+                {selectedStudentId && (
+                  <div className="space-y-4">
+                    {loading ? <div className="flex justify-center py-4"><Loader2 className="animate-spin text-brand-500" /></div> : enrolledClasses.length > 0 ? (
+                      enrolledClasses.map(c => (
+                        <div key={c.id} className="bg-dark-950 p-5 rounded-[2rem] border border-dark-800 flex justify-between items-center hover:border-brand-500/40 transition-all group">
+                          <div className="flex items-center gap-5">
+                            <div className="bg-dark-900 px-5 py-3 rounded-2xl border border-dark-800 text-center min-w-[80px]">
+                              <p className="text-brand-500 font-black text-sm">{c.date ? new Date(c.date).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) : c.dayOfWeek.substring(0,3).toUpperCase()}</p>
+                              <p className="text-slate-400 font-bold text-xs">{c.startTime}</p>
+                            </div>
+                            <div>
+                              <p className="text-white font-bold text-base">{c.title}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">Prof. {c.instructor?.split(' ')[0]}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all"><ArrowRight size={20}/></button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="py-10 text-center bg-dark-950 rounded-[2rem] border border-dashed border-dark-800">
+                        <Calendar className="mx-auto text-dark-800 mb-2" size={32} />
+                        <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Nenhuma matrícula encontrada para este aluno.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
         </div>
 
         <div className="space-y-8">

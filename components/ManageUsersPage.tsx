@@ -6,7 +6,8 @@ import {
   Edit, FileText, Receipt, DollarSign, Dumbbell, Activity,
   AlertTriangle, MessageCircle, CheckCheck, UserPlus, AlertCircle, 
   CheckCircle2, Loader2, Send, Users as UsersIcon, Trash2, 
-  Calendar, ListOrdered, ClipboardList, BookOpen, Zap, ZapOff, BadgePercent
+  Calendar, ListOrdered, ClipboardList, BookOpen, Zap, ZapOff, BadgePercent,
+  TrendingUp
 } from 'lucide-react';
 import { SupabaseService } from '../services/supabaseService';
 import { ContractService } from '../services/contractService';
@@ -269,6 +270,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                 {s.role === UserRole.STUDENT && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         <ActionButton icon={ListOrdered} color="cyan" onClick={() => setShowEnrolledClasses(s)} title="Aulas Matriculadas" />
+                                                        <ActionButton icon={TrendingUp} color="emerald" onClick={() => onNavigate('RUNNING_EVOLUTION', { studentId: s.id })} title="Evolução de Corrida" />
                                                         <ActionButton icon={Dumbbell} color="purple" onClick={() => onNavigate('PERSONAL_WORKOUTS', { studentId: s.id })} title="Treinos Individuais" />
                                                         <ActionButton icon={Activity} color="brand" onClick={() => onNavigate('ASSESSMENTS', { studentId: s.id })} title="Avaliações Físicas" />
                                                         <ActionButton icon={Stethoscope} color="slate" onClick={() => handleOpenForm(s, 'anamnesis')} title="Anamnese / Saúde" />

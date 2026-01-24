@@ -315,14 +315,36 @@ export const SupabaseService = {
 
   updateUser: async (u: User): Promise<User> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('users').update({
-      name: u.name, email: u.email, password: u.password, role: u.role,
-      avatar_url: u.avatarUrl, phone_number: u.phoneNumber, profile_completed: u.profileCompleted,
-      address: u.address || {}, anamnesis: u.anamnesis || {},
-      plan_value: u.planValue, plan_duration: u.planDuration, billing_day: u.billingDay,
-      cpf: u.cpf, rg: u.rg, nationality: u.nationality, profession: u.profession, marital_status: u.maritalStatus,
-      status: u.status, suspended_at: u.suspendedAt
-    }).eq('id', u.id).select().single();
+
+    const updatePayload: { [key: string]: any } = {
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      avatar_url: u.avatarUrl,
+      phone_number: u.phoneNumber,
+      profile_completed: u.profileCompleted,
+      address: u.address || {},
+      anamnesis: u.anamnesis || {},
+      plan_value: u.planValue,
+      plan_duration: u.planDuration,
+      billing_day: u.billingDay,
+      cpf: u.cpf,
+      rg: u.rg,
+      nationality: u.nationality,
+      profession: u.profession,
+      marital_status: u.maritalStatus,
+      status: u.status,
+      suspended_at: u.suspendedAt
+    };
+
+    // Only include the password in the update if a new one is provided.
+    // This prevents accidental erasure when updating other profile info.
+    if (u.password && u.password.length > 0) {
+      updatePayload.password = u.password;
+    }
+
+    const { data, error } = await supabase.from('users').update(updatePayload).eq('id', u.id).select().single();
+
     if (error) throw error;
     invalidateCache();
     return mapUserFromDb(data);
