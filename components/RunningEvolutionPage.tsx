@@ -114,8 +114,8 @@ export const RunningEvolutionPage: React.FC<RunningEvolutionPageProps> = ({ curr
             .reverse();
     }, [performanceRecords, filterDistance]);
 
-    // FIX: Refactored to prevent type errors on sort by explicitly handling undefined values before creating the Set.
     const availableDistances = useMemo(() => {
+        // FIX: Refactored to prevent type errors on sort by explicitly handling undefined values before creating the Set.
         const distances = new Set<number>();
         performanceRecords.forEach(r => {
             if (typeof r.classDetails?.distanceKm === 'number') {

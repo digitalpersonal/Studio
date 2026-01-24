@@ -60,6 +60,17 @@ export interface Address {
   state: string;
 }
 
+export interface Plan {
+  id: string;
+  title: string;
+  planType: 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'KIDS' | 'AVULSO';
+  frequency?: string;
+  price: number;
+  durationMonths: number;
+  isActive: boolean;
+  displayOrder: number;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -76,7 +87,9 @@ export interface User {
   maritalStatus?: string; 
   profession?: string; 
   address?: Address;
-  planValue?: number;
+  planId?: string;
+  planValue?: number; // Armazena o preço ORIGINAL do plano
+  planDiscount?: number; // Armazena o desconto fixo
   planDuration?: number; 
   billingDay?: number;
   planStartDate?: string;

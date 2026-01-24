@@ -1,6 +1,6 @@
 
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import { User, ClassSession, Assessment, Payment, AttendanceRecord, Route, Challenge, PersonalizedWorkout, Post, Comment, UserRole, AcademySettings, CycleSummary } from '../types';
+import { User, ClassSession, Assessment, Payment, AttendanceRecord, Route, Challenge, PersonalizedWorkout, Post, Comment, UserRole, AcademySettings, CycleSummary, Plan } from '../types';
 import { SUPER_ADMIN_CONFIG } from '../constants';
 
 export const SUPABASE_PROJECT_ID = "xdjrrxrepnnkvpdbbtot";
@@ -17,6 +17,17 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
 }
 
 // --- MAPPERS ---
+const mapPlanFromDb = (p: any): Plan => ({
+  id: p.id,
+  title: p.title,
+  planType: p.plan_type,
+  frequency: p.frequency,
+  price: Number(p.price),
+  durationMonths: p.duration_months,
+  isActive: p.is_active,
+  displayOrder: p.display_order,
+});
+
 const mapCommentFromDb = (c: any): Comment => ({
   id: c.id,
   postId: c.post_id,
@@ -40,12 +51,14 @@ const mapPostFromDb = (p: any): Post => ({
 
 const mapUserFromDb = (u: any): User => ({
   ...u,
+  planId: u.plan_id,
   avatarUrl: u.avatar_url,
   joinDate: u.join_date,
   phoneNumber: u.phone_number,
   birthDate: u.birth_date,
   maritalStatus: u.marital_status,
   planValue: Number(u.plan_value) || 0,
+  planDiscount: Number(u.plan_discount) || 0,
   planDuration: u.plan_duration || 1,
   billingDay: u.billing_day || 5,
   planStartDate: u.plan_start_date,
@@ -201,6 +214,19 @@ export const SupabaseService = {
     };
   },
 
+  // --- PLANS ---
+  getPlans: async (): Promise<Plan[]> => {
+    if (!supabase) return [];
+    try {
+      const { data, error } = await supabase.from('plans').select('*').eq('is_active', true).order('display_order');
+      if (error) throw error;
+      return (data || []).map(mapPlanFromDb);
+    } catch (e) {
+      console.error("Erro ao buscar planos:", e);
+      return [];
+    }
+  },
+
   // --- ACADEMY SETTINGS ---
   getAcademySettings: async (): Promise<AcademySettings | null> => {
     if (!supabase) return null;
@@ -305,7 +331,11 @@ export const SupabaseService = {
       name: u.name, email: u.email, password: u.password, role: u.role,
       avatar_url: u.avatarUrl, phone_number: u.phoneNumber, profile_completed: u.profileCompleted,
       address: u.address || {}, anamnesis: u.anamnesis || {},
-      plan_value: u.planValue, plan_duration: u.planDuration, billing_day: u.billingDay,
+      plan_id: u.planId,
+      plan_value: u.planValue,
+      plan_discount: u.planDiscount || 0,
+      plan_duration: u.planDuration, 
+      billing_day: u.billingDay,
       status: u.status || 'ACTIVE'
     }]).select().single();
     if (error) throw error;
@@ -325,7 +355,9 @@ export const SupabaseService = {
       profile_completed: u.profileCompleted,
       address: u.address || {},
       anamnesis: u.anamnesis || {},
+      plan_id: u.planId,
       plan_value: u.planValue,
+      plan_discount: u.planDiscount || 0,
       plan_duration: u.planDuration,
       billing_day: u.billingDay,
       cpf: u.cpf,
@@ -486,6 +518,21 @@ export const SupabaseService = {
       student_id: p.studentId, amount: p.amount, status: p.status, 
       due_date: p.dueDate, description: p.description, discount: p.discount || 0
     }]).select().single();
+    if (error) throw error;
+    invalidateCache();
+    return mapPaymentFromDb(data);
+  },
+
+  updatePayment: async (p: Payment): Promise<Payment> => {
+    if (!supabase) throw new Error("Sem conexão");
+    const { data, error } = await supabase.from('payments').update({
+      student_id: p.studentId,
+      amount: p.amount,
+      status: p.status,
+      due_date: p.dueDate,
+      description: p.description,
+      discount: p.discount
+    }).eq('id', p.id).select().single();
     if (error) throw error;
     invalidateCache();
     return mapPaymentFromDb(data);

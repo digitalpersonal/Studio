@@ -1,14 +1,15 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { User, UserRole, Anamnesis, Address } from '../types';
+import { User, UserRole, Anamnesis, Address, Plan } from '../types';
+import { SupabaseService } from '../services/supabaseService';
 import {
-  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck, AlertCircle, HeartPulse, Dumbbell, BookOpen, User as UserIcon, Phone, FileHeart
+  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck, AlertCircle, HeartPulse, Dumbbell, BookOpen, User as UserIcon, Phone, FileHeart, CheckCircle2
 } from 'lucide-react';
 
 interface UserFormPageProps {
   editingUser: User | null;
   initialFormData: Partial<User>;
-  onSave: (user: User) => void;
+  onSave: (user: User, wasPlanNewlyAssigned?: boolean) => void;
   onCancel: () => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   initialActiveTab?: 'basic' | 'plan' | 'anamnesis';
@@ -50,8 +51,43 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
   }));
   const [activeTab, setActiveTab] = useState<'basic' | 'plan' | 'anamnesis'>(initialActiveTab);
   const [showPassword, setShowPassword] = useState(false);
+  const [plans, setPlans] = useState<Plan[]>([]);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+        try {
+            const availablePlans = await SupabaseService.getPlans();
+            setPlans(availablePlans);
+        } catch (error) {
+            addToast("Erro ao carregar os planos disponíveis.", "error");
+        }
+    };
+    fetchPlans();
+  }, [addToast]);
+
+  const plansByType = useMemo(() => {
+    return plans.reduce((acc, plan) => {
+        const type = plan.planType;
+        if (!acc[type]) {
+            acc[type] = [];
+        }
+        acc[type].push(plan);
+        return acc;
+    }, {} as Record<string, Plan[]>);
+  }, [plans]);
+
+  const handleSelectPlan = (plan: Plan) => {
+    setFormData(prev => ({
+        ...prev,
+        planId: plan.id,
+        planValue: plan.price,
+        planDuration: plan.durationMonths,
+    }));
+    addToast(`Plano '${plan.title}' selecionado. Salve para aplicar.`, 'info');
+  };
 
   const isSuperAdmin = currentUserRole === UserRole.SUPER_ADMIN;
+  const isAdmin = currentUserRole === UserRole.ADMIN || isSuperAdmin;
 
   const getRoleLabel = (role: UserRole) => {
     switch(role) {
@@ -100,6 +136,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     if (isStudent) {
       if (!formData.cpf?.trim()) return "O CPF é obrigatório para alunos.";
       if (!formData.rg?.trim()) return "O RG é obrigatório para alunos.";
+      if (!formData.planId) return "É obrigatório selecionar um plano para o aluno.";
       
       const anamnesis = formData.anamnesis;
       if (!anamnesis?.emergencyContactName?.trim()) return "O nome do contato de emergência é obrigatório.";
@@ -131,19 +168,22 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     const error = validateForm();
     if (error) {
       addToast(error, "error");
-      // Tentar mudar para a aba onde está o erro
       if (error.includes("CPF") || error.includes("RG")) setActiveTab('basic');
       else if (error.includes("emergência") || error.includes("condição") || error.includes("lesão")) setActiveTab('anamnesis');
+      else if (error.includes("plano")) setActiveTab('plan');
       return;
     }
 
+    const wasPlanNewlyAssigned = !!(formData.planId && editingUser?.planId !== formData.planId);
+
     const payload = {
       ...formData,
-      role: isSuperAdmin ? (formData.role || UserRole.STUDENT) : UserRole.STUDENT,
+      role: isAdmin ? (formData.role || UserRole.STUDENT) : (editingUser?.role || UserRole.STUDENT),
       avatarUrl: formData.avatarUrl || `https://ui-avatars.com/api/?name=${String(formData.name)}`,
-      profileCompleted: true // Sempre marcar como completo ao salvar neste form por staff ou finalização de aluno
+      profileCompleted: true
     } as User;
-    onSave(payload);
+
+    onSave(payload, wasPlanNewlyAssigned);
   };
 
   const handleAddressChange = (field: keyof Address, value: string) => {
@@ -175,8 +215,8 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
       <div className="flex border-b border-dark-800">
         {[
           { id: 'basic', label: 'Dados Pessoais', icon: UserIcon },
-          { id: 'plan', label: 'Plano Financeiro', icon: Repeat, visible: formData.role === UserRole.STUDENT || !isSuperAdmin },
-          { id: 'anamnesis', label: 'Saúde & Ficha', icon: Stethoscope, visible: formData.role === UserRole.STUDENT || !isSuperAdmin },
+          { id: 'plan', label: 'Plano Financeiro', icon: Repeat, visible: formData.role === UserRole.STUDENT || !isAdmin },
+          { id: 'anamnesis', label: 'Saúde & Ficha', icon: Stethoscope, visible: formData.role === UserRole.STUDENT || !isAdmin },
         ].filter(tab => tab.visible === undefined || tab.visible).map((tab) => (
           <button
             key={tab.id}
@@ -230,29 +270,30 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                       </div>
                   )}
 
-                  <div>
+                  <div className="sm:col-span-2">
                       <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Função / Nível de Acesso</label>
-                      {isSuperAdmin ? (
+                      {isAdmin ? (
                         <select
                             required
                             className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm font-bold"
                             value={formData.role || UserRole.STUDENT}
                             onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                         >
-                            {Object.values(UserRole).map(role => (
-                                <option key={role} value={role}>{getRoleLabel(role as UserRole)}</option>
-                            ))}
+                            {Object.values(UserRole).map(role => {
+                                if (role === UserRole.SUPER_ADMIN && !isSuperAdmin) return null;
+                                return <option key={role} value={role}>{getRoleLabel(role as UserRole)}</option>;
+                            })}
                         </select>
                       ) : (
                         <div className="flex items-center gap-3 bg-dark-900/50 border border-dark-800 rounded-xl p-3">
                             <ShieldCheck size={18} className="text-brand-500" />
-                            <span className="text-white text-sm font-bold uppercase">Aluno(a)</span>
-                            <span className="text-[9px] text-slate-600 ml-auto font-black uppercase tracking-tighter">Somente Adm Geral altera funções</span>
+                            <span className="text-white text-sm font-bold uppercase">{getRoleLabel(formData.role || UserRole.STUDENT)}</span>
+                            <span className="text-[9px] text-slate-600 ml-auto font-black uppercase tracking-tighter">Somente Admins podem alterar</span>
                         </div>
                       )}
                   </div>
 
-                  {(formData.role === UserRole.STUDENT || !isSuperAdmin) && (
+                  {(formData.role === UserRole.STUDENT || !isAdmin) && (
                     <>
                       <div>
                         <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="CPF"/></label>
@@ -266,7 +307,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   )}
               </div>
 
-              {(formData.role === UserRole.STUDENT || !isSuperAdmin) && (
+              {(formData.role === UserRole.STUDENT || !isAdmin) && (
                 <div className="space-y-4 pt-4 border-t border-dark-800">
                   <h4 className="text-white font-bold text-sm flex items-center gap-2"><MapPin size={18} className="text-brand-500"/> Endereço Completo</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -279,19 +320,38 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
             </div>
           )}
 
-          {activeTab === 'plan' && (formData.role === UserRole.STUDENT || !isSuperAdmin) && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="bg-brand-500/5 p-6 rounded-3xl border border-brand-500/10">
-                <h4 className="text-white font-bold text-sm mb-4 flex items-center gap-2"><HandCoins size={18} className="text-brand-500" /> Configuração do Plano</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Mensalidade (R$)</label><input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold" value={formData.planValue || 0} onChange={(e) => setFormData({ ...formData, planValue: Number(e.target.value) })} /></div>
-                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Duração (Meses)</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.planDuration || 12} onChange={(e) => setFormData({ ...formData, planDuration: Number(e.target.value) })}>{[1, 3, 6, 12, 24].map((m) => (<option key={m} value={m}>{m} meses</option>))}</select></div>
-                </div>
-              </div>
+          {activeTab === 'plan' && (formData.role === UserRole.STUDENT || !isAdmin) && (
+             <div className="space-y-8 animate-fade-in">
+                {['MENSAL', 'TRIMESTRAL', 'SEMESTRAL', 'KIDS', 'AVULSO'].map(type => (
+                    plansByType[type] && (
+                        <div key={type}>
+                            <h4 className="font-black text-brand-500 uppercase tracking-widest text-xs mb-3">{type}</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {plansByType[type].map(plan => (
+                                    <button
+                                        key={plan.id}
+                                        type="button"
+                                        onClick={() => handleSelectPlan(plan)}
+                                        className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
+                                            formData.planId === plan.id ? 'bg-brand-500/10 border-brand-500' : 'bg-dark-900 border-dark-800 hover:border-dark-700'
+                                        }`}
+                                    >
+                                        <div className="flex justify-between items-center">
+                                            <p className={`font-bold text-sm ${formData.planId === plan.id ? 'text-brand-500' : 'text-white'}`}>{plan.title}</p>
+                                            {formData.planId === plan.id && <CheckCircle2 size={20} className="text-brand-500" />}
+                                        </div>
+                                        <p className="text-slate-500 text-xs mt-1">{plan.frequency}</p>
+                                        <p className={`font-black text-lg mt-2 ${formData.planId === plan.id ? 'text-brand-500' : 'text-white'}`}>R$ {plan.price.toFixed(2)}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )
+                ))}
             </div>
           )}
 
-          {activeTab === 'anamnesis' && (formData.role === UserRole.STUDENT || !isSuperAdmin) && (
+          {activeTab === 'anamnesis' && (formData.role === UserRole.STUDENT || !isAdmin) && (
             <div className="space-y-8 animate-fade-in">
               <div className="p-4 bg-brand-500/10 border border-brand-500/20 rounded-2xl flex gap-3 items-start">
                   <AlertCircle size={20} className="text-brand-500 shrink-0 mt-0.5" />

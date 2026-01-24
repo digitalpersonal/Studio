@@ -115,16 +115,30 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         }
     };
 
-    const handleSaveUser = async (payload: User) => {
+    const handleSaveUser = async (payload: User, wasPlanNewlyAssigned?: boolean) => {
         setIsLoading(true);
         try {
+            let savedUser: User;
             if (editingUser) {
-                await SupabaseService.updateUser(payload);
+                savedUser = await SupabaseService.updateUser(payload);
                 addToast("Cadastro atualizado com sucesso!", "success");
             } else {
-                await SupabaseService.addUser(payload);
+                savedUser = await SupabaseService.addUser(payload);
                 addToast("Novo usuário cadastrado!", "success");
             }
+
+            if (wasPlanNewlyAssigned && savedUser.planValue && savedUser.planValue > 0) {
+                const finalAmount = (savedUser.planValue || 0) - (savedUser.planDiscount || 0);
+                await SupabaseService.addPayment({
+                    studentId: savedUser.id,
+                    amount: finalAmount,
+                    status: 'PENDING',
+                    dueDate: new Date().toISOString().split('T')[0],
+                    description: `Primeira mensalidade do plano`
+                });
+                addToast(`Primeira fatura (R$ ${finalAmount.toFixed(2)}) foi gerada.`, "info");
+            }
+
             setShowUserForm(false);
             refreshList();
         } catch (error: any) {
@@ -138,7 +152,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         setEditingUser(u);
         setInitialFormData(u ? { ...u } : { 
             name: '', email: '', role: UserRole.STUDENT,
-            planDuration: 12, planValue: 150, billingDay: 5,
+            planDuration: 12, planValue: 150, planDiscount: 0, billingDay: 5,
             joinDate: new Date().toISOString().split('T')[0],
             status: 'ACTIVE'
         });
@@ -222,10 +236,11 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                             {s.role === UserRole.STUDENT && (
                                                 <div className="flex flex-col gap-1.5">
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`p-1 rounded-md ${s.anamnesis?.hasInjury ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                                                            {s.anamnesis?.hasInjury ? <AlertTriangle size={12}/> : <CheckCheck size={12}/>}
+                                                        {/* Fix: Changed hasInjury to hasRecentSurgeryOrInjury to match Anamnesis type */}
+                                                        <span className={`p-1 rounded-md ${s.anamnesis?.hasRecentSurgeryOrInjury ? 'bg-red-500/10 text-red-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                                            {s.anamnesis?.hasRecentSurgeryOrInjury ? <AlertTriangle size={12}/> : <CheckCheck size={12}/>}
                                                         </span>
-                                                        <span className="text-[10px] font-bold text-slate-300 uppercase">Saúde {s.anamnesis?.hasInjury ? 'Restrita' : 'OK'}</span>
+                                                        <span className="text-[10px] font-bold text-slate-300 uppercase">Saúde {s.anamnesis?.hasRecentSurgeryOrInjury ? 'Restrita' : 'OK'}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase">
                                                         <Calendar size={12}/> {enrolledCount} Aula(s) ativa(s)
@@ -288,7 +303,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                             } else if (sPayments.length > 0) {
                                                                 if (confirm("Nenhum vencimento próximo. Deseja gerar nova fatura avulsa?")) {
                                                                     SupabaseService.addPayment({ 
-                                                                        studentId: s.id, amount: s.planValue || 150, status: 'PENDING', dueDate: new Date().toISOString().split('T')[0], description: "Mensalidade Avulsa"
+                                                                        studentId: s.id, amount: (s.planValue || 150) - (s.planDiscount || 0), status: 'PENDING', dueDate: new Date().toISOString().split('T')[0], description: "Mensalidade Avulsa"
                                                                     }).then(() => refreshList());
                                                                 }
                                                             } else {

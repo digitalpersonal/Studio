@@ -7,7 +7,7 @@ import { SettingsService } from '../services/settingsService';
 import { 
   Loader2, DollarSign, Receipt, Check, Download, CreditCard, 
   MessageCircle, AlertTriangle, X, CheckCheck, Info, BadgePercent,
-  QrCode, Copy, Smartphone, ArrowRight
+  QrCode, Copy, Smartphone, ArrowRight, Edit, Plus, Save
 } from 'lucide-react';
 import { useToast, WhatsAppAutomation } from '../App'; 
 
@@ -22,6 +22,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE'>('ALL');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState<Payment | null>(null);
+  const [editingPayment, setEditingPayment] = useState<Partial<Payment> | null>(null);
   const [pixData, setPixData] = useState<{ qr_code: string, copy_paste: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const { addToast } = useToast();
@@ -91,6 +92,25 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
     }, 1500);
   };
 
+  const handleSavePayment = async (paymentData: Partial<Payment>) => {
+    setIsProcessing(paymentData.id || 'new');
+    try {
+      if (paymentData.id) {
+        await SupabaseService.updatePayment(paymentData as Payment);
+        addToast("Fatura atualizada com sucesso!", "success");
+      } else {
+        await SupabaseService.addPayment(paymentData as Omit<Payment, 'id'>);
+        addToast("Nova fatura criada com sucesso!", "success");
+      }
+      setEditingPayment(null);
+      refreshPayments();
+    } catch (e: any) {
+      addToast(`Erro ao salvar fatura: ${e.message}`, "error");
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
   const handleCopyPix = () => {
       if (!pixData) return;
       navigator.clipboard.writeText(pixData.copy_paste);
@@ -132,12 +152,17 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
       <div className="bg-dark-950 rounded-3xl border border-dark-800 overflow-hidden shadow-2xl">
         <div className="p-6 border-b border-dark-800 flex flex-col sm:flex-row justify-between items-center bg-dark-950/50 gap-4">
            <h3 className="font-bold flex items-center gap-2 text-white uppercase tracking-tighter"><Receipt size={18} className="text-brand-500" /> Faturas e Mensalidades</h3>
-           <div className="flex gap-2 overflow-x-auto w-full sm:w-auto no-scrollbar pb-1">
-             {['ALL', 'PENDING', 'OVERDUE', 'PAID'].map(f => (
-               <button key={f} onClick={() => setFilter(f as any)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${filter === f ? 'bg-brand-600 text-white' : 'bg-dark-800 text-slate-500 hover:text-white'}`}>
-                 {f === 'ALL' ? 'Todas' : f === 'PENDING' ? 'Pendentes' : f === 'OVERDUE' ? 'Atrasadas' : 'Pagas'}
-               </button>
-             ))}
+           <div className="flex items-center gap-2">
+             <div className="flex gap-2 overflow-x-auto w-full sm:w-auto no-scrollbar pb-1">
+               {['ALL', 'PENDING', 'OVERDUE', 'PAID'].map(f => (
+                 <button key={f} onClick={() => setFilter(f as any)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${filter === f ? 'bg-brand-600 text-white' : 'bg-dark-800 text-slate-500 hover:text-white'}`}>
+                   {f === 'ALL' ? 'Todas' : f === 'PENDING' ? 'Pendentes' : f === 'OVERDUE' ? 'Atrasadas' : 'Pagas'}
+                 </button>
+               ))}
+             </div>
+             {isStaff && selectedStudentId && (
+               <button onClick={() => setEditingPayment({ studentId: selectedStudentId })} className="p-2 bg-brand-600 text-white rounded-lg hover:bg-brand-500 transition-colors"><Plus size={16}/></button>
+             )}
            </div>
         </div>
         <div className="overflow-x-auto">
@@ -149,7 +174,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                 <th className="px-6 py-4">Valor Original</th>
                 <th className="px-6 py-4 text-emerald-500">Líquido Pago</th>
                 <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Ação de Aluno</th>
+                <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-800">
@@ -206,6 +231,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                                 </button>
                              </div>
                           )}
+                          {isStaff && <button onClick={() => setEditingPayment(p)} className="p-2 bg-dark-800 text-slate-500 rounded-lg hover:text-white transition-all"><Edit size={16}/></button>}
                           {p.status === 'PAID' && (
                               <button className="p-2 bg-dark-800 text-slate-500 rounded-lg hover:text-white transition-all" title="Baixar Recibo"><Download size={16}/></button>
                           )}
@@ -278,6 +304,73 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
            </div>
         </div>
       )}
+
+      {editingPayment && (
+        <PaymentFormModal 
+          payment={editingPayment}
+          onSave={handleSavePayment}
+          onCancel={() => setEditingPayment(null)}
+          isProcessing={!!isProcessing}
+        />
+      )}
+    </div>
+  );
+};
+
+// MODAL PARA EDITAR/CRIAR FATURA
+const PaymentFormModal = ({ payment, onSave, onCancel, isProcessing }: { payment: Partial<Payment>, onSave: (p: Partial<Payment>) => void, onCancel: () => void, isProcessing: boolean }) => {
+  const [formData, setFormData] = useState(payment);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-20 animate-fade-in">
+        <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Receipt size={22} className="text-brand-500" /> {payment.id ? 'Editar Fatura' : 'Nova Fatura Avulsa'}
+                    </h3>
+                </div>
+                <button onClick={onCancel} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full"><X size={20} /></button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Descrição</label>
+                    <input type="text" required className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Vencimento</label>
+                        <input type="date" required className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.dueDate || ''} onChange={e => setFormData({...formData, dueDate: e.target.value})} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Valor (R$)</label>
+                        <input type="number" step="0.01" required className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.amount || ''} onChange={e => setFormData({...formData, amount: Number(e.target.value)})} />
+                    </div>
+                </div>
+                <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Status</label>
+                    <select className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.status || 'PENDING'} onChange={e => setFormData({...formData, status: e.target.value as any})}>
+                        <option value="PENDING">Pendente</option>
+                        <option value="OVERDUE">Atrasado</option>
+                        <option value="PAID">Pago</option>
+                    </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-4">
+                    <button type="button" onClick={onCancel} className="py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700">Cancelar</button>
+                    <button type="submit" disabled={isProcessing} className="py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 flex items-center justify-center gap-2">
+                        {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
   );
 };

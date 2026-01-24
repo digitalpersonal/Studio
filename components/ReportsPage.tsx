@@ -10,7 +10,7 @@ import {
   FileBarChart, Loader2, DollarSign, Users, Calendar, 
   TrendingUp, ArrowUpRight, ArrowDownRight, AlertTriangle, 
   PieChart as PieIcon, Receipt, MessageCircle, ChevronRight,
-  ShieldCheck, Search, Filter, Download
+  ShieldCheck, Search, Filter, Download, Repeat
 } from 'lucide-react';
 import { WhatsAppAutomation } from '../App';
 
@@ -108,7 +108,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
           label="MRR (Faturamento Previsto)" 
           value={`R$ ${stats.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
           sub="Receita mensal recorrente ativa"
-          icon={RepeatIcon}
+          icon={Repeat}
           color="blue"
         />
         <KPIBox 
@@ -286,5 +286,3 @@ const KPIBox = ({ label, value, sub, icon: Icon, color }: { label: string, value
         </div>
     );
 };
-
-const RepeatIcon = ({ size }: { size: number }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>;

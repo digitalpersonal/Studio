@@ -17,13 +17,25 @@ export const CompleteProfilePage: React.FC<CompleteProfilePageProps> = ({
   onProfileComplete,
   addToast,
 }) => {
-  const handleSaveProfile = async (formData: User) => {
+  const handleSaveProfile = async (formData: User, wasPlanNewlyAssigned?: boolean) => {
     try {
       const payload: User = {
         ...formData,
         profileCompleted: true, // Mark profile as complete
       };
       const updatedUser = await SupabaseService.updateUser(payload);
+      
+      if (wasPlanNewlyAssigned && updatedUser.planValue && updatedUser.planValue > 0) {
+           await SupabaseService.addPayment({
+                studentId: updatedUser.id,
+                amount: updatedUser.planValue,
+                status: 'PENDING',
+                dueDate: new Date().toISOString().split('T')[0],
+                description: `Primeira mensalidade do plano`
+           });
+           addToast(`Sua primeira fatura foi gerada.`, "info");
+      }
+
       addToast("Seu perfil foi completado com sucesso! Bem-vindo(a) de volta!", "success");
       onProfileComplete(updatedUser); // Update global user state and navigate to Dashboard
     } catch (error: any) {
