@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { User, UserRole, Address, Anamnesis } from '../types';
 import { UserFormPage } from './UserFormPage';
@@ -23,17 +22,13 @@ export const CompleteProfilePage: React.FC<CompleteProfilePageProps> = ({
         ...formData,
         profileCompleted: true, // Mark profile as complete
       };
+      
       const updatedUser = await SupabaseService.updateUser(payload);
       
-      if (wasPlanNewlyAssigned && updatedUser.planValue && updatedUser.planValue > 0) {
-           await SupabaseService.addPayment({
-                studentId: updatedUser.id,
-                amount: updatedUser.planValue,
-                status: 'PENDING',
-                dueDate: new Date().toISOString().split('T')[0],
-                description: `Primeira mensalidade do plano`
-           });
-           addToast(`Sua primeira fatura foi gerada.`, "info");
+      // The logic to create payments is now centralized in ManageUsersPage's onSave,
+      // which is what this component's onSave prop calls. We just need to pass the flag.
+      if (wasPlanNewlyAssigned) {
+          addToast(`Seu plano foi ativado e as faturas geradas!`, "info");
       }
 
       addToast("Seu perfil foi completado com sucesso! Bem-vindo(a) de volta!", "success");

@@ -143,16 +143,31 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 addToast("Novo usuário cadastrado!", "success");
             }
 
-            if (wasPlanNewlyAssigned && savedUser.planValue && savedUser.planValue > 0) {
-                const finalAmount = (savedUser.planValue || 0) - (savedUser.planDiscount || 0);
-                await SupabaseService.addPayment({
-                    studentId: savedUser.id,
-                    amount: finalAmount,
-                    status: 'PENDING',
-                    dueDate: new Date().toISOString().split('T')[0],
-                    description: `Primeira mensalidade do plano`
-                });
-                addToast(`Primeira fatura (R$ ${finalAmount.toFixed(2)}) foi gerada.`, "info");
+            if (wasPlanNewlyAssigned && savedUser.planId && (savedUser.planDuration || 0) > 0) {
+                await SupabaseService.deletePendingPaymentsForStudent(savedUser.id);
+                
+                const paymentsToCreate: Omit<Payment, 'id'>[] = [];
+                const startDate = new Date(savedUser.planStartDate || new Date().toISOString());
+                
+                for (let i = 0; i < (savedUser.planDuration || 0); i++) {
+                    const dueDate = new Date(startDate.getTime());
+                    dueDate.setMonth(dueDate.getMonth() + i);
+
+                    const finalAmount = (savedUser.planValue || 0) - (savedUser.planDiscount || 0);
+                    
+                    paymentsToCreate.push({
+                        studentId: savedUser.id,
+                        amount: finalAmount,
+                        status: 'PENDING',
+                        dueDate: dueDate.toISOString().split('T')[0],
+                        description: `Mensalidade ${i + 1}/${savedUser.planDuration}`
+                    });
+                }
+
+                if (paymentsToCreate.length > 0) {
+                    await SupabaseService.addMultiplePayments(paymentsToCreate);
+                    addToast(`${savedUser.planDuration} faturas foram geradas para o plano.`, "info");
+                }
             }
 
             setShowUserForm(false);

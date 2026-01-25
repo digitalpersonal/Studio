@@ -547,6 +547,33 @@ export const SupabaseService = {
     return mapPaymentFromDb(data);
   },
 
+  addMultiplePayments: async (payments: Omit<Payment, 'id'>[]): Promise<Payment[]> => {
+    if (!supabase) throw new Error("Sem conexão");
+    const payload = payments.map(p => ({
+        student_id: p.studentId,
+        amount: p.amount,
+        status: p.status,
+        due_date: p.dueDate,
+        description: p.description,
+        discount: p.discount || 0,
+    }));
+    const { data, error } = await supabase.from('payments').insert(payload).select();
+    if (error) throw error;
+    invalidateCache();
+    return (data || []).map(mapPaymentFromDb);
+  },
+
+  deletePendingPaymentsForStudent: async (studentId: string) => {
+    if (!supabase) throw new Error("Sem conexão");
+    const { error } = await supabase
+        .from('payments')
+        .delete()
+        .eq('student_id', studentId)
+        .eq('status', 'PENDING');
+    if (error) throw error;
+    invalidateCache();
+  },
+
   updatePayment: async (p: Payment): Promise<Payment> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('payments').update({
