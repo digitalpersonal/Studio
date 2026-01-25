@@ -72,9 +72,13 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Efeito para rolar a tela para o topo ao trocar de página
   useEffect(() => {
+    // Força o scroll para o topo tanto na janela principal quanto no container de conteúdo.
+    // Isso resolve o problema em dispositivos móveis onde a página pode não começar do topo.
+    window.scrollTo(0, 0);
     if (mainContentRef.current) {
-      mainContentRef.current.scrollTo(0, 0);
+      mainContentRef.current.scrollTop = 0;
     }
+    
     // Fecha o menu mobile ao navegar
     if (mobileMenuOpen) {
       setMobileMenuOpen(false);

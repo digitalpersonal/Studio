@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClassSession, User, UserRole, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { GeminiService } from '../services/geminiService';
-import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search, User as UserIcon, Clock, AlertTriangle, CheckCheck, Save } from 'lucide-react'; 
+import { Calendar, Plus, Edit, Trash2, UserPlus, UserCheck, X, Check, Loader2, Info, UserMinus, ListOrdered, ClipboardList, Search, User as UserIcon, Clock, AlertTriangle, CheckCheck, Save, Flag, Dumbbell } from 'lucide-react'; 
 import { DAYS_OF_WEEK, WORKOUT_TYPES, RUNNING_CYCLE_METHODOLOGY } from '../constants'; 
 
 interface SchedulePageProps {
@@ -147,7 +146,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
             <h3 className="text-lg font-black text-white border-b border-dark-800 pb-3 uppercase tracking-tighter">{day}</h3>
             <div className="space-y-4">
               {classesGroupedByDay[day]?.map(cls => (
-                <div key={cls.id} className={`bg-dark-900 border border-dark-800 rounded-2xl p-4 space-y-3 relative group ${cls.type === 'RUNNING' ? 'hover:border-blue-500' : 'hover:border-brand-500'} transition-all overflow-hidden`}>
+                <div key={cls.id} className={`bg-dark-900 rounded-2xl p-4 space-y-3 relative group border ${cls.type === 'RUNNING' ? 'border-blue-500/30 hover:border-blue-500' : 'border-brand-500/30 hover:border-brand-500'} transition-all overflow-hidden`}>
                   {cls.date && (
                     <div className="absolute top-0 left-0 bg-brand-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-br-lg">
                       Especial
@@ -169,7 +168,10 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
                     )}
                   </div>
                   <div className="pr-12">
-                    <h4 className="text-white font-bold text-sm leading-tight">{cls.title}</h4>
+                    <h4 className={`font-bold text-sm leading-tight flex items-center gap-2 ${cls.type === 'RUNNING' ? 'text-blue-400' : 'text-brand-500'}`}>
+                      {cls.type === 'RUNNING' ? <Flag size={14} /> : <Dumbbell size={14} />}
+                      <span>{cls.title}</span>
+                    </h4>
                      {cls.date ? (
                         <div className="flex items-center gap-1.5 mt-1 bg-brand-500/10 px-2 py-1 rounded-md w-fit">
                             <Calendar size={12} className="text-brand-500" />

@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
-  CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag,
+  CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag, Dumbbell,
   User as UserIcon
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
@@ -206,8 +205,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                         key={c.id} 
                         className={`bg-dark-950 p-5 rounded-[2rem] border flex justify-between items-center group transition-all duration-300 relative ${
                           inProgress 
-                            ? 'border-brand-500 shadow-xl shadow-brand-500/20' 
-                            : 'border-dark-800 hover:border-brand-500/40'
+                            ? (c.type === 'RUNNING' ? 'border-blue-500 shadow-xl shadow-blue-500/20' : 'border-brand-500 shadow-xl shadow-brand-500/20')
+                            : (c.type === 'RUNNING' ? 'border-blue-500/30 hover:border-blue-500' : 'border-brand-500/30 hover:border-brand-500')
                         }`}
                       >
                         {inProgress && (
@@ -223,10 +222,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                                 <p className="text-brand-500 font-black text-lg">{c.startTime}</p>
                             </div>
                             <div>
-                                <p className="text-white font-bold text-base">{c.title}</p>
+                                <p className={`font-bold text-base flex items-center gap-2 ${c.type === 'RUNNING' ? 'text-blue-400' : 'text-brand-500'}`}>
+                                  {c.type === 'RUNNING' ? <Flag size={16} /> : <Dumbbell size={16} />}
+                                  <span>{c.title}</span>
+                                </p>
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">Prof. {c.instructor?.split(' ')[0]}</span>
-                                  <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest">{c.type}</span>
+                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${c.type === 'RUNNING' ? 'bg-blue-500/10 text-blue-500' : 'bg-brand-500/10 text-brand-500'}`}>
+                                    {c.type === 'RUNNING' ? 'Corrida' : 'Funcional'}
+                                  </span>
                                 </div>
                             </div>
                         </div>
