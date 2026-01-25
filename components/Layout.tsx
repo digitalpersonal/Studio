@@ -25,7 +25,8 @@ import {
   FileText,
   PlusSquare,
   Share2,
-  TrendingUp
+  TrendingUp,
+  BookOpen
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -151,6 +152,10 @@ export const Layout: React.FC<LayoutProps> = ({
           <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           <NavItem view="FEED" icon={Camera} label="Comunidade" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
           
+          <div className="my-4 border-t border-dark-800"></div>
+
+          <NavItem view="HELP_CENTER" icon={BookOpen} label="Central de Ajuda" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+
           {isStaff && (
             <>
               <div className="my-4 border-t border-dark-800 pt-4 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Operação</div>
@@ -212,6 +217,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <NavItem view="PERSONAL_WORKOUTS" icon={FileText} label="Treinos Individuais" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="ASSESSMENTS" icon={Activity} label="Avaliações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="FEED" icon={Camera} label="Comunidade" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
+              <NavItem view="HELP_CENTER" icon={BookOpen} label="Central de Ajuda" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               {isStaff && <NavItem view="MANAGE_USERS" icon={Users} label="Alunos & Equipe" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />}
               {isAdmin && (
                 <>

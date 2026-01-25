@@ -1,4 +1,3 @@
-
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
@@ -285,7 +284,8 @@ export type ViewState =
   | 'PERSONAL_WORKOUTS'
   | 'FEED'
   | 'REPORTS'
-  | 'RUNNING_EVOLUTION';
+  | 'RUNNING_EVOLUTION'
+  | 'HELP_CENTER';
 
 export interface AppNavParams {
   studentId?: string;
