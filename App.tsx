@@ -39,6 +39,7 @@ import { DashboardPage } from './components/DashboardPage';
 import { RunningEvolutionPage } from './components/RunningEvolutionPage';
 import { LandingPage } from './components/LandingPage';
 import { HelpCenterPage } from './components/HelpCenterPage';
+import { StravaPage } from './components/StravaPage';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
@@ -419,6 +420,7 @@ export function App() {
           {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
           {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} />}
+          {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={setCurrentUser} addToast={addToast} />}
           {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
             <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
           )}

@@ -1,12 +1,35 @@
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
-import { BookOpen, ChevronDown, User as UserIcon, GraduationCap, Shield } from 'lucide-react';
+import { BookOpen, ChevronDown, User as UserIcon, GraduationCap, Shield, Share2 } from 'lucide-react';
 
 // --- DATA SOURCE ---
 const helpData = {
   [UserRole.STUDENT]: [
     {
+      title: 'Integração Strava',
+      icon: Share2,
+      questions: [
+        { 
+          q: 'Como vai funcionar a integração? (A Experiência)', 
+          a: 'A ideia é <strong>simplicidade total</strong>. Você só conecta sua conta uma vez e depois não precisa se preocupar com mais nada.<br><br><ol class="list-decimal list-inside space-y-3"><li><strong>Conexão Única:</strong> No menu "Strava", clique em "Conectar com Strava". Você será levado ao site seguro do Strava para autorizar o acesso.</li><li><strong>Corra Normalmente:</strong> Use seu app Strava ou relógio (Garmin, Apple Watch) como sempre fez para registrar suas corridas.</li><li><strong>Sincronização Mágica:</strong> Assim que salvar a corrida no Strava, nosso sistema puxa os dados (distância, tempo, pace, etc.) automaticamente.</li><li><strong>Tudo no App:</strong> Sua corrida aparecerá na "Evolução de Corrida" e a distância será somada ao Ranking e Desafio Global, sem nenhum trabalho manual!</li></ol>' 
+        },
+        { 
+          q: 'Por que devo conectar? Quais os benefícios para mim?', 
+          a: 'Conectar sua conta transforma sua experiência no Studio:<br><br><ul class="list-disc list-inside space-y-2"><li><strong>Coaching de Precisão:</strong> Seu treinador verá seus dados reais de corrida (pace, distância, elevação), permitindo um feedback muito mais técnico e personalizado para você evoluir mais rápido.</li><li><strong>Engajamento Máximo:</strong> Participe automaticamente do Ranking e dos Desafios de corrida. Veja seu nome subir no placar em tempo real!</li><li><strong>Histórico Unificado:</strong> Todo o seu progresso, tanto das aulas de funcional quanto das suas corridas de rua, fica centralizado em um só lugar.</li></ul>' 
+        },
+        { 
+          q: 'Preciso fazer algo a cada corrida?', 
+          a: '<strong>Absolutamente nada!</strong> Depois de conectar uma vez, é só correr e deixar a mágica acontecer. A sincronização é 100% automática.' 
+        },
+        { 
+          q: 'E se eu quiser desconectar minha conta?', 
+          a: 'Na mesma tela de <strong>"Strava"</strong>, onde você fez a conexão, haverá um botão para <strong>"Desconectar"</strong>. Ao clicar, o vínculo é removido e suas atividades futuras não serão mais sincronizadas.' 
+        },
+      ]
+    },
+    {
       title: 'Agenda e Aulas',
+      icon: UserIcon,
       questions: [
         { q: 'Como vejo e me inscrevo nas aulas?', a: 'Acesse a <strong>"Agenda de Aulas"</strong> no menu. As aulas são organizadas por dia da semana. Para se inscrever, encontre uma aula futura com vagas disponíveis, clique nela e confirme sua matrícula. Se a aula estiver cheia, seu nome irá para a lista de espera e você será notificado se uma vaga for liberada.' },
         { q: 'Como cancelo minha inscrição em uma aula?', a: 'Na <strong>Agenda</strong>, encontre a aula em que está inscrito e clique para abrir os detalhes. Haverá um botão para <strong>"Cancelar Inscrição"</strong>. Cancele com antecedência para liberar a vaga para outros alunos.' },
@@ -38,6 +61,24 @@ const helpData = {
     }
   ],
   [UserRole.TRAINER]: [
+     {
+      title: 'Integração Strava',
+      icon: Share2,
+      questions: [
+        { 
+          q: 'Qual o valor da integração para o meu coaching?', 
+          a: 'A integração com o Strava eleva seu coaching a um novo patamar, baseando-o em <strong>dados reais e não em suposições</strong>.<br><br><ul class="list-disc list-inside space-y-2"><li><strong>Fim do "Achismo":</strong> Tenha acesso direto aos dados precisos de cada corrida do aluno (pace, distância, elevação, etc.).</li><li><strong>Análise Profunda:</strong> Analise a consistência do ritmo, o impacto da altimetria na performance e a frequência cardíaca para entender o esforço real.</li><li><strong>Feedback Técnico e Personalizado:</strong> Seu feedback se torna muito mais valioso. Ex: "Percebi que seu pace caiu nos últimos 2km naquela subida. Vamos trabalhar força na próxima aula para corrigir isso."</li><li><strong>Eficiência Operacional:</strong> Menos tempo gasto perguntando sobre treinos e mais tempo focado em analisar, planejar e dar feedback de qualidade.</li></ul>' 
+        },
+        { 
+          q: 'Como vejo as corridas de um aluno sincronizadas?', 
+          a: 'Na tela de <strong>"Alunos & Equipe"</strong>, encontre o aluno e acesse a <strong>"Evolução de Corrida"</strong> dele. As atividades sincronizadas aparecerão automaticamente na lista, identificadas com o logo do Strava.' 
+        },
+        { 
+          q: 'Os alunos precisam de ajuda para configurar?', 
+          a: 'Não, e essa é a maior vantagem. O processo é muito simples e o aluno só precisa conectar a conta <strong>uma única vez</strong>. Depois disso, a sincronização é 100% automática. Você pode orientá-los a consultar esta Central de Ajuda na seção "Para Alunos" para ver o passo a passo.' 
+        },
+      ]
+    },
     {
       title: 'Fluxo Essencial: Finalizar uma Chamada',
       questions: [
@@ -63,6 +104,24 @@ const helpData = {
     }
   ],
   [UserRole.ADMIN]: [
+    {
+      title: 'Integração Strava',
+      icon: Share2,
+      questions: [
+        { 
+          q: 'Qual o valor estratégico e de negócio da integração?', 
+          a: 'A integração com o Strava é uma poderosa ferramenta de <strong>engajamento, retenção e marketing</strong>.<br><br><ul class="list-disc list-inside space-y-2"><li><strong>Gamificação:</strong> O ranking automático cria uma competição saudável que incentiva os alunos a treinarem mais.</li><li><strong>Retenção (Efeito Ecossistema):</strong> Ao centralizar todos os dados de performance (funcional + corrida), o aluno cria um vínculo mais forte com o Studio, tornando o serviço mais "pegajoso" (sticky).</li><li><strong>Marketing e Atração:</strong> É um diferencial competitivo enorme. Anuncie seu "Clube de Corrida com integração total ao Strava" para atrair novos clientes, especialmente corredores de rua.</li><li><strong>Fortalecimento da Comunidade:</strong> Conecta os treinos individuais de rua à comunidade do Studio, fazendo o aluno se sentir parte de uma "equipe de corrida" mesmo quando treina sozinho.</li></ul>' 
+        },
+        { 
+          q: 'Preciso configurar algo como administrador?', 
+          a: '<strong>Não.</strong> A integração foi projetada para ser "plug-and-play". A única ação necessária é a do próprio aluno, que deve autorizar a conexão em sua conta. Não há painéis de configuração ou chaves de API para o administrador gerenciar.' 
+        },
+        { 
+          q: 'Como posso usar os dados do Strava para a gestão?', 
+          a: 'Acompanhe o engajamento do clube de corrida através do <strong>Ranking</strong>. Identifique os alunos mais ativos para criar campanhas de reconhecimento e os menos ativos para ações de reengajamento. A funcionalidade fortalece o valor percebido do seu serviço, justificando investimentos e mensalidades.' 
+        },
+      ]
+    },
     {
       title: 'Fluxo Essencial: Gestão Financeira',
       questions: [
@@ -160,7 +219,10 @@ export const HelpCenterPage: React.FC<HelpCenterPageProps> = ({ currentUser }) =
         <div className="p-4 md:p-8">
           {helpData[activeTab]?.map((category, index) => (
             <div key={index} className="mb-8">
-              <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-4 px-4">{category.title}</h3>
+              <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-4 px-4 flex items-center gap-3">
+                {category.icon && <category.icon className="text-brand-500" size={20} />}
+                {category.title}
+              </h3>
               <div className="bg-dark-900 rounded-2xl border border-dark-800 overflow-hidden">
                 {category.questions.map((q, qIndex) => (
                   <AccordionItem key={qIndex} question={q.q} answer={q.a} />

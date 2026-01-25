@@ -66,7 +66,9 @@ const mapUserFromDb = (u: any): User => ({
   profileCompleted: !!u.profile_completed,
   address: u.address || {},
   anamnesis: u.anamnesis || {},
-  status: u.status || 'ACTIVE'
+  status: u.status || 'ACTIVE',
+  stravaAccessToken: u.strava_access_token,
+  stravaRefreshToken: u.strava_refresh_token,
 });
 
 const mapAcademySettingsFromDb = (s: any): AcademySettings => ({
@@ -368,7 +370,9 @@ export const SupabaseService = {
       profession: u.profession,
       marital_status: u.maritalStatus,
       status: u.status,
-      suspended_at: u.suspendedAt
+      suspended_at: u.suspendedAt,
+      strava_access_token: u.stravaAccessToken,
+      strava_refresh_token: u.stravaRefreshToken,
     };
 
     // Only include the password in the update if a new one is provided.

@@ -98,6 +98,9 @@ export interface User {
   profileCompleted?: boolean;
   status?: 'ACTIVE' | 'SUSPENDED';
   suspendedAt?: string;
+  // Campos para Integração Strava
+  stravaAccessToken?: string;
+  stravaRefreshToken?: string;
 }
 
 export interface Post {
@@ -285,7 +288,8 @@ export type ViewState =
   | 'FEED'
   | 'REPORTS'
   | 'RUNNING_EVOLUTION'
-  | 'HELP_CENTER';
+  | 'HELP_CENTER'
+  | 'STRAVA_CONNECT';
 
 export interface AppNavParams {
   studentId?: string;
