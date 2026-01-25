@@ -593,6 +593,13 @@ export const SupabaseService = {
     return mapPaymentFromDb(data);
   },
 
+  deletePayment: async (id: string) => {
+    if (!supabase) throw new Error("Sem conexão");
+    const { error } = await supabase.from('payments').delete().eq('id', id);
+    if (error) throw error;
+    invalidateCache();
+  },
+
   getGlobalChallengeProgress: async (force: boolean = false): Promise<{ challenge: Challenge | null, totalDistance: number }> => {
     if (!supabase) return { challenge: null, totalDistance: 0 };
     const now = Date.now();

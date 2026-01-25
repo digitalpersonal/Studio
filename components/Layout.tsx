@@ -167,6 +167,7 @@ export const Layout: React.FC<LayoutProps> = ({
           {isAdmin && ( 
             <>
               <div className="my-4 border-t border-dark-800 pt-4 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestão</div>
+              <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
               <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
               {isSuperAdmin && <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN]} />} 
             </>
@@ -223,6 +224,7 @@ export const Layout: React.FC<LayoutProps> = ({
               {isStaff && <NavItem view="MANAGE_USERS" icon={Users} label="Alunos & Equipe" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />}
               {isAdmin && (
                 <>
+                  <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
                   <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
                   {isSuperAdmin && <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN]} />}
                 </>

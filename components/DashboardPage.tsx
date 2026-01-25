@@ -4,7 +4,7 @@ import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
   CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag, Dumbbell,
-  User as UserIcon, Download
+  User as UserIcon, Download, List, CheckCheck
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
@@ -23,9 +23,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [challengeData, setChallengeData] = useState<{ challenge: Challenge | null, totalDistance: number }>({ challenge: null, totalDistance: 0 });
   const [isLive, setIsLive] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [recentActivities, setRecentActivities] = useState<(AttendanceRecord & { classDetails?: ClassSession })[]>([]);
 
   const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
   const isStudent = currentUser.role === UserRole.STUDENT;
@@ -45,7 +43,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         SupabaseService.getClasses(force),
         isManagement ? SupabaseService.getPayments(undefined, force) : SupabaseService.getPayments(currentUser.id, force),
         SupabaseService.getGlobalChallengeProgress(force),
-        isStudent ? SupabaseService.getAttendanceByClassAndDate('', '') : Promise.resolve([]) // Simplificado, ideal seria buscar por studentId
+        isStudent ? SupabaseService.getAttendanceForStudent(currentUser.id, 'RUNNING') : Promise.resolve([])
       ]);
       setAllUsers(uData || []);
       setClasses(cData || []);
@@ -69,27 +67,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     return () => unsubscribe();
   }, [loadData]);
 
-  useEffect(() => {
-    if (!selectedStudentId) {
-        setRecentActivities([]);
-        return;
-    }
-
-    const fetchActivities = async () => {
-        setLoading(true);
-        try {
-            const activities = await SupabaseService.getAttendanceForStudent(selectedStudentId);
-            setRecentActivities(activities.slice(0, 5));
-        } catch (error) {
-            addToast("Erro ao buscar atividades recentes do aluno.", "error");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    fetchActivities();
-  }, [selectedStudentId, addToast]);
-
   const todayName = DAYS_OF_WEEK[(new Date().getDay() + 6) % 7];
   const currentMonth = new Date().getMonth();
 
@@ -105,12 +82,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     const students = allUsers.filter(u => u.role === UserRole.STUDENT);
     const activeStudents = students.filter(u => u.status !== 'SUSPENDED');
     const suspendedCount = students.filter(u => u.status === 'SUSPENDED').length;
-    const todayClasses = classes.filter(c => c.dayOfWeek === todayName);
+    const todayClasses = classes.filter(c => c.dayOfWeek === todayName).sort((a,b) => a.startTime.localeCompare(b.startTime));
     const overdue = payments.filter(p => p.status === 'OVERDUE');
     const totalOverdue = overdue.reduce((acc, p) => acc + (p.amount || 0), 0);
     
     const lastRunPerformance = attendance
-      .filter(a => a.studentId === currentUser.id && a.totalTimeSeconds)
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
     const birthdays = allUsers
@@ -124,6 +100,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         const dayB = new Date(b.birthDate!).getDate();
         return dayA - dayB;
       });
+    
+    const recentPaid = payments
+      .filter(p => p.status === 'PAID')
+      .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()) // Assuming dueDate can act as payment date for sorting
+      .slice(0, 5);
 
     return {
       activeCount: activeStudents.length,
@@ -133,9 +114,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       totalOverdueAmount: totalOverdue,
       todayClasses,
       birthdays,
-      lastRunPerformance
+      lastRunPerformance,
+      recentPaid,
     };
-  }, [allUsers, classes, payments, todayName, currentMonth, attendance, currentUser.id]);
+  }, [allUsers, classes, payments, todayName, currentMonth, attendance]);
 
   if (loading && allUsers.length === 0) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
@@ -159,9 +141,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         <div className="flex gap-2 no-print">
           <button onClick={() => window.print()} className="p-3 bg-dark-950 border border-dark-800 rounded-2xl text-slate-500 hover:text-white transition-all shadow-lg group">
               <Download size={20} className="group-hover:scale-110 transition-transform" />
-          </button>
-          <button onClick={() => loadData(true)} className="p-3 bg-dark-950 border border-dark-800 rounded-2xl text-slate-500 hover:text-white transition-all shadow-lg group">
-            <TrendingUp size={20} className="group-hover:scale-110 transition-transform" />
           </button>
         </div>
       </header>
@@ -197,7 +176,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
               <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
                 <Clock className="text-brand-500" size={24}/> Agenda de Hoje
               </h3>
-              <button onClick={() => onNavigate('SCHEDULE')} className="text-brand-500 text-[10px] font-black uppercase tracking-widest hover:underline no-print">Ver Detalhes</button>
+              <button onClick={() => onNavigate('SCHEDULE')} className="text-brand-500 text-[10px] font-black uppercase tracking-widest hover:underline no-print">Ver Agenda Completa</button>
             </div>
             <div className="space-y-4">
                 {stats.todayClasses.length > 0 ? (
@@ -250,75 +229,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                   </div>
                 )}
             </div>
-
-            {isManagement && (
-              <div className="mt-8 space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
-                    <UserIcon className="text-brand-500" size={24}/> Atividade Recente do Aluno
-                  </h3>
-                </div>
-                <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800 no-print">
-                  <select
-                    className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm font-bold"
-                    value={selectedStudentId || ''}
-                    onChange={e => setSelectedStudentId(e.target.value || null)}
-                  >
-                    <option value="">Selecione um aluno para ver suas últimas atividades...</option>
-                    {allUsers
-                      .filter(u => u.role === UserRole.STUDENT)
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map(s => (
-                        <option key={s.id} value={s.id}>{s.name}</option>
-                      ))}
-                  </select>
-                </div>
-                {selectedStudentId && (
-                  <div className="space-y-4">
-                    {loading ? <div className="flex justify-center py-4"><Loader2 className="animate-spin text-brand-500" /></div> : recentActivities.length > 0 ? (
-                      recentActivities.map(activity => {
-                        const c = activity.classDetails;
-                        if (!c) return null;
-                        return (
-                          <div key={activity.id} className={`p-5 rounded-[2rem] border border-dark-800 flex justify-between items-center hover:border-brand-500/40 transition-all group ${
-                              c.type === 'RUNNING' ? 'bg-emerald-500/10' : 'bg-blue-500/10'
-                          }`}>
-                            <div className="flex items-center gap-5">
-                              <div className="bg-dark-900 px-5 py-3 rounded-2xl border border-dark-800 text-center min-w-[80px]">
-                                <p className="text-brand-500 font-black text-sm">{new Date(activity.date + 'T03:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'short'})}</p>
-                                <p className="text-slate-400 font-bold text-xs">{new Date(activity.date + 'T03:00:00').toLocaleDateString('pt-BR', {weekday: 'short'})}</p>
-                              </div>
-                              <div>
-                                <p className="text-white font-bold text-base">{c.title}</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${ c.type === 'RUNNING' ? 'text-emerald-500 bg-emerald-500/20 border-emerald-500/20' : 'text-blue-500 bg-blue-500/20 border-blue-500/20' }`}>
-                                    {c.type === 'RUNNING' ? 'Corrida' : 'Funcional'}
-                                  </span>
-                                  {activity.averagePace && (
-                                    <span className="text-[9px] text-emerald-500 uppercase font-black tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">
-                                      {activity.averagePace}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <button onClick={() => c.type === 'RUNNING' ? onNavigate('RUNNING_EVOLUTION', { studentId: selectedStudentId }) : onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all no-print"><ArrowRight size={20}/></button>
-                          </div>
-                        )
-                      })
-                    ) : (
-                      <div className="py-10 text-center bg-dark-950 rounded-[2rem] border border-dashed border-dark-800">
-                        <Activity className="mx-auto text-dark-800 mb-2" size={32} />
-                        <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Nenhuma atividade recente encontrada para este aluno.</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
         </div>
 
         <div className="space-y-8">
+            {isManagement && <RecentActivityCard payments={stats.recentPaid} />}
             <div className="bg-dark-950 border border-dark-800 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 blur-3xl -z-10" />
                 <div className="flex justify-between items-center">
@@ -349,35 +263,42 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                   )}
                 </div>
             </div>
-
-            {challengeData.challenge && (
-                <div className="bg-brand-600 border border-brand-500 rounded-[2.5rem] p-8 space-y-5 shadow-2xl shadow-brand-600/30 relative overflow-hidden group">
-                    <Trophy className="absolute -right-6 -bottom-6 text-white/10 group-hover:scale-110 transition-transform" size={140} />
-                    <div className="flex justify-between items-center relative z-10">
-                      <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                        <Trophy size={16}/> Desafio Global
-                      </h3>
-                    </div>
-                    <div className="relative z-10">
-                      <p className="text-white font-black text-lg leading-tight mb-2">{challengeData.challenge.title}</p>
-                      <div className="w-full h-3 bg-black/20 rounded-full overflow-hidden border border-white/10 p-0.5">
-                          <div 
-                            className="h-full bg-white rounded-full transition-all duration-1000 ease-out" 
-                            style={{ width: `${Math.min(100, (challengeData.totalDistance / (challengeData.challenge.targetValue || 1)) * 100)}%` }}
-                          ></div>
-                      </div>
-                      <div className="flex justify-between text-[10px] font-black uppercase mt-3 text-brand-100">
-                          <span>{challengeData.totalDistance?.toLocaleString() || 0} {challengeData.challenge.unit}</span>
-                          <span>Meta: {challengeData.challenge.targetValue?.toLocaleString() || 0}</span>
-                      </div>
-                    </div>
-                </div>
-            )}
         </div>
       </div>
     </div>
   );
 };
+
+const RecentActivityCard = ({ payments }: { payments: any[] }) => (
+    <div className="bg-dark-950 border border-dark-800 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden group">
+        <div className="flex justify-between items-center">
+            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                <List size={16} className="text-emerald-500" /> Atividade Recente
+            </h3>
+        </div>
+        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+            {payments.length > 0 ? payments.map((p) => (
+                <div key={p.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center ${p.discount > 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-dark-800 border-dark-700 text-slate-400'}`}>
+                            {/* O ideal seria ter uma coluna 'payment_method' para diferenciar. Por enquanto, usamos um ícone genérico. */}
+                            <CheckCheck size={18} />
+                        </div>
+                        <div>
+                            <p className="text-white font-bold text-xs">{p.studentName}</p>
+                            <p className="text-[9px] text-slate-500 font-black uppercase">{p.description}</p>
+                        </div>
+                    </div>
+                    <span className="text-emerald-500 font-black text-sm">
+                        + R$ {(p.amount - (p.discount || 0)).toFixed(2)}
+                    </span>
+                </div>
+            )) : (
+                <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Nenhuma atividade financeira recente.</p>
+            )}
+        </div>
+    </div>
+);
 
 const MetricCard = ({ icon: Icon, label, value, color, subValue }: { icon: any, label: string, value: string | number, color: string, subValue?: string }) => {
     const colors: any = {

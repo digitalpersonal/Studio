@@ -1,4 +1,3 @@
-
 import { Payment } from "../types";
 import { SettingsService } from "./settingsService";
 
@@ -30,6 +29,16 @@ export const MercadoPagoService = {
 
     /**
      * Processa um pagamento individual (Checkout Pro ou Pix/Cartão)
+     * 
+     * ARQUITETURA DE WEBHOOK (COMO FUNCIONA NA VIDA REAL):
+     * 1.  `external_reference`: Ao criar a preferência de pagamento, enviamos o `payment.id` do nosso banco de dados
+     *     para o Mercado Pago usando o campo `external_reference`. Isso vincula a transação deles à nossa fatura.
+     * 2.  Notificação: Quando o aluno paga, o Mercado Pago envia um POST para nosso endpoint de webhook
+     *     (ex: uma Supabase Edge Function em `.../functions/v1/mercadopago-webhook`).
+     * 3.  Validação e Baixa: Nossa Edge Function recebe o POST, valida a segurança da requisição, extrai o 
+     *     `external_reference` (nosso `payment.id`) e atualiza a fatura correspondente na tabela `payments` para `status = 'PAID'`.
+     * 4.  Realtime: A atualização no banco de dados dispara o Supabase Realtime, atualizando a interface do
+     *     administrador e do aluno instantaneamente.
      */
     processPayment: async (payment: Payment): Promise<{ 
         status: 'approved' | 'rejected' | 'pending', 
@@ -41,16 +50,16 @@ export const MercadoPagoService = {
         const settings = await SettingsService.getSettings();
         const mp = await MercadoPagoService.getMPInstance();
         
-        console.log(`[Mercado Pago] Iniciando checkout de R$ ${payment.amount} para fatura: ${String(payment.description)}`);
+        console.log(`[Mercado Pago] Iniciando checkout para fatura ID: ${payment.id} (external_reference)`);
 
         // Simula o tempo de resposta da API do Mercado Pago
         await new Promise(resolve => setTimeout(resolve, 2000));
 
+        // Em uma implementação real, o 'mockPreferenceId' seria o ID retornado pela API do Mercado Pago
+        // ao criar a preferência de pagamento, onde incluiríamos o `external_reference: payment.id`.
         const mockPreferenceId = `pref_${Math.random().toString(36).substr(2, 9)}`;
         
-        // Se as chaves estiverem configuradas, o init_point seria o link real do Mercado Pago
-        // Aqui simulamos o retorno de um Pix dinâmico usando a chave da academia ou um mock
-        const pixCode = settings.pixKey || "00020126580014BR.GOV.BCB.PIX0136STUDIO-MOCK-PRODUCAO-CHECKOUT-20245204000053039865802BR5913STUDIO_FITNESS6009SAO_PAULO62070503***6304D1E2";
+        const pixCode = settings.pixKey || `00020126580014BR.GOV.BCB.PIX0136${payment.id}5204000053039865802BR5913STUDIO_FITNESS6009SAO_PAULO62070503***6304D1E2`;
 
         return {
             status: 'pending', 
