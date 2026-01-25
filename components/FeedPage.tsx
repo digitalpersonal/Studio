@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Post, User, UserRole, Comment } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -113,7 +112,7 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
   if (loading) return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-2xl mx-auto pb-20">
+    <div className="space-y-6 animate-fade-in max-w-2xl mx-auto pb-20 printable-area">
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Comunidade</h2>
@@ -123,7 +122,7 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
       </header>
 
       {/* Criar Post */}
-      <div className="bg-dark-950 p-6 rounded-[2.5rem] border border-dark-800 shadow-2xl">
+      <div className="bg-dark-950 p-6 rounded-[2.5rem] border border-dark-800 shadow-2xl no-print">
         <form onSubmit={handleCreatePost} className="space-y-4">
           <div className="flex gap-4">
             <img src={String(currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${String(currentUser.name)}`)} className="w-12 h-12 rounded-2xl object-cover border border-dark-800" />
@@ -174,12 +173,12 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
             {post.imageUrl && (
               <div onClick={() => setSelectedPost(post)} className="w-full rounded-3xl overflow-hidden bg-dark-900 border border-dark-800 cursor-pointer relative group">
                 <img src={post.imageUrl} className="w-full h-auto object-cover transition-transform group-hover:scale-105" loading="lazy" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center no-print">
                     <span className="text-white font-black text-xs uppercase tracking-widest border-2 border-white px-4 py-2 rounded-full">Ver Detalhes</span>
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-6 px-1">
+            <div className="flex items-center gap-6 px-1 no-print">
                 <button onClick={() => handleLike(post.id)} className={`flex items-center gap-1.5 text-xs font-bold transition-all ${post.likes.includes(currentUser.id) ? 'text-red-500 scale-110' : 'text-slate-500 hover:text-red-400'}`}>
                     <Heart size={20} fill={post.likes.includes(currentUser.id) ? "currentColor" : "none"} />
                     {post.likes.length}
@@ -235,7 +234,7 @@ const PostDetailModal = ({ post, currentUser, onClose, onLike, addToast, onUpdat
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-12 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in no-print">
             <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-5xl h-[85vh] shadow-2xl flex flex-col md:flex-row overflow-hidden relative">
                 <button onClick={onClose} className="absolute top-6 right-6 z-10 p-2 bg-dark-950/80 text-white rounded-full hover:bg-white hover:text-black transition-all shadow-xl">
                     <X size={24} />

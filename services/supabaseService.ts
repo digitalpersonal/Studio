@@ -1,4 +1,3 @@
-
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { User, ClassSession, Assessment, Payment, AttendanceRecord, Route, Challenge, PersonalizedWorkout, Post, Comment, UserRole, AcademySettings, CycleSummary, Plan } from '../types';
 import { SUPER_ADMIN_CONFIG } from '../constants';
@@ -475,9 +474,31 @@ export const SupabaseService = {
   },
 
   deleteClass: async (id: string) => {
-    if (!supabase) return;
-    const { error } = await supabase.from('classes').delete().eq('id', id);
-    if (error) throw error;
+    if (!supabase) throw new Error("Sem conexão com o banco de dados.");
+
+    // Primeiro, deletar todos os registros de presença associados.
+    // Isso evita erros de violação de chave estrangeira se a chamada já foi feita.
+    const { error: attendanceError } = await supabase
+      .from('attendance')
+      .delete()
+      .eq('class_id', id);
+
+    if (attendanceError) {
+      console.error("Erro ao deletar registros de presença:", attendanceError);
+      throw new Error(`Não foi possível limpar os registros de presença associados: ${attendanceError.message}`);
+    }
+
+    // Depois, deletar a aula em si.
+    const { error: classError } = await supabase
+      .from('classes')
+      .delete()
+      .eq('id', id);
+
+    if (classError) {
+      console.error("Erro ao deletar a aula:", classError);
+      throw new Error(`Não foi possível deletar a aula: ${classError.message}`);
+    }
+
     invalidateCache();
   },
 
@@ -582,20 +603,59 @@ export const SupabaseService = {
   },
 
   saveAttendance: async (records: Omit<AttendanceRecord, 'id'>[]) => {
-    if (!supabase) return;
-    const bulkPayload = records.map(r => ({ 
-      class_id: r.classId, 
-      student_id: r.studentId, 
-      date: r.date, 
-      is_present: r.isPresent,
-      total_time_seconds: r.totalTimeSeconds,
-      average_pace: r.averagePace,
-      age_group_classification: r.ageGroupClassification,
-      instructor_notes: r.instructorNotes,
-      generated_feedback: r.generatedFeedback,
-    }));
-    const { error } = await supabase.from('attendance').upsert(bulkPayload, { onConflict: 'class_id, student_id, date' });
-    if (error) throw error;
+    if (!supabase) throw new Error("Sem conexão");
+    if (records.length === 0) return;
+
+    // A operação 'upsert' falha se não houver uma restrição UNIQUE correspondente no DB.
+    // Como alternativa segura que evita condições de corrida (diferente de delete-then-insert),
+    // processamos cada registro individualmente.
+    const promises = records.map(async r => {
+        const payload = { 
+            class_id: r.classId, 
+            student_id: r.studentId, 
+            date: r.date, 
+            is_present: r.isPresent,
+            total_time_seconds: r.totalTimeSeconds,
+            average_pace: r.averagePace,
+            age_group_classification: r.ageGroupClassification,
+            instructor_notes: r.instructorNotes,
+            generated_feedback: r.generatedFeedback,
+        };
+
+        const { data: existing, error: fetchError } = await supabase
+            .from('attendance')
+            .select('id')
+            .eq('class_id', r.classId)
+            .eq('student_id', r.studentId)
+            .eq('date', r.date)
+            .maybeSingle();
+
+        if (fetchError) {
+            console.error("Erro ao verificar presença existente:", fetchError);
+            throw fetchError;
+        }
+
+        if (existing) {
+            const { error: updateError } = await supabase
+                .from('attendance')
+                .update(payload)
+                .eq('id', existing.id);
+            if (updateError) {
+                console.error("Erro ao atualizar presença:", updateError);
+                throw updateError;
+            }
+        } else {
+            const { error: insertError } = await supabase
+                .from('attendance')
+                .insert(payload);
+            if (insertError) {
+                console.error("Erro ao inserir presença:", insertError);
+                throw insertError;
+            }
+        }
+    });
+
+    await Promise.all(promises);
     invalidateCache();
   },
 

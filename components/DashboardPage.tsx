@@ -4,7 +4,7 @@ import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
   CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag, Dumbbell,
-  User as UserIcon
+  User as UserIcon, Download
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
@@ -142,12 +142,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   }
 
   return (
-    <div className="space-y-8 animate-fade-in pb-20">
+    <div className="space-y-8 animate-fade-in pb-20 printable-area">
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Visão Geral</h2>
-            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full no-print">
               <div className={`w-1.5 h-1.5 rounded-full bg-emerald-500 ${isLive ? 'animate-ping' : ''}`} />
               <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Realtime</span>
             </div>
@@ -156,7 +156,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
             {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 no-print">
+          <button onClick={() => window.print()} className="p-3 bg-dark-950 border border-dark-800 rounded-2xl text-slate-500 hover:text-white transition-all shadow-lg group">
+              <Download size={20} className="group-hover:scale-110 transition-transform" />
+          </button>
           <button onClick={() => loadData(true)} className="p-3 bg-dark-950 border border-dark-800 rounded-2xl text-slate-500 hover:text-white transition-all shadow-lg group">
             <TrendingUp size={20} className="group-hover:scale-110 transition-transform" />
           </button>
@@ -194,7 +197,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
               <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
                 <Clock className="text-brand-500" size={24}/> Agenda de Hoje
               </h3>
-              <button onClick={() => onNavigate('SCHEDULE')} className="text-brand-500 text-[10px] font-black uppercase tracking-widest hover:underline">Ver Detalhes</button>
+              <button onClick={() => onNavigate('SCHEDULE')} className="text-brand-500 text-[10px] font-black uppercase tracking-widest hover:underline no-print">Ver Detalhes</button>
             </div>
             <div className="space-y-4">
                 {stats.todayClasses.length > 0 ? (
@@ -203,14 +206,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                     return (
                       <div 
                         key={c.id} 
-                        className={`bg-dark-950 p-5 rounded-[2rem] border flex justify-between items-center group transition-all duration-300 relative ${
+                        className={`p-5 rounded-[2rem] border flex justify-between items-center group transition-all duration-300 relative ${
+                            c.type === 'RUNNING' ? 'bg-emerald-500/10' : 'bg-blue-500/10'
+                        } ${
                           inProgress 
-                            ? (c.type === 'RUNNING' ? 'border-blue-500 shadow-xl shadow-blue-500/20' : 'border-brand-500 shadow-xl shadow-brand-500/20')
-                            : (c.type === 'RUNNING' ? 'border-blue-500/30 hover:border-blue-500' : 'border-brand-500/30 hover:border-brand-500')
+                            ? (c.type === 'RUNNING' ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : 'border-blue-500 shadow-xl shadow-blue-500/20')
+                            : (c.type === 'RUNNING' ? 'border-emerald-500/30 hover:border-emerald-500' : 'border-blue-500/30 hover:border-blue-500')
                         }`}
                       >
                         {inProgress && (
-                          <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full animate-fade-in">
+                          <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full animate-fade-in no-print">
                             <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                             <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">AO VIVO</span>
                           </div>
@@ -222,19 +227,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                                 <p className="text-brand-500 font-black text-lg">{c.startTime}</p>
                             </div>
                             <div>
-                                <p className={`font-bold text-base flex items-center gap-2 ${c.type === 'RUNNING' ? 'text-blue-400' : 'text-brand-500'}`}>
+                                <p className={`font-bold text-base flex items-center gap-2 ${c.type === 'RUNNING' ? 'text-emerald-400' : 'text-blue-400'}`}>
                                   {c.type === 'RUNNING' ? <Flag size={16} /> : <Dumbbell size={16} />}
                                   <span>{c.title}</span>
                                 </p>
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">Prof. {c.instructor?.split(' ')[0]}</span>
-                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${c.type === 'RUNNING' ? 'bg-blue-500/10 text-blue-500' : 'bg-brand-500/10 text-brand-500'}`}>
+                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${c.type === 'RUNNING' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-blue-500/20 text-blue-500'}`}>
                                     {c.type === 'RUNNING' ? 'Corrida' : 'Funcional'}
                                   </span>
                                 </div>
                             </div>
                         </div>
-                        <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all"><ArrowRight size={20}/></button>
+                        <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all no-print"><ArrowRight size={20}/></button>
                       </div>
                     )
                   })
@@ -253,7 +258,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                     <UserIcon className="text-brand-500" size={24}/> Atividade Recente do Aluno
                   </h3>
                 </div>
-                <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800">
+                <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800 no-print">
                   <select
                     className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm font-bold"
                     value={selectedStudentId || ''}
@@ -275,7 +280,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                         const c = activity.classDetails;
                         if (!c) return null;
                         return (
-                          <div key={activity.id} className="bg-dark-950 p-5 rounded-[2rem] border border-dark-800 flex justify-between items-center hover:border-brand-500/40 transition-all group">
+                          <div key={activity.id} className={`p-5 rounded-[2rem] border border-dark-800 flex justify-between items-center hover:border-brand-500/40 transition-all group ${
+                              c.type === 'RUNNING' ? 'bg-emerald-500/10' : 'bg-blue-500/10'
+                          }`}>
                             <div className="flex items-center gap-5">
                               <div className="bg-dark-900 px-5 py-3 rounded-2xl border border-dark-800 text-center min-w-[80px]">
                                 <p className="text-brand-500 font-black text-sm">{new Date(activity.date + 'T03:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'short'})}</p>
@@ -284,8 +291,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                               <div>
                                 <p className="text-white font-bold text-base">{c.title}</p>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${ c.type === 'RUNNING' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20' : 'text-brand-500 bg-brand-500/10 border-brand-500/20' }`}>
-                                    {c.type}
+                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border ${ c.type === 'RUNNING' ? 'text-emerald-500 bg-emerald-500/20 border-emerald-500/20' : 'text-blue-500 bg-blue-500/20 border-blue-500/20' }`}>
+                                    {c.type === 'RUNNING' ? 'Corrida' : 'Funcional'}
                                   </span>
                                   {activity.averagePace && (
                                     <span className="text-[9px] text-emerald-500 uppercase font-black tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">
@@ -295,7 +302,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                                 </div>
                               </div>
                             </div>
-                            <button onClick={() => c.type === 'RUNNING' ? onNavigate('RUNNING_EVOLUTION', { studentId: selectedStudentId }) : onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all"><ArrowRight size={20}/></button>
+                            <button onClick={() => c.type === 'RUNNING' ? onNavigate('RUNNING_EVOLUTION', { studentId: selectedStudentId }) : onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all no-print"><ArrowRight size={20}/></button>
                           </div>
                         )
                       })
@@ -332,7 +339,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                         </div>
                         <button 
                           onClick={() => WhatsAppAutomation.sendGenericMessage(u, "Parabéns pelo seu dia! 🎉 O Studio te deseja muita saúde, força e conquistas! Vamos com tudo! 💪🔥")}
-                          className="p-2 bg-brand-500/10 text-brand-500 rounded-xl hover:bg-brand-500 hover:text-white transition-all shadow-lg"
+                          className="p-2 bg-brand-500/10 text-brand-500 rounded-xl hover:bg-brand-500 hover:text-white transition-all shadow-lg no-print"
                         >
                           <MessageCircle size={14} />
                         </button>

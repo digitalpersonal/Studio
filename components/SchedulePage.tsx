@@ -102,6 +102,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
     try {
       await SupabaseService.deleteClass(id);
       addToast("Aula excluída permanentemente.", "success");
+      setShowForm(false);
+      setEditingClass(null);
       refreshData();
     } catch (error: any) {
       addToast(`Erro ao excluir: ${error.message}`, "error");
@@ -122,6 +124,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
         onCancel={() => { setShowForm(false); setEditingClass(null); }}
         allStudents={students}
         instructors={instructors}
+        onDelete={handleDeleteClass}
       />
     );
   }
@@ -146,7 +149,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
             <h3 className="text-lg font-black text-white border-b border-dark-800 pb-3 uppercase tracking-tighter">{day}</h3>
             <div className="space-y-4">
               {classesGroupedByDay[day]?.map(cls => (
-                <div key={cls.id} className={`bg-dark-900 rounded-2xl p-4 space-y-3 relative group border ${cls.type === 'RUNNING' ? 'border-blue-500/30 hover:border-blue-500' : 'border-brand-500/30 hover:border-brand-500'} transition-all overflow-hidden`}>
+                <div key={cls.id} className={`rounded-2xl p-4 space-y-3 relative group border ${cls.type === 'RUNNING' ? 'bg-emerald-500/10 border-emerald-500/30 hover:border-emerald-500' : 'bg-blue-500/10 border-blue-500/30 hover:border-blue-500'} transition-all overflow-hidden`}>
                   {cls.date && (
                     <div className="absolute top-0 left-0 bg-brand-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-br-lg">
                       Especial
@@ -168,7 +171,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
                     )}
                   </div>
                   <div className="pr-12">
-                    <h4 className={`font-bold text-sm leading-tight flex items-center gap-2 ${cls.type === 'RUNNING' ? 'text-blue-400' : 'text-brand-500'}`}>
+                    <h4 className={`font-bold text-sm leading-tight flex items-center gap-2 ${cls.type === 'RUNNING' ? 'text-emerald-400' : 'text-blue-400'}`}>
                       {cls.type === 'RUNNING' ? <Flag size={14} /> : <Dumbbell size={14} />}
                       <span>{cls.title}</span>
                     </h4>
@@ -191,7 +194,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
                   <div className="flex flex-wrap gap-2 text-[10px] text-slate-400 font-bold uppercase">
                     <span className="flex items-center gap-1"><Clock size={12} className="text-slate-600"/> {cls.startTime}</span>
                     <span className="flex items-center gap-1"><UserCheck size={12} className="text-slate-600"/> {cls.instructor.split(' ')[0]}</span>
-                    <span className={`px-2 py-0.5 rounded-md ${cls.type === 'RUNNING' ? 'bg-blue-500/10 text-blue-500' : 'bg-brand-500/10 text-brand-500'}`}>
+                    <span className={`px-2 py-0.5 rounded-md ${cls.type === 'RUNNING' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-blue-500/20 text-blue-500'}`}>
                       {cls.type === 'RUNNING' ? 'Corrida' : 'Funcional'}
                     </span>
                   </div>
@@ -388,14 +391,25 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-6 md:pt-10 animate-fade-in">
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in">
       <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
         <div className="p-8 border-b border-dark-800">
            <div className="flex justify-between items-start mb-2">
               <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Chamada / Performance</h3>
               <button onClick={onClose} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full"><X size={20}/></button>
            </div>
-           <p className="text-brand-500 font-bold text-[10px] uppercase tracking-widest">{classSession.title} • {new Date().toLocaleDateString('pt-BR')}</p>
+           <div className="flex items-center gap-4">
+              <p className="text-brand-500 font-bold text-[10px] uppercase tracking-widest">{classSession.title} • {new Date().toLocaleDateString('pt-BR')}</p>
+              {classSession.type === 'RUNNING' ? (
+                  <span className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                      Aula Corrida
+                  </span>
+              ) : (
+                  <span className="bg-brand-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                      Aula Funcional
+                  </span>
+              )}
+           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar">
@@ -476,7 +490,7 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
   );
 };
 
-const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }: { classSession: ClassSession | null, onSave: (d: any) => void, onCancel: () => void, allStudents: User[], instructors: User[] }) => {
+const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors, onDelete }: { classSession: ClassSession | null, onSave: (d: any) => void, onCancel: () => void, allStudents: User[], instructors: User[], onDelete: (id: string) => void }) => {
   const [formData, setFormData] = useState<Partial<ClassSession>>(classSession || {
     title: '', description: '', dayOfWeek: 'Segunda', date: '', startTime: '07:00',
     durationMinutes: 60, instructor: '', maxCapacity: 15, enrolledStudentIds: [],
@@ -490,6 +504,26 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
     weekFocus: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const mainContainer = document.getElementById('main-scroll-container');
+    if (mainContainer) {
+      mainContainer.scrollTop = 0;
+    }
+  }, []);
+
+  const enrolledStudents = useMemo(() => {
+    return allStudents.filter(s => formData.enrolledStudentIds?.includes(s.id))
+        .sort((a, b) => a.name.localeCompare(b.name));
+  }, [allStudents, formData.enrolledStudentIds]);
+
+  const availableStudents = useMemo(() => {
+      return allStudents.filter(s => 
+          !formData.enrolledStudentIds?.includes(s.id) &&
+          s.name.toLowerCase().includes(searchTerm.toLowerCase())
+      ).sort((a, b) => a.name.localeCompare(b.name));
+  }, [allStudents, formData.enrolledStudentIds, searchTerm]);
+
 
   useEffect(() => {
     if (formData.type === 'RUNNING' && formData.weekOfCycle && RUNNING_CYCLE_METHODOLOGY[formData.weekOfCycle]) {
@@ -517,8 +551,6 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
       }
     }
   }, [formData.date]);
-
-  const filteredStudents = allStudents.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const toggleStudent = (id: string) => {
     const current = formData.enrolledStudentIds || [];
@@ -665,40 +697,73 @@ const ClassForm = ({ classSession, onSave, onCancel, allStudents, instructors }:
         </div>
 
         <div className="space-y-5 flex flex-col h-full bg-dark-900/30 p-6 rounded-[2rem] border border-dark-800">
-           <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><UserPlus size={18}/> Matrículas ({formData.enrolledStudentIds?.length || 0})</h4>
+           <div className="flex justify-between items-center">
+             <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><UserPlus size={18}/> Matrículas</h4>
+             <span className="text-slate-500 font-bold text-xs">{enrolledStudents.length} / {formData.maxCapacity}</span>
+           </div>
            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14}/>
               <input 
                 className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 pl-10 text-white text-xs focus:border-brand-500 outline-none" 
-                placeholder="Pesquisar aluno..." 
+                placeholder="Pesquisar aluno para adicionar..." 
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
            </div>
-           <div className="flex-1 overflow-y-auto max-h-[250px] p-2 custom-scrollbar space-y-1">
-              {filteredStudents.map(s => (
-                <button 
-                  key={s.id}
-                  type="button"
-                  onClick={() => toggleStudent(s.id)}
-                  className={`w-full p-2 rounded-lg flex items-center gap-3 transition-colors ${formData.enrolledStudentIds?.includes(s.id) ? 'bg-brand-500/20' : 'hover:bg-dark-800/50'}`}
-                >
-                  <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-8 h-8 rounded-lg object-cover" />
-                  <span className={`text-xs font-bold ${formData.enrolledStudentIds?.includes(s.id) ? 'text-white' : 'text-slate-400'}`}>{s.name}</span>
-                  {formData.enrolledStudentIds?.includes(s.id) && <Check size={16} className="ml-auto text-brand-500"/>}
-                </button>
-              ))}
+           <div className="flex-1 overflow-y-auto max-h-[400px] custom-scrollbar space-y-4">
+              <div>
+                  <h5 className="text-slate-500 font-bold text-[10px] uppercase tracking-widest px-2 pt-2">Matriculados</h5>
+                  {enrolledStudents.length > 0 ? enrolledStudents.map(s => (
+                    <div key={s.id} className="w-full mt-1 p-2 rounded-lg flex items-center justify-between bg-dark-900/50">
+                      <div className="flex items-center gap-3">
+                        <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-8 h-8 rounded-lg object-cover" />
+                        <span className="text-xs font-bold text-white">{s.name}</span>
+                      </div>
+                      <button type="button" onClick={() => toggleStudent(s.id)} className="p-2 rounded-lg text-red-500 hover:bg-red-500/10" title="Remover aluno">
+                        <UserMinus size={16} />
+                      </button>
+                    </div>
+                  )) : <p className="text-xs text-slate-600 text-center py-4 italic">Nenhum aluno matriculado.</p>}
+              </div>
+
+              <div>
+                  <h5 className="text-slate-500 font-bold text-[10px] uppercase tracking-widest px-2 pt-4">Adicionar Alunos Disponíveis</h5>
+                  {availableStudents.map(s => (
+                    <button key={s.id} type="button" onClick={() => toggleStudent(s.id)} className="w-full mt-1 p-2 rounded-lg flex items-center justify-between hover:bg-dark-800/50">
+                      <div className="flex items-center gap-3">
+                        <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-8 h-8 rounded-lg object-cover" />
+                        <span className="text-xs font-bold text-slate-400">{s.name}</span>
+                      </div>
+                      <UserPlus size={16} className="text-emerald-500" />
+                    </button>
+                  ))}
+              </div>
            </div>
 
-           <div className="pt-6 border-t border-dark-800 flex flex-col sm:flex-row gap-4">
-              <button type="button" onClick={onCancel} className="flex-1 py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700">Cancelar</button>
-              <button 
-                type="button" 
-                onClick={() => onSave(formData)}
-                className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 flex items-center justify-center gap-2"
-              >
-                 <Save size={16} /> Salvar Aula
-              </button>
+           <div className="pt-6 border-t border-dark-800 space-y-4">
+               {classSession && (
+                  <button 
+                      type="button" 
+                      onClick={() => {
+                        if (confirm(`Atenção: A aula "${classSession.title}" será permanentemente excluída da agenda. Esta ação não pode ser desfeita. Deseja continuar?`)) {
+                           onDelete(classSession.id);
+                        }
+                      }}
+                      className="w-full py-4 bg-red-600/10 text-red-500 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-red-600 hover:text-white transition-colors flex items-center justify-center gap-2"
+                  >
+                      <Trash2 size={16} /> Finalizar e Excluir Aula
+                  </button>
+               )}
+              <div className="flex flex-col sm:flex-row gap-4">
+                  <button type="button" onClick={onCancel} className="flex-1 py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700">Cancelar</button>
+                  <button 
+                    type="button" 
+                    onClick={() => onSave(formData)}
+                    className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 flex items-center justify-center gap-2"
+                  >
+                     <Save size={16} /> {classSession ? 'Salvar Alterações' : 'Criar Nova Aula'}
+                  </button>
+              </div>
            </div>
         </div>
       </div>

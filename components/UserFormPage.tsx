@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, UserRole, Anamnesis, Address, Plan } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -52,6 +51,13 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
   const [activeTab, setActiveTab] = useState<'basic' | 'plan' | 'anamnesis'>(initialActiveTab);
   const [showPassword, setShowPassword] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
+
+  useEffect(() => {
+    const mainContainer = document.getElementById('main-scroll-container');
+    if (mainContainer) {
+      mainContainer.scrollTop = 0;
+    }
+  }, []);
 
   useEffect(() => {
     const fetchPlans = async () => {

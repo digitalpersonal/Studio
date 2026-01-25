@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AttendanceRecord, User, UserRole, ClassSession, CycleSummary } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Loader2, TrendingUp, User as UserIcon, Award, BarChart3, MessageCircle, Sparkles, Flag, Clock, Zap, FileText } from 'lucide-react';
+import { Loader2, TrendingUp, User as UserIcon, Award, BarChart3, MessageCircle, Sparkles, Flag, Clock, Zap, FileText, Download } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 type PerformanceRecord = AttendanceRecord & { classDetails?: ClassSession };
@@ -129,16 +129,21 @@ export const RunningEvolutionPage: React.FC<RunningEvolutionPageProps> = ({ curr
     }
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            <header>
+        <div className="space-y-8 animate-fade-in printable-area">
+            <header className="relative">
                 <h2 className="text-3xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
                     <TrendingUp size={32} className="text-brand-500"/> Evolução de Corrida
                 </h2>
                 <p className="text-slate-400 text-sm mt-1">Análise de performance, recordes e histórico de treinos.</p>
+                <div className="absolute top-0 right-0 no-print">
+                  <button onClick={() => window.print()} className="bg-dark-950 text-slate-400 px-4 py-3 rounded-2xl text-sm font-bold flex items-center shadow-lg border border-dark-800 hover:bg-dark-800 hover:text-white transition-all">
+                    <Download size={18} className="mr-2" /> Imprimir Evolução
+                  </button>
+                </div>
             </header>
 
             {isStaff && (
-                <div className="bg-dark-950 p-6 rounded-3xl border border-dark-800 shadow-xl flex flex-col md:flex-row items-center gap-4">
+                <div className="bg-dark-950 p-6 rounded-3xl border border-dark-800 shadow-xl flex flex-col md:flex-row items-center gap-4 no-print">
                     <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest shrink-0">Visualizando Aluno:</label>
                     <select
                         className="flex-1 bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm font-bold"
@@ -189,7 +194,7 @@ export const RunningEvolutionPage: React.FC<RunningEvolutionPageProps> = ({ curr
                               <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
                                   <BarChart3 className="text-brand-500"/> Evolução do Pace
                               </h3>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 no-print">
                                  <label className="text-slate-500 text-[9px] font-black uppercase">Distância:</label>
                                  <select value={filterDistance} onChange={e => setFilterDistance(e.target.value === 'all' ? 'all' : Number(e.target.value))} className="bg-dark-900 border border-dark-700 text-white text-xs font-bold rounded-lg p-2 outline-none">
                                      <option value="all">Todas</option>

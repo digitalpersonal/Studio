@@ -91,6 +91,86 @@
       .animate-fade-in {
           animation: fadeInUp 0.5s ease-out forwards;
       }
+
+      /* === PRINT STYLES === */
+      @media print {
+        body {
+          background-color: #fff !important;
+          color: #000 !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          font-size: 10pt;
+        }
+
+        .no-print {
+          display: none !important;
+        }
+
+        main {
+          padding: 0 !important;
+          margin: 0 !important;
+          overflow: visible !important;
+        }
+        
+        .printable-area {
+          max-width: 100% !important;
+          min-height: auto !important;
+          border: none !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          animation: none !important;
+        }
+
+        /* Reset colors for printing */
+        .printable-area *, main * {
+          background-color: transparent !important;
+          color: #000 !important;
+          box-shadow: none !important;
+          text-shadow: none !important;
+          border-color: #ddd !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .printable-area a[href]:after {
+            content: "" !important; /* Avoid showing URL */
+        }
+
+        .recharts-wrapper, .recharts-surface {
+            width: 100% !important;
+            height: auto !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: auto;
+        }
+        tr {
+          page-break-inside: avoid;
+          page-break-after: auto;
+        }
+        thead {
+          display: table-header-group;
+        }
+        th, td {
+          border: 1px solid #ccc;
+          padding: 6px;
+        }
+
+        /* Layout adjustments */
+        .grid { display: block !important; }
+        div, section { page-break-inside: avoid; }
+        h1, h2, h3 { page-break-after: avoid; }
+
+        @page {
+          size: A4;
+          margin: 1.5cm;
+        }
+      }
     </style>
   <script type="importmap">
 {

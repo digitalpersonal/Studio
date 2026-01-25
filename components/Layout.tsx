@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { User, UserRole, ViewState } from '../types';
 import { 
@@ -137,7 +136,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className="min-h-screen bg-dark-950 flex text-slate-200 font-sans">
-      <aside className="hidden md:flex flex-col w-64 bg-dark-950 border-r border-dark-800 h-screen sticky top-0">
+      <aside className="hidden md:flex flex-col w-64 bg-dark-950 border-r border-dark-800 h-screen sticky top-0 no-print">
         <div className="p-8 flex flex-col items-center justify-center border-b border-dark-800 text-center">
           <img src={LOGO_URL} alt="Studio Logo" className="w-40 h-auto mb-2 object-contain rounded-2xl" />
         </div>
@@ -187,7 +186,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 bg-dark-900">
-        <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-dark-950 border-b border-dark-800 px-4 flex items-center justify-between z-50 shadow-lg">
+        <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-dark-950 border-b border-dark-800 px-4 flex items-center justify-between z-50 shadow-lg no-print">
           <div className="flex items-center">
             {currentView !== 'DASHBOARD' ? (
               <button onClick={() => onNavigate('DASHBOARD')} className="mr-3 text-slate-300 hover:text-white p-1 rounded-full active:bg-dark-800 transition-colors">
@@ -203,7 +202,7 @@ export const Layout: React.FC<LayoutProps> = ({
         </header>
 
         {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 z-40 bg-dark-900/95 backdrop-blur-md pt-20 px-4 pb-8 overflow-y-auto">
+          <div className="md:hidden fixed inset-0 z-40 bg-dark-900/95 backdrop-blur-md pt-20 px-4 pb-8 overflow-y-auto no-print">
             <nav className="flex flex-col space-y-2 animate-fade-in-up">
               <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Visão Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
               <NavItem view="RANKING" icon={Trophy} label="Ranking" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.TRAINER, UserRole.STUDENT]} />
@@ -229,12 +228,12 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         )}
 
-        <main ref={mainContentRef} className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto bg-dark-900 scroll-smooth">
-          <div className="max-w-6xl mx-auto min-h-[calc(100vh-150px)]">
+        <main ref={mainContentRef} id="main-scroll-container" className="flex-1 p-4 md:p-8 pt-20 md:pt-8 overflow-y-auto bg-dark-900">
+          <div className="max-w-6xl mx-auto min-h-[calc(100vh-150px)] printable-area">
             {children}
           </div>
 
-          <footer className="mt-12 pt-8 border-t border-dark-800 text-center pb-8">
+          <footer className="mt-12 pt-8 border-t border-dark-800 text-center pb-8 no-print">
              <div className="flex justify-center gap-6 mb-6">
                 {!isStandalone && (
                   <button onClick={handleInstallClick} className="flex flex-col items-center gap-2 text-slate-500 hover:text-brand-500 transition-colors group">
@@ -258,7 +257,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </div>
 
       {showInstallModal && (
-          <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-20 animate-fade-in">
+          <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-20 animate-fade-in no-print">
               <div className="bg-dark-900 border border-dark-700 rounded-[3rem] w-full max-w-sm shadow-2xl relative overflow-hidden">
                   <div className="bg-brand-600 p-8 text-center">
                       <img src={LOGO_URL} alt="Studio Logo" className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-xl" />

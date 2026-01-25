@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, Anamnesis, Address, Payment, ViewState, AppNavParams, ClassSession } from '../types';
 import {
@@ -398,7 +397,7 @@ const ManualPaymentModal = ({ student, payment, onConfirm, onCancel, isLoading }
     const finalAmount = Math.max(0, payment.amount - discount);
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-20 animate-fade-in">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
             <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden">
                 <div className="flex justify-between items-center">
                     <div>
@@ -479,7 +478,7 @@ const ActionButton = ({ icon: Icon, color, onClick, disabled, title }: { icon: a
 
 const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, classes: ClassSession[], onClose: () => void }) => {
     return (
-        <div className="fixed inset-0 z-[110] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-20 animate-fade-in">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
             <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-lg w-full space-y-6 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
                 <div className="flex justify-between items-center">
@@ -497,7 +496,7 @@ const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, cl
                         classes.map(c => (
                             <div key={c.id} className="p-5 bg-dark-950 rounded-2xl border border-dark-800 flex justify-between items-center group hover:border-brand-500/30 transition-all">
                                 <div className="flex items-center gap-4">
-                                    <div className={`p-3 rounded-xl ${c.type === 'RUNNING' ? 'bg-blue-500/10 text-blue-500' : 'bg-brand-500/10 text-brand-500'}`}>
+                                    <div className={`p-3 rounded-xl ${c.type === 'RUNNING' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
                                         <Calendar size={20} />
                                     </div>
                                     <div>
@@ -505,8 +504,8 @@ const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, cl
                                         <p className="text-[10px] text-slate-500 uppercase font-black tracking-tighter">{c.dayOfWeek} às {c.startTime} • Prof. {c.instructor.split(' ')[0]}</p>
                                     </div>
                                 </div>
-                                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md ${c.type === 'RUNNING' ? 'text-blue-500 bg-blue-500/10' : 'text-brand-500 bg-brand-500/10'}`}>
-                                    {c.type}
+                                <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md ${c.type === 'RUNNING' ? 'text-emerald-500 bg-emerald-500/10' : 'text-blue-500 bg-blue-500/10'}`}>
+                                    {c.type === 'RUNNING' ? 'Corrida' : 'Funcional'}
                                 </span>
                             </div>
                         ))
@@ -529,7 +528,7 @@ const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, cl
 const WhatsAppMessageModal = ({ student, onSend, onCancel }: { student: User, onSend: (s: User, m: string) => void, onCancel: () => void }) => {
     const [message, setMessage] = useState('');
     return (
-        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/90 backdrop-blur-sm p-6 pt-20 animate-fade-in">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6 animate-fade-in">
             <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full space-y-5">
                 <div className="flex justify-between items-center">
                     <h3 className="text-white font-bold flex items-center gap-2"><MessageCircle className="text-brand-500" size={20}/> Mensagem p/ {String(student.name).split(' ')[0]}</h3>

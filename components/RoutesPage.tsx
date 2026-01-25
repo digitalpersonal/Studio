@@ -1,9 +1,8 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { Route, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Map, Plus, Edit, Trash2, Loader2, Link } from 'lucide-react';
+import { Map, Plus, Edit, Trash2, Loader2, Link, Download } from 'lucide-react';
 
 interface RoutesPageProps {
   currentUser: User;
@@ -91,20 +90,25 @@ export const RoutesPage: React.FC<RoutesPageProps> = ({ currentUser, addToast })
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in printable-area">
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white">Rotas & Mapas</h2>
           <p className="text-slate-400 text-sm">Explore e cadastre novos percursos para seus treinos.</p>
         </div>
-        {isStaff && (
-          <button
-            onClick={() => { setEditingRoute(null); setShowForm(true); }}
-            className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center shadow-lg shadow-brand-500/20"
-          >
-            <Plus size={16} className="mr-2" /> Nova Rota
+        <div className="flex items-center gap-3 no-print">
+          <button onClick={() => window.print()} className="bg-dark-950 text-slate-400 px-4 py-2 rounded-lg text-sm font-bold flex items-center shadow-lg border border-dark-800 hover:bg-dark-800 hover:text-white transition-all">
+            <Download size={16} className="mr-2" /> Imprimir Rotas
           </button>
-        )}
+          {isStaff && (
+            <button
+              onClick={() => { setEditingRoute(null); setShowForm(true); }}
+              className="bg-brand-600 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center shadow-lg shadow-brand-500/20"
+            >
+              <Plus size={16} className="mr-2" /> Nova Rota
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -124,7 +128,7 @@ export const RoutesPage: React.FC<RoutesPageProps> = ({ currentUser, addToast })
                   </p>
                 </div>
                 {isStaff && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 no-print">
                     <button onClick={() => { setEditingRoute(route); setShowForm(true); }} className="p-2 bg-dark-800 text-slate-400 rounded-lg hover:text-white transition-colors" title="Editar Rota">
                       <Edit size={16} />
                     </button>
@@ -144,7 +148,7 @@ export const RoutesPage: React.FC<RoutesPageProps> = ({ currentUser, addToast })
                   href={String(route.mapLink)} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-bold hover:bg-brand-500 transition-colors shadow-lg shadow-brand-500/20"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg text-sm font-bold hover:bg-brand-500 transition-colors shadow-lg shadow-brand-500/20 no-print"
                 >
                   <Link size={16} /> Ver no Mapa
                 </a>
@@ -183,7 +187,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ route, onSave, onCancel }) => {
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-dark-950 p-8 rounded-3xl border border-dark-800 shadow-xl space-y-6 animate-fade-in">
+    <div className="max-w-xl mx-auto bg-dark-950 p-8 rounded-3xl border border-dark-800 shadow-xl space-y-6 animate-fade-in printable-area">
       <h3 className="text-xl font-bold text-white border-b border-dark-800 pb-4">
         {route ? 'Editar Rota' : 'Nova Rota'}
       </h3>
@@ -219,7 +223,7 @@ const RouteForm: React.FC<RouteFormProps> = ({ route, onSave, onCancel }) => {
           </div>
         </div>
         
-        <div className="flex justify-end gap-3 mt-6">
+        <div className="flex justify-end gap-3 mt-6 no-print">
           <button type="button" onClick={onCancel} className="px-6 py-3 bg-dark-800 text-white rounded-lg font-bold">Cancelar</button>
           <button type="submit" className="px-6 py-3 bg-brand-600 text-white rounded-lg font-bold shadow-lg shadow-brand-500/20">Salvar Rota</button>
         </div>

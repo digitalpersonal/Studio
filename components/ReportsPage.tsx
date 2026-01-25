@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, UserRole, Payment } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -26,6 +25,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const availableYears = useMemo(() => {
+    const year = new Date().getFullYear();
+    return [year + 1, year];
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -78,7 +82,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
   if (loading) return <div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin text-brand-500" size={48} /></div>;
 
   return (
-    <div className="space-y-8 animate-fade-in pb-20">
+    <div className="space-y-8 animate-fade-in pb-20 printable-area">
       {/* Header com Filtros */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -87,17 +91,19 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
             <ShieldCheck size={14} className="text-emerald-500"/> Controle Total de Receita e Inadimplência
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-dark-950 p-2 rounded-2xl border border-dark-800">
-          <Calendar size={18} className="text-slate-500 ml-2" />
-          <select
-            className="bg-transparent text-white text-sm font-black uppercase outline-none cursor-pointer pr-4"
-            value={currentYear}
-            onChange={e => setCurrentYear(Number(e.target.value))}
-          >
-            {[2025, 2024, 2023].map(y => <option key={y} value={y} className="bg-dark-900">{y}</option>)}
-          </select>
-          <button className="p-2 bg-dark-800 text-slate-400 rounded-xl hover:text-white transition-colors">
-            <Download size={18}/>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 bg-dark-950 p-2 rounded-2xl border border-dark-800 no-print">
+            <Calendar size={18} className="text-slate-500 ml-2" />
+            <select
+              className="bg-transparent text-white text-sm font-black uppercase outline-none cursor-pointer pr-4"
+              value={currentYear}
+              onChange={e => setCurrentYear(Number(e.target.value))}
+            >
+              {availableYears.map(y => <option key={y} value={y} className="bg-dark-900">{y}</option>)}
+            </select>
+          </div>
+          <button onClick={() => window.print()} className="bg-dark-950 text-slate-400 px-4 py-3 rounded-2xl text-sm font-bold flex items-center shadow-lg border border-dark-800 hover:bg-dark-800 hover:text-white transition-all no-print">
+            <Download size={18} className="mr-2" /> Imprimir Relatório
           </button>
         </div>
       </header>
@@ -192,7 +198,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
                         </div>
                         <button 
                             onClick={() => WhatsAppAutomation.sendPaymentReminder({ name: p.studentName, phoneNumber: p.studentPhone } as any, p)}
-                            className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg"
+                            className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-lg no-print"
                         >
                             <MessageCircle size={18} />
                         </button>
@@ -205,7 +211,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
                 )}
             </div>
 
-            <button className="w-full py-4 bg-dark-900 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-dark-800 hover:text-white transition-all">
+            <button className="w-full py-4 bg-dark-900 text-slate-400 font-black uppercase text-[10px] tracking-widest rounded-2xl border border-dark-800 hover:text-white transition-all no-print">
                 Ver Todos os Atrasos
             </button>
         </div>

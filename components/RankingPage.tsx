@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, UserRole, Challenge } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Trophy, Loader2, Award, ChevronRight, Hash } from 'lucide-react';
+import { Trophy, Loader2, Award, ChevronRight, Hash, Download } from 'lucide-react';
 
 interface RankingPageProps {
   currentUser: User;
@@ -55,19 +55,24 @@ export const RankingPage: React.FC<RankingPageProps> = ({ currentUser, addToast 
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in printable-area">
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Ranking & Desafios</h2>
           <p className="text-slate-400 text-sm font-medium">Acompanhe o desempenho da comunidade.</p>
         </div>
-        {currentUser.role !== UserRole.STUDENT && ( 
-          <button 
-            className="bg-brand-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center shadow-xl shadow-brand-600/20 active:scale-95 transition-all"
-          >
-            <Award size={16} className="mr-2" /> Novo Desafio
+        <div className="flex items-center gap-3 no-print">
+          <button onClick={() => window.print()} className="bg-dark-950 text-slate-400 px-4 py-3 rounded-2xl text-sm font-bold flex items-center shadow-lg border border-dark-800 hover:bg-dark-800 hover:text-white transition-all">
+            <Download size={18} className="mr-2" /> Imprimir Ranking
           </button>
-        )}
+          {currentUser.role !== UserRole.STUDENT && ( 
+            <button 
+              className="bg-brand-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center shadow-xl shadow-brand-600/20 active:scale-95 transition-all"
+            >
+              <Award size={16} className="mr-2" /> Novo Desafio
+            </button>
+          )}
+        </div>
       </header>
 
       {globalChallenge ? (
