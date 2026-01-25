@@ -404,6 +404,21 @@ export function App() {
       return <LandingPage onLogin={handleLogin} onNavigateToRegistration={() => handleNavigate('REGISTRATION')} addToast={addToast} />;
     }
 
+    // Isolate Complete Profile view from the main Layout
+    if (currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && !currentUser.profileCompleted) {
+      return (
+        <ToastContext.Provider value={{ addToast }}>
+          <div className="min-h-screen bg-dark-900 text-slate-200 font-sans">
+            <main className="p-4 md:p-8">
+              <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
+            </main>
+          </div>
+          <ToastContainer toasts={toasts} removeToast={removeToast} />
+        </ToastContext.Provider>
+      );
+    }
+    
+    // Render all other views within the main Layout
     return (
       <ToastContext.Provider value={{ addToast }}>
         <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
@@ -421,9 +436,6 @@ export function App() {
           {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} />}
           {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={setCurrentUser} addToast={addToast} />}
-          {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
-            <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
-          )}
         </Layout>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </ToastContext.Provider>

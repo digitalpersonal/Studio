@@ -13,7 +13,14 @@ interface UserFormPageProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   initialActiveTab?: 'basic' | 'plan' | 'anamnesis';
   currentUserRole: UserRole;
+  isCompletingProfile?: boolean;
 }
+
+const RequiredLabel = ({ text }: { text: string }) => (
+  <span className="flex items-center gap-1">
+    {text} <span className="text-red-500 font-bold">*</span>
+  </span>
+);
 
 export const UserFormPage: React.FC<UserFormPageProps> = ({
   editingUser,
@@ -23,6 +30,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
   addToast,
   initialActiveTab = 'basic',
   currentUserRole,
+  isCompletingProfile = false,
 }) => {
   const [formData, setFormData] = useState<Partial<User>>(() => ({
     ...initialFormData,
@@ -134,35 +142,37 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
 
   const validateForm = () => {
     const isStudent = (formData.role || UserRole.STUDENT) === UserRole.STUDENT;
-    
-    if (!formData.name?.trim()) return "O nome é obrigatório.";
-    if (!formData.email?.trim()) return "O e-mail é obrigatório.";
-    if (!formData.phoneNumber?.trim()) return "O WhatsApp é obrigatório.";
+
+    // Tab 'basic'
+    if (!formData.name?.trim()) { setActiveTab('basic'); return "O nome é obrigatório."; }
+    if (!formData.email?.trim()) { setActiveTab('basic'); return "O e-mail é obrigatório."; }
+    if (!formData.phoneNumber?.trim()) { setActiveTab('basic'); return "O WhatsApp é obrigatório."; }
     
     if (isStudent) {
-      if (!formData.cpf?.trim()) return "O CPF é obrigatório para alunos.";
-      if (!formData.rg?.trim()) return "O RG é obrigatório para alunos.";
-      if (!formData.planId) return "É obrigatório selecionar um plano para o aluno.";
-      
+      if (!formData.cpf?.trim()) { setActiveTab('basic'); return "O CPF é obrigatório para alunos."; }
+      if (!formData.rg?.trim()) { setActiveTab('basic'); return "O RG é obrigatório para alunos."; }
+      const address = formData.address;
+      if (!address?.street?.trim() || !address?.number?.trim() || !address?.neighborhood?.trim() || !address?.city?.trim() || !address?.state?.trim() || !address?.zipCode?.trim()) {
+        setActiveTab('basic');
+        return "Todos os campos do endereço são obrigatórios.";
+      }
+    }
+
+    // Tab 'plan'
+    if (isStudent) {
+      if (!formData.planId) { setActiveTab('plan'); return "É obrigatório selecionar um plano para o aluno."; }
+    }
+
+    // Tab 'anamnesis'
+    if (isStudent) {
       const anamnesis = formData.anamnesis;
-      if (!anamnesis?.emergencyContactName?.trim()) return "O nome do contato de emergência é obrigatório.";
-      if (!anamnesis?.emergencyContactPhone?.trim()) return "O telefone de emergência é obrigatório.";
-      
-      if (anamnesis?.hasMedicalCondition && !anamnesis.medicalConditionDescription?.trim()) {
-        return "Por favor, descreva a condição médica.";
-      }
-      if (anamnesis?.hasRecentSurgeryOrInjury && !anamnesis.recentSurgeryOrInjuryDetails?.trim()) {
-          return "Por favor, detalhe as cirurgias ou lesões recentes.";
-      }
-      if (anamnesis?.takesMedication && !anamnesis.medicationDescription?.trim()) {
-          return "Por favor, liste os medicamentos em uso.";
-      }
-      if (anamnesis?.hasAllergies && !anamnesis.allergiesDescription?.trim()) {
-          return "Por favor, descreva suas alergias.";
-      }
-      if (anamnesis?.smokesOrDrinks && !anamnesis.smokingDrinkingFrequency?.trim()) {
-          return "Por favor, informe a frequência do consumo de álcool/cigarro.";
-      }
+      if (!anamnesis?.emergencyContactName?.trim()) { setActiveTab('anamnesis'); return "O nome do contato de emergência é obrigatório."; }
+      if (!anamnesis?.emergencyContactPhone?.trim()) { setActiveTab('anamnesis'); return "O telefone de emergência é obrigatório."; }
+      if (anamnesis?.hasMedicalCondition && !anamnesis.medicalConditionDescription?.trim()) { setActiveTab('anamnesis'); return "Por favor, descreva a condição médica."; }
+      if (anamnesis?.hasRecentSurgeryOrInjury && !anamnesis.recentSurgeryOrInjuryDetails?.trim()) { setActiveTab('anamnesis'); return "Por favor, detalhe as cirurgias ou lesões recentes."; }
+      if (anamnesis?.takesMedication && !anamnesis.medicationDescription?.trim()) { setActiveTab('anamnesis'); return "Por favor, liste os medicamentos em uso."; }
+      if (anamnesis?.hasAllergies && !anamnesis.allergiesDescription?.trim()) { setActiveTab('anamnesis'); return "Por favor, descreva suas alergias."; }
+      if (anamnesis?.smokesOrDrinks && !anamnesis.smokingDrinkingFrequency?.trim()) { setActiveTab('anamnesis'); return "Por favor, informe a frequência do consumo de álcool/cigarro."; }
     }
     
     return null;
@@ -174,9 +184,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     const error = validateForm();
     if (error) {
       addToast(error, "error");
-      if (error.includes("CPF") || error.includes("RG")) setActiveTab('basic');
-      else if (error.includes("emergência") || error.includes("condição") || error.includes("lesão")) setActiveTab('anamnesis');
-      else if (error.includes("plano")) setActiveTab('plan');
       return;
     }
 
@@ -200,22 +207,18 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     setFormData(prev => ({ ...prev, anamnesis: { ...(prev.anamnesis as Anamnesis), [field]: value, updatedAt: new Date().toISOString().split('T')[0] } }));
   };
 
-  const RequiredLabel = ({ text }: { text: string }) => (
-    <span className="flex items-center gap-1">
-      {text} <span className="text-red-500 font-bold">*</span>
-    </span>
-  );
-
   return (
     <div className="max-w-4xl mx-auto bg-dark-950 p-8 rounded-[2.5rem] border border-dark-800 shadow-2xl space-y-6 animate-fade-in mb-20">
       <div className="flex justify-between items-center pb-4 border-b border-dark-800">
         <div className="flex items-center gap-3">
-          {editingUser && editingUser.profileCompleted !== false && (
+          {editingUser && !isCompletingProfile && (
              <button onClick={onCancel} className="text-slate-500 hover:text-white p-2 rounded-full transition-colors"><ArrowLeft size={24} /></button>
           )}
-          <h3 className="text-white font-black text-xl uppercase tracking-tighter">{editingUser ? 'Editar' : 'Novo'} Cadastro</h3>
+          <h3 className="text-white font-black text-xl uppercase tracking-tighter">{editingUser ? (isCompletingProfile ? '' : 'Editar Cadastro') : 'Novo Cadastro'}</h3>
         </div>
-        <button onClick={onCancel} className="text-slate-500 hover:text-white p-2"><X size={24}/></button>
+        {!isCompletingProfile && (
+          <button onClick={onCancel} className="text-slate-500 hover:text-white p-2"><X size={24}/></button>
+        )}
       </div>
 
       <div className="flex border-b border-dark-800">
@@ -317,9 +320,12 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                 <div className="space-y-4 pt-4 border-t border-dark-800">
                   <h4 className="text-white font-bold text-sm flex items-center gap-2"><MapPin size={18} className="text-brand-500"/> Endereço Completo</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Logradouro</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.street || ''} onChange={e => handleAddressChange('street', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Número</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.number || ''} onChange={e => handleAddressChange('number', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">CEP</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.zipCode || ''} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="CEP"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.zipCode || ''} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
+                    <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Logradouro"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.street || ''} onChange={e => handleAddressChange('street', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Número"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.number || ''} onChange={e => handleAddressChange('number', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Bairro"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.neighborhood || ''} onChange={e => handleAddressChange('neighborhood', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Cidade"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.city || ''} onChange={e => handleAddressChange('city', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Estado"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.state || ''} onChange={e => handleAddressChange('state', e.target.value)} /></div>
                   </div>
                 </div>
               )}
@@ -375,6 +381,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     placeholder="Descreva a condição médica..."
                     value={formData.anamnesis?.medicalConditionDescription || ''}
                     onTextChange={(v) => handleAnamnesisChange('medicalConditionDescription', v)}
+                    required={!!formData.anamnesis?.hasMedicalCondition}
                 />
                 <ConditionalTextarea 
                     label="Cirurgias ou lesões recentes (últimos 12 meses)?"
@@ -383,6 +390,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     placeholder="Detalhes sobre a cirurgia ou lesão..."
                     value={formData.anamnesis?.recentSurgeryOrInjuryDetails || ''}
                     onTextChange={(v) => handleAnamnesisChange('recentSurgeryOrInjuryDetails', v)}
+                    required={!!formData.anamnesis?.hasRecentSurgeryOrInjury}
                 />
                 <ConditionalTextarea 
                     label="Medicamentos em uso?"
@@ -391,6 +399,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     placeholder="Quais medicamentos?"
                     value={formData.anamnesis?.medicationDescription || ''}
                     onTextChange={(v) => handleAnamnesisChange('medicationDescription', v)}
+                    required={!!formData.anamnesis?.takesMedication}
                 />
                  <ConditionalTextarea 
                     label="Alergias (medicamentos, alimentos)?"
@@ -399,6 +408,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     placeholder="Descreva suas alergias..."
                     value={formData.anamnesis?.allergiesDescription || ''}
                     onTextChange={(v) => handleAnamnesisChange('allergiesDescription', v)}
+                    required={!!formData.anamnesis?.hasAllergies}
                 />
                 <div>
                   <label className="block text-slate-400 text-sm font-bold mb-2">Realizou exames recentes (ex: FMS, composição corporal)?</label>
@@ -427,6 +437,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     placeholder="Qual a frequência?"
                     value={formData.anamnesis?.smokingDrinkingFrequency || ''}
                     onTextChange={(v) => handleAnamnesisChange('smokingDrinkingFrequency', v)}
+                    required={!!formData.anamnesis?.smokesOrDrinks}
                 />
                  <div><label className="block text-slate-400 text-sm font-bold mb-2">Qualidade do sono (horas/noite)</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.sleepQuality || ''} onChange={(e) => handleAnamnesisChange('sleepQuality', e.target.value)} /></div>
                  <div><label className="block text-slate-400 text-sm font-bold mb-2">Dieta atual (ex: restritiva, balanceada)?</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.currentDiet || ''} onChange={(e) => handleAnamnesisChange('currentDiet', e.target.value)} /></div>
@@ -452,21 +463,23 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
         </form>
       </div>
 
-      <div className="p-6 border-t border-dark-800 flex flex-col sm:flex-row gap-4 bg-dark-950 rounded-b-2xl -mx-8 -mb-8">
-        <button type="button" onClick={onCancel} className="flex-1 py-5 bg-dark-800 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-dark-700 transition-all">Cancelar</button>
+      <div className={`p-6 border-t border-dark-800 flex flex-col sm:flex-row gap-4 bg-dark-950 rounded-b-2xl ${isCompletingProfile ? '-mx-8 -mb-8' : ''}`}>
+        {!isCompletingProfile && (
+          <button type="button" onClick={onCancel} className="flex-1 py-5 bg-dark-800 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest hover:bg-dark-700 transition-all">Cancelar</button>
+        )}
         <button 
           form="user-form"
           type="submit" 
           className="flex-1 py-5 bg-brand-600 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest shadow-2xl shadow-brand-600/30 hover:bg-brand-500 transition-all flex items-center justify-center gap-2"
         >
-          <Save size={18} /> Finalizar e Salvar
+          <Save size={18} /> {isCompletingProfile ? 'Concluir Cadastro' : (editingUser ? 'Salvar Alterações' : 'Finalizar e Salvar')}
         </button>
       </div>
     </div>
   );
 };
 
-const ConditionalTextarea = ({ label, isChecked, onCheckboxChange, placeholder, value, onTextChange }: any) => (
+const ConditionalTextarea = ({ label, isChecked, onCheckboxChange, placeholder, value, onTextChange, required }: any) => (
   <div>
     <label className="flex items-center gap-3 cursor-pointer group bg-dark-900 p-4 rounded-2xl border border-dark-800 hover:border-brand-500/30 transition-all">
       <input type="checkbox" checked={isChecked} onChange={(e) => onCheckboxChange(e.target.checked)} className="w-6 h-6 rounded-lg accent-brand-500" />
@@ -474,7 +487,7 @@ const ConditionalTextarea = ({ label, isChecked, onCheckboxChange, placeholder, 
     </label>
     {isChecked && (
       <div className="mt-3 animate-fade-in">
-        <textarea required placeholder={placeholder} className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-4 text-white text-sm focus:border-brand-500 outline-none resize-none" value={value} onChange={(e) => onTextChange(e.target.value)} />
+        <textarea required={required} placeholder={placeholder} className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-4 text-white text-sm focus:border-brand-500 outline-none resize-none" value={value} onChange={(e) => onTextChange(e.target.value)} />
       </div>
     )}
   </div>
