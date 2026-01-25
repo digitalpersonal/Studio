@@ -227,7 +227,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                 const hasDebt = sPayments.some(p => p.status === 'OVERDUE');
                                 const paidCount = sPayments.filter(p => p.status === 'PAID').length;
                                 const nextDue = sPayments.filter(p => p.status === 'PENDING').sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
-                                const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+                                const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())[0];
                                 const enrolledCount = classes.filter(c => c.enrolledStudentIds.includes(s.id)).length;
                                 const isSuspended = s.status === 'SUSPENDED';
 
@@ -321,19 +321,31 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         <ActionButton icon={DollarSign} color="emerald" onClick={() => onNavigate('FINANCIAL', { studentId: s.id })} title="Fluxo Financeiro" />
                                                         <ActionButton icon={FileText} color="indigo" onClick={() => handleGenerateContract(s)} disabled={!isContractReady || isLoading} title={isContractReady ? "Imprimir Contrato" : "Faltam Dados p/ Contrato"} />
-                                                        <ActionButton icon={Receipt} color="amber" onClick={() => {
-                                                            if (nextDue) {
-                                                                setManualPaymentModal({ student: s, payment: nextDue });
-                                                            } else if (sPayments.length > 0) {
-                                                                if (confirm("Nenhum vencimento próximo. Deseja gerar nova fatura avulsa?")) {
-                                                                    SupabaseService.addPayment({ 
-                                                                        studentId: s.id, amount: (s.planValue || 150) - (s.planDiscount || 0), status: 'PENDING', dueDate: new Date().toISOString().split('T')[0], description: "Mensalidade Avulsa"
-                                                                    }).then(() => refreshList());
+                                                        <ActionButton 
+                                                            icon={Receipt} 
+                                                            color="amber" 
+                                                            onClick={() => {
+                                                                if (nextDue) {
+                                                                    setManualPaymentModal({ student: s, payment: nextDue });
+                                                                } else if (s.planId && s.planValue && s.planValue > 0) {
+                                                                    if (confirm("Nenhum vencimento próximo. Deseja gerar nova fatura avulsa?")) {
+                                                                        SupabaseService.addPayment({ 
+                                                                            studentId: s.id, 
+                                                                            amount: (s.planValue || 150) - (s.planDiscount || 0), 
+                                                                            status: 'PENDING', 
+                                                                            dueDate: new Date().toISOString().split('T')[0], 
+                                                                            description: "Mensalidade Avulsa"
+                                                                        }).then(() => {
+                                                                            addToast("Fatura avulsa gerada. Atualizando...", "success");
+                                                                            refreshList();
+                                                                        });
+                                                                    }
+                                                                } else {
+                                                                    addToast("Nenhum plano ativo encontrado para este aluno.", "info");
                                                                 }
-                                                            } else {
-                                                                addToast("Nenhum plano ativo encontrado.", "info");
-                                                            }
-                                                        }} title="Receber / Gerar Fatura" />
+                                                            }} 
+                                                            title="Receber / Gerar Fatura" 
+                                                        />
                                                     </div>
                                                 )}
 
