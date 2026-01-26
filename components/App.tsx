@@ -16,7 +16,7 @@ import {
   CalendarPlus, ShieldCheck, Eye, EyeOff, GraduationCap, MapPinned, CreditCard as CardIcon,
   Info, Sparkles, Target, ZapOff, ChevronRight, TrendingUp as TrendUp, Wallet, Receipt,
   BadgePercent, HandCoins, ExternalLink as LinkIcon, Copy as CopyIcon, Globe as GlobeIcon,
-  Zap as ZapIcon, Mail
+  Zap as ZapIcon, Mail, MoveRight
 } from 'lucide-react';
 import { SupabaseService, SUPABASE_PROJECT_ID } from './services/supabaseService';
 import { GeminiService } from './services/geminiService';
@@ -404,6 +404,21 @@ export function App() {
       return <LandingPage onLogin={handleLogin} onNavigateToRegistration={() => handleNavigate('REGISTRATION')} addToast={addToast} />;
     }
 
+    // Isolate Complete Profile view from the main Layout
+    if (currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && !currentUser.profileCompleted) {
+      return (
+        <ToastContext.Provider value={{ addToast }}>
+          <div className="min-h-screen bg-dark-900 text-slate-200 font-sans">
+            <main className="p-4 md:p-8">
+              <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
+            </main>
+          </div>
+          <ToastContainer toasts={toasts} removeToast={removeToast} />
+        </ToastContext.Provider>
+      );
+    }
+    
+    // Render all other views within the main Layout
     return (
       <ToastContext.Provider value={{ addToast }}>
         <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
@@ -421,9 +436,6 @@ export function App() {
           {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} />}
           {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={setCurrentUser} addToast={addToast} />}
-          {currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && currentUser.profileCompleted === false && (
-            <CompleteProfilePage currentUser={currentUser} onProfileComplete={handleProfileComplete} addToast={addToast} />
-          )}
         </Layout>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </ToastContext.Provider>

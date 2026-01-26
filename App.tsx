@@ -119,6 +119,28 @@ export const WhatsAppAutomation = {
 };
 
 /* -------------------------------------------------------------------------- */
+/*                            GERENCIAMENTO DE SESSÃO                         */
+/* -------------------------------------------------------------------------- */
+
+function getInitialState(): { user: User | null; view: ViewState } {
+  try {
+    const storedUser = localStorage.getItem('studioCurrentUser');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      if (user && user.id && user.role) {
+        const view = (user.role === UserRole.STUDENT && !user.profileCompleted)
+          ? 'COMPLETE_PROFILE'
+          : 'DASHBOARD';
+        return { user, view };
+      }
+    }
+  } catch {
+    localStorage.removeItem('studioCurrentUser');
+  }
+  return { user: null, view: 'LOGIN' };
+}
+
+/* -------------------------------------------------------------------------- */
 /*                                   PÁGINAS                                  */
 /* -------------------------------------------------------------------------- */
 
@@ -354,8 +376,9 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
 
 // Main App Component
 export function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<ViewState>('LOGIN');
+  const [initialState] = useState(getInitialState);
+  const [currentUser, setCurrentUser] = useState<User | null>(initialState.user);
+  const [currentView, setCurrentView] = useState<ViewState>(initialState.view);
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextToastId = useRef(0);
@@ -369,8 +392,14 @@ export function App() {
   const removeToast = (id: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
+  
+  const handleUpdateUser = (user: User) => {
+    localStorage.setItem('studioCurrentUser', JSON.stringify(user));
+    setCurrentUser(user);
+  };
 
   const handleLogin = (user: User) => {
+    localStorage.setItem('studioCurrentUser', JSON.stringify(user));
     setCurrentUser(user);
     if (user.role === UserRole.STUDENT && user.profileCompleted === false) {
       setCurrentView('COMPLETE_PROFILE');
@@ -381,6 +410,7 @@ export function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('studioCurrentUser');
     setCurrentUser(null);
     setCurrentView('LOGIN');
     addToast("Sessão encerrada.", "info");
@@ -392,6 +422,7 @@ export function App() {
   };
 
   const handleProfileComplete = (updatedUser: User) => {
+    localStorage.setItem('studioCurrentUser', JSON.stringify(updatedUser));
     setCurrentUser(updatedUser);
     setCurrentView('DASHBOARD');
   };
@@ -435,7 +466,7 @@ export function App() {
           {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
           {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} />}
-          {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={setCurrentUser} addToast={addToast} />}
+          {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={handleUpdateUser} addToast={addToast} />}
         </Layout>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </ToastContext.Provider>
