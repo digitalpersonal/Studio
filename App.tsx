@@ -41,7 +41,7 @@ import { LandingPage } from './components/LandingPage';
 import { HelpCenterPage } from './components/HelpCenterPage';
 import { StravaPage } from './components/StravaPage';
 
-const LOGO_URL = "logo.svg";
+const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
 /* -------------------------------------------------------------------------- */
 /*                                   NOTIFICAÇÕES                             */

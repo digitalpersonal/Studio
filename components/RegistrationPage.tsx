@@ -23,7 +23,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [plans, setPlans] = useState<Plan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
-    const LOGO_URL = "logo.svg";
+    const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
     useEffect(() => {
         if (step === 'PLAN_SELECTION') {

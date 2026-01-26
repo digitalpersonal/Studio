@@ -50,7 +50,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isStandalone, setIsStandalone] = useState(false);
   const mainContentRef = useRef<HTMLElement>(null);
 
-  const LOGO_URL = "logo.svg";
+  const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
   useEffect(() => {
     // Detecta se o app já está rodando como instalado (standalone)
