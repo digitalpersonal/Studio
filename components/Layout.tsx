@@ -50,7 +50,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isStandalone, setIsStandalone] = useState(false);
   const mainContentRef = useRef<HTMLElement>(null);
 
-  const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+  const LOGO_URL = "logo.svg";
 
   useEffect(() => {
     // Detecta se o app já está rodando como instalado (standalone)
@@ -139,7 +139,7 @@ export const Layout: React.FC<LayoutProps> = ({
     <div className="min-h-screen bg-dark-950 flex text-slate-200 font-sans">
       <aside className="hidden md:flex flex-col w-64 bg-dark-950 border-r border-dark-800 h-screen sticky top-0 no-print">
         <div className="p-8 flex flex-col items-center justify-center border-b border-dark-800 text-center">
-          <img src={LOGO_URL} alt="Studio Logo" className="w-40 h-auto mb-2 object-contain rounded-2xl" />
+          <img src={LOGO_URL} alt="Studio Logo" className="w-40 h-auto mb-2 object-contain" />
         </div>
         
         <nav className="flex-1 px-4 py-6 overflow-y-auto">
@@ -200,7 +200,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <ArrowLeft size={24} />
               </button>
             ) : (
-              <img src={LOGO_URL} alt="Studio Logo" className="w-16 h-auto mr-2 shrink-0 object-contain rounded-lg" />
+              <img src={LOGO_URL} alt="Studio Logo" className="w-16 h-auto mr-2 shrink-0 object-contain" />
             )}
           </div>
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-slate-300 p-2">

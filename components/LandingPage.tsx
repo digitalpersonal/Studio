@@ -159,7 +159,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
   
         <main className="relative z-20">
           <section className="min-h-[80vh] flex flex-col items-center justify-center text-center p-8">
-            <img src={LOGO_URL} alt="Logo do Studio" className="w-48 h-auto mb-8 rounded-3xl shadow-2xl" />
+            <img src={LOGO_URL} alt="Logo do Studio" className="w-48 h-auto mb-8 shadow-2xl" />
             <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter animate-fade-in" style={{ animationDelay: '0.2s' }}>
               Sua Jornada <span className="text-brand-500">Começa Agora</span>
             </h1>

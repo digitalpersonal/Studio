@@ -249,7 +249,6 @@ export const SupabaseService = {
   updateAcademySettings: async (s: AcademySettings): Promise<void> => {
     if (!supabase) throw new Error("Sem conexão com o banco de dados.");
     
-    // Tenta encontrar a linha existente para atualizar ou inserir
     const { data: current, error: fetchError } = await supabase.from('academy_settings').select('id').limit(1).maybeSingle();
     
     if (fetchError) {
@@ -275,16 +274,10 @@ export const SupabaseService = {
 
     if (current) {
       const { error: updateError } = await supabase.from('academy_settings').update(payload).eq('id', current.id);
-      if (updateError) {
-        console.error("Erro no Update de Configurações:", updateError);
-        throw updateError;
-      }
+      if (updateError) throw updateError;
     } else {
       const { error: insertError } = await supabase.from('academy_settings').insert([payload]);
-      if (insertError) {
-        console.error("Erro no Insert de Configurações:", insertError);
-        throw insertError;
-      }
+      if (insertError) throw insertError;
     }
     invalidateCache();
   },
@@ -304,18 +297,13 @@ export const SupabaseService = {
         dbUsers = (data || []).map(mapUserFromDb);
       } catch (e) {
         console.error("Erro ao buscar usuários do DB:", e);
-        // Em caso de erro, a lista do banco fica vazia, mas o app continua com o admin geral
         dbUsers = [];
       }
     }
     
-    // A fonte da verdade é o banco de dados. O admin geral do código é um fallback.
-    // Verificamos se o admin geral já existe na lista vinda do banco.
     const superAdminInDb = dbUsers.some(user => user.email === SUPER_ADMIN_CONFIG.email);
 
     let finalUserList = dbUsers;
-    // Se o admin geral NÃO estiver no banco de dados, nós o adicionamos.
-    // Se ele JÁ ESTIVER, usamos a lista do banco como está, garantindo que a senha e dados do banco sejam usados.
     if (!superAdminInDb) {
       finalUserList = [...dbUsers, SUPER_ADMIN_CONFIG as User];
     }
@@ -331,25 +319,42 @@ export const SupabaseService = {
 
   addUser: async (u: Omit<User, 'id'>): Promise<User> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('users').insert([{
-      name: u.name, email: u.email, password: u.password, role: u.role,
-      avatar_url: u.avatarUrl, phone_number: u.phoneNumber, profile_completed: u.profileCompleted,
-      address: u.address || {}, anamnesis: u.anamnesis || {},
+    const payload = {
+      name: u.name,
+      email: u.email,
+      password: u.password,
+      role: u.role,
+      avatar_url: u.avatarUrl,
+      phone_number: u.phoneNumber,
+      profile_completed: u.profileCompleted,
+      status: u.status || 'ACTIVE',
+      join_date: u.joinDate,
+      birth_date: u.birthDate,
+      cpf: u.cpf,
+      rg: u.rg,
+      nationality: u.nationality,
+      marital_status: u.maritalStatus,
+      profession: u.profession,
+      address: u.address || {},
       plan_id: u.planId,
       plan_value: u.planValue,
       plan_discount: u.planDiscount || 0,
-      plan_duration: u.planDuration, 
+      plan_duration: u.planDuration,
       billing_day: u.billingDay,
-      status: u.status || 'ACTIVE'
-    }]).select().single();
-    if (error) throw error;
+      plan_start_date: u.planStartDate,
+      anamnesis: u.anamnesis || {},
+    };
+    const { data, error } = await supabase.from('users').insert([payload]).select().single();
+    if (error) {
+        console.error("Supabase AddUser Error:", error);
+        throw error;
+    }
     invalidateCache();
     return mapUserFromDb(data);
   },
 
   updateUser: async (u: User): Promise<User> => {
     if (!supabase) throw new Error("Sem conexão");
-
     const updatePayload: { [key: string]: any } = {
       name: u.name,
       email: u.email,
@@ -357,33 +362,33 @@ export const SupabaseService = {
       avatar_url: u.avatarUrl,
       phone_number: u.phoneNumber,
       profile_completed: u.profileCompleted,
+      status: u.status,
+      suspended_at: u.suspendedAt,
+      birth_date: u.birthDate,
+      cpf: u.cpf,
+      rg: u.rg,
+      nationality: u.nationality,
+      marital_status: u.maritalStatus,
+      profession: u.profession,
       address: u.address || {},
-      anamnesis: u.anamnesis || {},
       plan_id: u.planId,
       plan_value: u.planValue,
       plan_discount: u.planDiscount || 0,
       plan_duration: u.planDuration,
       billing_day: u.billingDay,
-      cpf: u.cpf,
-      rg: u.rg,
-      nationality: u.nationality,
-      profession: u.profession,
-      marital_status: u.maritalStatus,
-      status: u.status,
-      suspended_at: u.suspendedAt,
+      plan_start_date: u.planStartDate,
+      anamnesis: u.anamnesis || {},
       strava_access_token: u.stravaAccessToken,
       strava_refresh_token: u.stravaRefreshToken,
     };
-
-    // Only include the password in the update if a new one is provided.
-    // This prevents accidental erasure when updating other profile info.
     if (u.password && u.password.length > 0) {
       updatePayload.password = u.password;
     }
-
     const { data, error } = await supabase.from('users').update(updatePayload).eq('id', u.id).select().single();
-
-    if (error) throw error;
+    if (error) {
+        console.error("Supabase UpdateUser Error:", error);
+        throw error;
+    }
     invalidateCache();
     return mapUserFromDb(data);
   },
@@ -429,7 +434,6 @@ export const SupabaseService = {
       wod: c.wod,
       workout_details: c.workoutDetails,
       feedback: c.feedback,
-      // Corrida
       cycle_start_date: c.cycleStartDate,
       week_of_cycle: c.weekOfCycle,
       week_focus: c.weekFocus,
@@ -462,7 +466,6 @@ export const SupabaseService = {
       wod: c.wod,
       workout_details: c.workoutDetails,
       feedback: c.feedback,
-      // Corrida
       cycle_start_date: c.cycleStartDate,
       week_of_cycle: c.weekOfCycle,
       week_focus: c.weekFocus,
@@ -479,30 +482,10 @@ export const SupabaseService = {
 
   deleteClass: async (id: string) => {
     if (!supabase) throw new Error("Sem conexão com o banco de dados.");
-
-    // Primeiro, deletar todos os registros de presença associados.
-    // Isso evita erros de violação de chave estrangeira se a chamada já foi feita.
-    const { error: attendanceError } = await supabase
-      .from('attendance')
-      .delete()
-      .eq('class_id', id);
-
-    if (attendanceError) {
-      console.error("Erro ao deletar registros de presença:", attendanceError);
-      throw new Error(`Não foi possível limpar os registros de presença associados: ${attendanceError.message}`);
-    }
-
-    // Depois, deletar a aula em si.
-    const { error: classError } = await supabase
-      .from('classes')
-      .delete()
-      .eq('id', id);
-
-    if (classError) {
-      console.error("Erro ao deletar a aula:", classError);
-      throw new Error(`Não foi possível deletar a aula: ${classError.message}`);
-    }
-
+    const { error: attendanceError } = await supabase.from('attendance').delete().eq('class_id', id);
+    if (attendanceError) throw new Error(`Não foi possível limpar os registros de presença associados: ${attendanceError.message}`);
+    const { error: classError } = await supabase.from('classes').delete().eq('id', id);
+    if (classError) throw new Error(`Não foi possível deletar a aula: ${classError.message}`);
     invalidateCache();
   },
 
@@ -532,10 +515,7 @@ export const SupabaseService = {
 
   markPaymentAsPaid: async (id: string, discount: number = 0) => {
     if (!supabase) return;
-    const { error } = await supabase.from('payments').update({ 
-      status: 'PAID', 
-      discount: discount 
-    }).eq('id', id);
+    const { error } = await supabase.from('payments').update({ status: 'PAID', discount: discount }).eq('id', id);
     if (error) throw error;
     invalidateCache();
   },
@@ -569,11 +549,7 @@ export const SupabaseService = {
 
   deletePendingPaymentsForStudent: async (studentId: string) => {
     if (!supabase) throw new Error("Sem conexão");
-    const { error } = await supabase
-        .from('payments')
-        .delete()
-        .eq('student_id', studentId)
-        .eq('status', 'PENDING');
+    const { error } = await supabase.from('payments').delete().eq('student_id', studentId).eq('status', 'PENDING');
     if (error) throw error;
     invalidateCache();
   },
@@ -643,56 +619,23 @@ export const SupabaseService = {
   saveAttendance: async (records: Omit<AttendanceRecord, 'id'>[]) => {
     if (!supabase) throw new Error("Sem conexão");
     if (records.length === 0) return;
-
-    // A operação 'upsert' falha se não houver uma restrição UNIQUE correspondente no DB.
-    // Como alternativa segura que evita condições de corrida (diferente de delete-then-insert),
-    // processamos cada registro individualmente.
     const promises = records.map(async r => {
         const payload = { 
-            class_id: r.classId, 
-            student_id: r.studentId, 
-            date: r.date, 
-            is_present: r.isPresent,
-            total_time_seconds: r.totalTimeSeconds,
-            average_pace: r.averagePace,
-            age_group_classification: r.ageGroupClassification,
-            instructor_notes: r.instructorNotes,
+            class_id: r.classId, student_id: r.studentId, date: r.date, is_present: r.isPresent,
+            total_time_seconds: r.totalTimeSeconds, average_pace: r.averagePace,
+            age_group_classification: r.ageGroupClassification, instructor_notes: r.instructorNotes,
             generated_feedback: r.generatedFeedback,
         };
-
-        const { data: existing, error: fetchError } = await supabase
-            .from('attendance')
-            .select('id')
-            .eq('class_id', r.classId)
-            .eq('student_id', r.studentId)
-            .eq('date', r.date)
-            .maybeSingle();
-
-        if (fetchError) {
-            console.error("Erro ao verificar presença existente:", fetchError);
-            throw fetchError;
-        }
-
+        const { data: existing, error: fetchError } = await supabase.from('attendance').select('id').eq('class_id', r.classId).eq('student_id', r.studentId).eq('date', r.date).maybeSingle();
+        if (fetchError) throw fetchError;
         if (existing) {
-            const { error: updateError } = await supabase
-                .from('attendance')
-                .update(payload)
-                .eq('id', existing.id);
-            if (updateError) {
-                console.error("Erro ao atualizar presença:", updateError);
-                throw updateError;
-            }
+            const { error: updateError } = await supabase.from('attendance').update(payload).eq('id', existing.id);
+            if (updateError) throw updateError;
         } else {
-            const { error: insertError } = await supabase
-                .from('attendance')
-                .insert(payload);
-            if (insertError) {
-                console.error("Erro ao inserir presença:", insertError);
-                throw insertError;
-            }
+            const { error: insertError } = await supabase.from('attendance').insert(payload);
+            if (insertError) throw insertError;
         }
     });
-
     await Promise.all(promises);
     invalidateCache();
   },
@@ -700,26 +643,11 @@ export const SupabaseService = {
   getAttendanceForStudent: async (studentId: string, type?: 'RUNNING' | 'FUNCTIONAL'): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
     if (!supabase) return [];
     try {
-      let query = supabase
-        .from('attendance')
-        .select('*, class:classes!inner(*)')
-        .eq('student_id', studentId)
-        .eq('is_present', true)
-        .order('date', { ascending: false });
-
-      if (type) {
-        query = query.eq('class.type', type);
-      }
-      
+      let query = supabase.from('attendance').select('*, class:classes!inner(*)').eq('student_id', studentId).eq('is_present', true).order('date', { ascending: false });
+      if (type) query = query.eq('class.type', type);
       const { data, error } = await query;
-      
       if (error) throw error;
-      
-      return (data || []).map(r => {
-          const record = mapAttendanceFromDb(r);
-          const classDetails = r.class ? mapClassFromDb(r.class) : undefined;
-          return { ...record, classDetails };
-      });
+      return (data || []).map(r => ({ ...mapAttendanceFromDb(r), classDetails: r.class ? mapClassFromDb(r.class) : undefined }));
     } catch (e) {
       console.error('Error fetching student attendance:', e);
       return [];
@@ -729,22 +657,9 @@ export const SupabaseService = {
   getAttendanceForStudentInDateRange: async (studentId: string, startDate: string, endDate: string): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
     if (!supabase) return [];
     try {
-      const { data, error } = await supabase
-        .from('attendance')
-        .select('*, class:classes!inner(*)')
-        .eq('student_id', studentId)
-        .eq('is_present', true)
-        .eq('class.type', 'RUNNING')
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: true });
+      const { data, error } = await supabase.from('attendance').select('*, class:classes!inner(*)').eq('student_id', studentId).eq('is_present', true).eq('class.type', 'RUNNING').gte('date', startDate).lte('date', endDate).order('date', { ascending: true });
       if (error) throw error;
-
-      return (data || []).map(r => {
-        const record = mapAttendanceFromDb(r);
-        const classDetails = r.class ? mapClassFromDb(r.class) : undefined;
-        return { ...record, classDetails };
-      });
+      return (data || []).map(r => ({ ...mapAttendanceFromDb(r), classDetails: r.class ? mapClassFromDb(r.class) : undefined }));
     } catch (e) {
       console.error('Error fetching student attendance in date range:', e);
       return [];
@@ -769,16 +684,29 @@ export const SupabaseService = {
   getCycleSummariesForStudent: async (studentId: string): Promise<CycleSummary[]> => {
     if (!supabase) return [];
     try {
-      const { data, error } = await supabase
-        .from('cycle_summaries')
-        .select('*')
-        .eq('student_id', studentId)
-        .order('cycle_end_date', { ascending: false });
+      const { data, error } = await supabase.from('cycle_summaries').select('*').eq('student_id', studentId).order('cycle_end_date', { ascending: false });
       if (error) throw error;
       return (data || []).map(mapCycleSummaryFromDb);
     } catch (e) {
       console.error('Error fetching cycle summaries:', e);
       return [];
+    }
+  },
+
+  getRankingData: async (): Promise<{ student_id: string, classes: { distance_km: number } }[]> => {
+    if (!supabase) return [];
+    try {
+        const { data, error } = await supabase
+            .from('attendance')
+            .select('student_id, classes!inner(distance_km)')
+            .eq('is_present', true)
+            .eq('classes.type', 'RUNNING');
+
+        if (error) throw error;
+        return data as any;
+    } catch (e) {
+        console.error('Error fetching ranking data:', e);
+        return [];
     }
   },
 
@@ -804,26 +732,14 @@ export const SupabaseService = {
   addAssessment: async (a: Omit<Assessment, 'id'>): Promise<Assessment> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('assessments').insert([{
-      student_id: a.studentId,
-      date: a.date,
-      status: a.status,
-      weight: a.weight,
-      height: a.height,
-      body_fat_percentage: a.bodyFatPercentage,
-      skeletal_muscle_mass: a.skeletalMuscleMass,
-      visceral_fat_level: a.visceralFatLevel,
-      basal_metabolic_rate: a.basalMetabolicRate,
-      hydration_percentage: a.hydrationPercentage,
-      abdominal_test: a.abdominalTest,
-      horizontal_jump: a.horizontalJump,
-      vertical_jump: a.verticalJump,
-      medicine_ball_throw: a.medicineBallThrow,
-      photo_front_url: a.photoFrontUrl,
-      photo_side_url: a.photoSideUrl,
-      photo_back_url: a.photoBackUrl,
-      fms: a.fms || {},
-      circumferences: a.circumferences || {},
-      notes: a.notes
+      student_id: a.studentId, date: a.date, status: a.status, weight: a.weight, height: a.height,
+      body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
+      visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
+      hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
+      horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
+      medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
+      photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
+      fms: a.fms || {}, circumferences: a.circumferences || {}, notes: a.notes
     }]).select().single();
     if (error) throw error;
     invalidateCache();
@@ -833,25 +749,14 @@ export const SupabaseService = {
   updateAssessment: async (a: Assessment): Promise<Assessment> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('assessments').update({
-      date: a.date,
-      status: a.status,
-      weight: a.weight,
-      height: a.height,
-      body_fat_percentage: a.bodyFatPercentage,
-      skeletal_muscle_mass: a.skeletalMuscleMass,
-      visceral_fat_level: a.visceralFatLevel,
-      basal_metabolic_rate: a.basalMetabolicRate,
-      hydration_percentage: a.hydrationPercentage,
-      abdominal_test: a.abdominalTest,
-      horizontal_jump: a.horizontalJump,
-      vertical_jump: a.verticalJump,
-      medicine_ball_throw: a.medicineBallThrow,
-      photo_front_url: a.photoFrontUrl,
-      photo_side_url: a.photoSideUrl,
-      photo_back_url: a.photoBackUrl,
-      fms: a.fms || {},
-      circumferences: a.circumferences || {},
-      notes: a.notes
+      date: a.date, status: a.status, weight: a.weight, height: a.height,
+      body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
+      visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
+      hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
+      horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
+      medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
+      photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
+      fms: a.fms || {}, circumferences: a.circumferences || {}, notes: a.notes
     }).eq('id', a.id).select().single();
     if (error) throw error;
     invalidateCache();
@@ -950,21 +855,11 @@ export const SupabaseService = {
     invalidateCache();
   },
 
-  // --- POSTS & INTERAÇÕES ---
   getPosts: async (): Promise<Post[]> => {
     if (!supabase) return [];
     try {
-        const { data, error } = await supabase
-            .from('posts')
-            .select('*, users!inner(name, avatar_url), post_comments(*, users(name, avatar_url))')
-            .order('timestamp', { ascending: false });
-        
-        if (error) {
-            const { data: rawPosts, error: postError } = await supabase.from('posts').select('*').order('timestamp', { ascending: false });
-            if (postError) throw postError;
-            return (rawPosts || []).map(p => mapPostFromDb(p));
-        }
-        
+        const { data, error } = await supabase.from('posts').select('*, users!inner(name, avatar_url), post_comments(*, users(name, avatar_url))').order('timestamp', { ascending: false });
+        if (error) throw error; // Corrected from postError
         return (data || []).map(mapPostFromDb);
     } catch (e) {
         return [];
@@ -974,16 +869,11 @@ export const SupabaseService = {
   addPost: async (p: Omit<Post, 'id' | 'userName' | 'userAvatar' | 'likes' | 'comments'> & { userId: string }): Promise<Post> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error = null } = await supabase.from('posts').insert([{
-      user_id: p.userId, 
-      image_url: p.imageUrl, 
-      caption: p.caption, 
-      timestamp: p.timestamp, 
-      likes: []
+      user_id: p.userId, image_url: p.imageUrl, caption: p.caption, 
+      timestamp: p.timestamp, likes: []
     }]).select('*, users(name, avatar_url)').maybeSingle();
-    
     if (error) throw error;
     if (!data) throw new Error("A inserção não retornou dados.");
-    
     invalidateCache();
     return mapPostFromDb(data);
   },
@@ -999,11 +889,8 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const { data: post } = await supabase.from('posts').select('likes').eq('id', postId).single();
     let likes = post?.likes || [];
-    if (likes.includes(userId)) {
-      likes = likes.filter((id: string) => id !== userId);
-    } else {
-      likes.push(userId);
-    }
+    if (likes.includes(userId)) likes = likes.filter((id: string) => id !== userId);
+    else likes.push(userId);
     const { data, error = null } = await supabase.from('posts').update({ likes }).eq('id', postId).select('*, users(name, avatar_url), post_comments(*, users(name, avatar_url))').single();
     if (error) throw error;
     invalidateCache();
@@ -1013,11 +900,8 @@ export const SupabaseService = {
   addComment: async (postId: string, userId: string, content: string): Promise<Comment> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error = null } = await supabase.from('post_comments').insert([{
-      post_id: postId,
-      user_id: userId,
-      content: content
+      post_id: postId, user_id: userId, content: content
     }]).select('*, users(name, avatar_url)').single();
-    
     if (error) throw error;
     invalidateCache();
     return mapCommentFromDb(data);
@@ -1049,15 +933,30 @@ export const SupabaseService = {
   getAttendanceReport: async () => {
     if (!supabase) return [];
     try {
-        const days = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
-        const { data, error } = await supabase.from('attendance').select('class_id, is_present').eq('is_present', true);
+        const { data, error } = await supabase
+            .from('attendance')
+            .select('classes!inner(day_of_week)')
+            .eq('is_present', true);
+
         if (error) throw error;
+
+        const attendanceByDay: { [key: string]: number } = {
+            'Segunda': 0, 'Terça': 0, 'Quarta': 0, 'Quinta': 0, 'Sexta': 0, 'Sábado': 0, 'Domingo': 0
+        };
+
+        (data as any[]).forEach(record => {
+            const day = record.classes.day_of_week;
+            if (attendanceByDay.hasOwnProperty(day)) {
+                attendanceByDay[day]++;
+            }
+        });
         
-        return days.map(day => ({
+        return Object.keys(attendanceByDay).map(day => ({
             name: day,
-            attendance: Math.floor(Math.random() * 50) + 10
+            attendance: attendanceByDay[day]
         }));
     } catch (e) {
+        console.error("Error fetching attendance report:", e);
         return [];
     }
   }

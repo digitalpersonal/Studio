@@ -143,7 +143,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
   const validateForm = () => {
     const isStudent = (formData.role || UserRole.STUDENT) === UserRole.STUDENT;
 
-    // Tab 'basic'
     if (!formData.name?.trim()) { setActiveTab('basic'); return "O nome é obrigatório."; }
     if (!formData.email?.trim()) { setActiveTab('basic'); return "O e-mail é obrigatório."; }
     if (!formData.phoneNumber?.trim()) { setActiveTab('basic'); return "O WhatsApp é obrigatório."; }
@@ -158,12 +157,10 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
       }
     }
 
-    // Tab 'plan'
     if (isStudent) {
       if (!formData.planId) { setActiveTab('plan'); return "É obrigatório selecionar um plano para o aluno."; }
     }
 
-    // Tab 'anamnesis'
     if (isStudent) {
       const anamnesis = formData.anamnesis;
       if (!anamnesis?.emergencyContactName?.trim()) { setActiveTab('anamnesis'); return "O nome do contato de emergência é obrigatório."; }
@@ -370,7 +367,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   <p className="text-xs text-brand-200 leading-relaxed font-medium">As informações de saúde e contato de emergência são <b>obrigatórias</b> para a segurança do aluno durante as atividades físicas.</p>
               </div>
 
-              {/* Seção de Saúde */}
               <div className="space-y-6">
                 <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><HeartPulse size={16} className="text-brand-500"/>Saúde e Histórico Médico</h4>
                 
@@ -416,7 +412,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                 </div>
               </div>
 
-              {/* Seção de Objetivos */}
               <div className="space-y-6 pt-6 border-t border-dark-800">
                 <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><Dumbbell size={16} className="text-brand-500"/>Objetivos e Estilo de Vida</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -427,7 +422,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                 </div>
               </div>
 
-              {/* Seção de Hábitos */}
               <div className="space-y-6 pt-6 border-t border-dark-800">
                 <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><BookOpen size={16} className="text-brand-500"/>Hábitos e Avaliação</h4>
                 <ConditionalTextarea 
@@ -443,7 +437,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                  <div><label className="block text-slate-400 text-sm font-bold mb-2">Dieta atual (ex: restritiva, balanceada)?</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.currentDiet || ''} onChange={(e) => handleAnamnesisChange('currentDiet', e.target.value)} /></div>
               </div>
 
-              {/* Seção de Emergência */}
               <div className="space-y-4 pt-6 border-t border-dark-800">
                 <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><Phone size={16} className="text-brand-500"/>Contato de Emergência</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -457,7 +450,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   </div>
                 </div>
               </div>
-
             </div>
           )}
         </form>

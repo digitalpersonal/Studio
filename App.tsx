@@ -41,7 +41,7 @@ import { LandingPage } from './components/LandingPage';
 import { HelpCenterPage } from './components/HelpCenterPage';
 import { StravaPage } from './components/StravaPage';
 
-const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+const LOGO_URL = "logo.svg";
 
 /* -------------------------------------------------------------------------- */
 /*                                   NOTIFICAÇÕES                             */
@@ -435,7 +435,6 @@ export function App() {
       return <LandingPage onLogin={handleLogin} onNavigateToRegistration={() => handleNavigate('REGISTRATION')} addToast={addToast} />;
     }
 
-    // Isolate Complete Profile view from the main Layout
     if (currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && !currentUser.profileCompleted) {
       return (
         <ToastContext.Provider value={{ addToast }}>
@@ -449,7 +448,6 @@ export function App() {
       );
     }
     
-    // Render all other views within the main Layout
     return (
       <ToastContext.Provider value={{ addToast }}>
         <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>

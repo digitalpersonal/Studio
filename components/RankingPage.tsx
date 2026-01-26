@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { User, UserRole, Challenge } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -9,27 +8,48 @@ interface RankingPageProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
+interface RankedStudent extends User {
+  totalDistance: number;
+}
+
 export const RankingPage: React.FC<RankingPageProps> = ({ currentUser, addToast }) => {
   const [globalChallenge, setGlobalChallenge] = useState<Challenge | null>(null);
   const [challengeProgress, setChallengeProgress] = useState(0);
-  const [students, setStudents] = useState<User[]>([]); 
+  const [rankedStudents, setRankedStudents] = useState<RankedStudent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchRankingData = async () => {
       setLoading(true);
       try {
-        const result = await SupabaseService.getGlobalChallengeProgress();
-        if (result) {
-            setGlobalChallenge(result.challenge);
-            setChallengeProgress(result.totalDistance || 0);
+        const [challengeResult, allStudents, rankingData] = await Promise.all([
+            SupabaseService.getGlobalChallengeProgress(),
+            SupabaseService.getAllStudents(),
+            SupabaseService.getRankingData()
+        ]);
+
+        if (challengeResult) {
+            setGlobalChallenge(challengeResult.challenge);
+            setChallengeProgress(challengeResult.totalDistance || 0);
         }
 
-        const allUsers = await SupabaseService.getAllUsers();
-        if (allUsers && Array.isArray(allUsers)) {
-            const onlyStudents = allUsers.filter(u => u.role === UserRole.STUDENT);
-            setStudents([...onlyStudents].sort((a, b) => String(a.name).localeCompare(String(b.name)))); 
-        }
+        const distanceMap = new Map<string, number>();
+        rankingData.forEach(item => {
+            const studentId = item.student_id;
+            const distance = item.classes?.distance_km || 0;
+            distanceMap.set(studentId, (distanceMap.get(studentId) || 0) + distance);
+        });
+
+        const studentsWithDistance = allStudents
+            .filter(u => u.role === UserRole.STUDENT)
+            .map(student => ({
+                ...student,
+                totalDistance: distanceMap.get(student.id) || 0,
+            }))
+            .sort((a, b) => b.totalDistance - a.totalDistance);
+
+        setRankedStudents(studentsWithDistance);
+
       } catch (error: any) {
         console.error("Erro ao carregar ranking:", error);
         addToast(`Falha ao sincronizar ranking em tempo real.`, "error");
@@ -116,7 +136,7 @@ export const RankingPage: React.FC<RankingPageProps> = ({ currentUser, addToast 
 
       <div className="bg-dark-950 rounded-[2.5rem] border border-dark-800 overflow-hidden shadow-2xl mt-8">
         <div className="p-6 border-b border-dark-800 flex justify-between items-center bg-dark-950/50">
-           <h3 className="font-black flex items-center gap-2 text-white uppercase text-xs tracking-widest"><Hash size={18} className="text-brand-500" /> Top Performance</h3>
+           <h3 className="font-black flex items-center gap-2 text-white uppercase text-xs tracking-widest"><Hash size={18} className="text-brand-500" /> Top Performance em Distância (KM)</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-slate-400">
@@ -124,12 +144,12 @@ export const RankingPage: React.FC<RankingPageProps> = ({ currentUser, addToast 
               <tr>
                 <th className="px-6 py-6 w-20">Pos</th>
                 <th className="px-6 py-6">Membro</th>
-                <th className="px-6 py-6 text-right">Pontos / Km</th>
+                <th className="px-6 py-6 text-right">Distância Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-800">
-              {students.length > 0 ? students.map((s, index) => (
-                <tr key={s.id} className="hover:bg-dark-900/50 transition-colors group">
+              {rankedStudents.length > 0 ? rankedStudents.map((s, index) => (
+                <tr key={s.id} className={`transition-colors group ${s.id === currentUser.id ? 'bg-brand-500/5' : 'hover:bg-dark-900/50'}`}>
                   <td className="px-6 py-4">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${
                           index === 0 ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' :
@@ -143,19 +163,19 @@ export const RankingPage: React.FC<RankingPageProps> = ({ currentUser, addToast 
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-10 h-10 rounded-xl border border-dark-800 object-cover" alt={String(s.name)} />
-                      <p className="text-white font-bold">{String(s.name)}</p>
+                      <p className={`font-bold ${s.id === currentUser.id ? 'text-brand-500' : 'text-white'}`}>{String(s.name)}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <span className="text-white font-black text-base">
-                        0
+                        {s.totalDistance.toFixed(2)}
                     </span>
-                    <span className="text-[10px] font-black text-slate-600 ml-1 uppercase tracking-tighter">{globalChallenge?.unit || 'unidades'}</span>
+                    <span className="text-[10px] font-black text-slate-600 ml-1 uppercase tracking-tighter">km</span>
                   </td>
                 </tr>
               )) : (
                   <tr>
-                      <td colSpan={3} className="px-6 py-20 text-center text-slate-600 font-bold uppercase text-[10px]">Aguardando dados dos membros...</td>
+                      <td colSpan={3} className="px-6 py-20 text-center text-slate-600 font-bold uppercase text-[10px]">Aguardando dados de corridas...</td>
                   </tr>
               )}
             </tbody>

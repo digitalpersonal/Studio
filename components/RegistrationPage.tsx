@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, UserRole, Plan } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -24,7 +23,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [plans, setPlans] = useState<Plan[]>([]);
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
-    const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+    const LOGO_URL = "logo.svg";
 
     useEffect(() => {
         if (step === 'PLAN_SELECTION') {
@@ -88,9 +87,13 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 planValue: selectedPlan.price,
                 planDuration: selectedPlan.durationMonths,
                 billingDay: 5,
+                planStartDate: new Date().toISOString().split('T')[0],
                 profileCompleted: false,
                 address: { zipCode: '', street: '', number: '', neighborhood: '', city: '', state: '' },
-                anamnesis: { hasMedicalCondition: false, hasRecentSurgeryOrInjury: false, takesMedication: false, hasAllergies: false, emergencyContactName: '', emergencyContactPhone: '', updatedAt: new Date().toISOString() }
+                anamnesis: { hasMedicalCondition: false, hasRecentSurgeryOrInjury: false, takesMedication: false, hasAllergies: false, emergencyContactName: '', emergencyContactPhone: '', updatedAt: new Date().toISOString() },
+                cpf: '',
+                rg: '',
+                birthDate: '',
             };
 
             const createdUser = await SupabaseService.addUser(newUser);
@@ -156,7 +159,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     return (
         <div className="min-h-screen bg-dark-900 flex items-center justify-center p-4">
             <div className="bg-white p-8 md:p-12 rounded-[2.5rem] shadow-2xl w-full max-w-md border border-gray-200 text-center animate-fade-in relative overflow-hidden">
-                <img src={LOGO_URL} alt="Studio Logo" className="w-48 mx-auto mb-8 rounded-3xl" />
+                <img src={LOGO_URL} alt="Studio Logo" className="w-48 mx-auto mb-8" />
                 {step === 'CODE_INPUT' && (
                     <form onSubmit={handleCodeValidation} className="space-y-4">
                         <input type="text" required className="w-full bg-gray-100 border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none text-center font-bold tracking-wider uppercase" placeholder="CÓDIGO DE CONVITE" value={inviteCode} onChange={e => setInviteCode(e.target.value)} disabled={isLoading}/>

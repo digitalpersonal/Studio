@@ -39,19 +39,22 @@ export const ContractService = {
     };
 
     const studentPlan = plans.find(p => p.id === student.planId);
+    const academyFullAddress = `${settings.academyAddress.street}, ${settings.academyAddress.number} – ${settings.academyAddress.neighborhood} – ${settings.academyAddress.city}/${settings.academyAddress.state}`;
+
 
     // =========================================================================
     // HEADER
     // =========================================================================
-    y = addText('STUDIO SAÚDE EM MOVIMENTO', pageWidth / 2, y, { size: 12, style: 'bold', align: 'center' });
-    y = addText('Rua Barão do Rio Branco 95 – Centro – Guaranésia/MG', pageWidth / 2, y, { size: 9, align: 'center' });
-    y = addText('CNPJ: 26818102000102', pageWidth / 2, y, { size: 9, align: 'center' });
+    y = addText(settings.name.toUpperCase(), pageWidth / 2, y, { size: 12, style: 'bold', align: 'center' });
+    y = addText(academyFullAddress, pageWidth / 2, y, { size: 9, align: 'center' });
+    y = addText(`CNPJ: ${settings.cnpj}`, pageWidth / 2, y, { size: 9, align: 'center' });
     y += 20;
 
     // =========================================================================
     // PARTIES
     // =========================================================================
-    y = addText('CONTRATATADA (ACADEMIA): Studio Saúde Em Movimento, Rua Barão do Rio Branco, 95, Bairro: Centro, CEP: 37810-000 Cidade de Guaranésia, Estado de Minas Gerais, CNPJ 26818102000102, Proprietário: Rosinaldo Santos da Silva, Residente: Rua Roque Taliberti 66, Bairro: Jr, RG: 067441-AP, CPF: 41602359849, Cidade de Guaranésia, Estado de Minas Gerais', margin, y, { style: 'bold' });
+    const contratadaText = `CONTRATATADA (ACADEMIA): ${settings.name}, com sede em ${academyFullAddress}, CEP: ${settings.academyAddress.zipCode}, inscrita no CNPJ sob o nº ${settings.cnpj}, neste ato representada por ${settings.representativeName}.`;
+    y = addText(contratadaText, margin, y, { style: 'bold' });
     y += 15;
 
     let contratanteText = `CONTRATANTE (ALUNO): ${student.name || '____________________________________________________________'} Nascimento: ${student.birthDate ? new Date(student.birthDate + 'T03:00:00').toLocaleDateString('pt-BR') : '____/____/__________'}, Carteira de Identidade nº ${student.rg || '________________'}, CPF nº ${student.cpf || '____________________'}, residente na Rua ${student.address?.street || '_________________________________ _______________________________________'}, nº ${student.address?.number || '_______'}, CEP ${student.address?.zipCode || '________-____'}, Cidade ${student.address?.city || '____________________'}, fone ${student.phoneNumber || '____________________'}`;
@@ -161,7 +164,7 @@ export const ContractService = {
     y += 20;
 
     const today = new Date();
-    const dateText = `Guaranésia, ${today.toLocaleDateString('pt-BR', { day: '2-digit' })} de ${today.toLocaleDateString('pt-BR', { month: 'long' })} de ${today.toLocaleDateString('pt-BR', { year: 'numeric' })}`;
+    const dateText = `${settings.academyAddress.city}, ${today.toLocaleDateString('pt-BR', { day: '2-digit' })} de ${today.toLocaleDateString('pt-BR', { month: 'long' })} de ${today.toLocaleDateString('pt-BR', { year: 'numeric' })}`;
     y = addText(dateText, pageWidth / 2, y, { align: 'center' });
     y += 40;
 
@@ -172,7 +175,7 @@ export const ContractService = {
     y += 20;
 
     y = addText(`Representante do Contratado:________________________________________________ Assinatura: _______________________________________________`, margin, y);
-    y = addText(`Rosinaldo Santos da Silva`, margin + 145, y - 14);
+    y = addText(settings.representativeName.toUpperCase(), margin + 145, y - 14);
     y += 20;
 
     y = addText('Nome testemunha 1: _________________________________________ R.G. ______________________ Assinatura: ___________________________________', margin, y);
