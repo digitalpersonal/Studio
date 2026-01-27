@@ -399,14 +399,17 @@ export function App() {
   };
 
   const handleLogin = (user: User) => {
+    // Garante que o estado do usuário seja salvo antes de trocar a view
     localStorage.setItem('studioCurrentUser', JSON.stringify(user));
     setCurrentUser(user);
-    if (user.role === UserRole.STUDENT && user.profileCompleted === false) {
-      setCurrentView('COMPLETE_PROFILE');
-    } else {
-      setCurrentView('DASHBOARD');
-    }
-    addToast(`Olá, ${String(user.name).split(' ')[0]}! Sessão em nuvem ativada.`, "success");
+    
+    // Determina a view correta baseada no perfil
+    const nextView = (user.role === UserRole.STUDENT && !user.profileCompleted)
+      ? 'COMPLETE_PROFILE'
+      : 'DASHBOARD';
+    
+    setCurrentView(nextView);
+    addToast(`Olá, ${String(user.name).split(' ')[0]}! Sessão ativada.`, "success");
   };
 
   const handleLogout = () => {
@@ -428,6 +431,7 @@ export function App() {
   };
 
   const renderContent = () => {
+    // Se não há usuário logado, decide entre REGISTRATION ou LANDING (LOGIN)
     if (!currentUser) {
       if (currentView === 'REGISTRATION') {
         return <RegistrationPage onLogin={handleLogin} onCancelRegistration={() => handleNavigate('LOGIN')} />;
@@ -435,7 +439,8 @@ export function App() {
       return <LandingPage onLogin={handleLogin} onNavigateToRegistration={() => handleNavigate('REGISTRATION')} addToast={addToast} />;
     }
 
-    if (currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && !currentUser.profileCompleted) {
+    // Se o usuário logado ainda não completou o perfil, força a view de completar perfil
+    if (currentUser.role === UserRole.STUDENT && !currentUser.profileCompleted) {
       return (
         <ToastContext.Provider value={{ addToast }}>
           <div className="min-h-screen bg-dark-900 text-slate-200 font-sans">
@@ -448,6 +453,7 @@ export function App() {
       );
     }
     
+    // Todas as outras rotas para usuários autenticados e com perfil completo
     return (
       <ToastContext.Provider value={{ addToast }}>
         <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
@@ -465,6 +471,8 @@ export function App() {
           {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} />}
           {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={handleUpdateUser} addToast={addToast} />}
+          {/* Fallback se a view for COMPLETE_PROFILE mas o usuário já tiver completado */}
+          {currentView === 'COMPLETE_PROFILE' && <DashboardPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
         </Layout>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </ToastContext.Provider>
