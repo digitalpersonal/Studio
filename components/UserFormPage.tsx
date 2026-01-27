@@ -146,8 +146,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     if (!formData.name?.trim()) { setActiveTab('basic'); return "O nome é obrigatório."; }
     if (!formData.email?.trim()) { setActiveTab('basic'); return "O e-mail é obrigatório."; }
     if (!formData.phoneNumber?.trim()) { setActiveTab('basic'); return "O WhatsApp é obrigatório."; }
-    
-    if (!editingUser && !formData.password?.trim()) { setActiveTab('basic'); return "A senha é obrigatória para novos cadastros."; }
+    if (!formData.password?.trim()) { setActiveTab('basic'); return "A senha de acesso é obrigatória."; }
 
     if (isStudent) {
       if (!formData.cpf?.trim()) { setActiveTab('basic'); return "O CPF é obrigatório para alunos."; }
@@ -258,18 +257,14 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   
                   <div className="relative group">
                       <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">
-                        {editingUser ? (
-                          <span className="flex items-center gap-1"><Lock size={10}/> Alterar Senha <span className="text-[8px] opacity-60">(vazio p/ manter)</span></span>
-                        ) : (
-                          <RequiredLabel text="Senha de Acesso"/>
-                        )}
+                        <RequiredLabel text="Senha de Acesso" />
                       </label>
                       <div className="relative">
                           <input 
-                            required={!editingUser}
+                            required
                             type={showPassword ? "text" : "password"} 
-                            className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none pr-12" 
-                            placeholder={editingUser ? "Deixe em branco para não alterar" : "Crie uma senha forte"}
+                            className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none pr-12 font-mono" 
+                            placeholder="Defina a senha"
                             value={formData.password || ''} 
                             onChange={e => setFormData({...formData, password: e.target.value})} 
                           />
@@ -277,6 +272,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
+                            title={showPassword ? "Ocultar senha" : "Ver senha atual"}
                           >
                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                           </button>

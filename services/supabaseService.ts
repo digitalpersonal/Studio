@@ -50,6 +50,7 @@ const mapPostFromDb = (p: any): Post => ({
 
 const mapUserFromDb = (u: any): User => ({
   ...u,
+  password: u.password, // Explicitamente garantindo que a senha venha do banco
   planId: u.plan_id,
   avatarUrl: u.avatar_url,
   joinDate: u.join_date,
@@ -358,6 +359,7 @@ export const SupabaseService = {
     const updatePayload: { [key: string]: any } = {
       name: u.name,
       email: u.email,
+      password: u.password, // Envia sempre a senha presente no formulário
       role: u.role,
       avatar_url: u.avatarUrl,
       phone_number: u.phoneNumber,
@@ -381,9 +383,6 @@ export const SupabaseService = {
       strava_access_token: u.stravaAccessToken,
       strava_refresh_token: u.stravaRefreshToken,
     };
-    if (u.password && u.password.length > 0) {
-      updatePayload.password = u.password;
-    }
     const { data, error } = await supabase.from('users').update(updatePayload).eq('id', u.id).select().single();
     if (error) {
         console.error("Supabase UpdateUser Error:", error);
@@ -622,7 +621,8 @@ export const SupabaseService = {
     const promises = records.map(async r => {
         const payload = { 
             class_id: r.classId, student_id: r.studentId, date: r.date, is_present: r.isPresent,
-            total_time_seconds: r.totalTimeSeconds, average_pace: r.averagePace,
+            total_time_seconds: r.totalTimeSeconds, 
+            average_pace: r.averagePace,
             age_group_classification: r.ageGroupClassification, instructor_notes: r.instructorNotes,
             generated_feedback: r.generatedFeedback,
         };
@@ -735,7 +735,8 @@ export const SupabaseService = {
       student_id: a.studentId, date: a.date, status: a.status, weight: a.weight, height: a.height,
       body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
-      hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
+      hydration_percentage: a.hydrationPercentage, 
+      abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
       photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
@@ -750,9 +751,12 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('assessments').update({
       date: a.date, status: a.status, weight: a.weight, height: a.height,
-      body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
-      visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
-      hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
+      body_fat_percentage: a.bodyFatPercentage,
+      skeletal_muscle_mass: a.skeletalMuscleMass,
+      visceral_fat_level: a.visceralFatLevel,
+      basal_metabolic_rate: a.basalMetabolicRate,
+      hydration_percentage: a.hydrationPercentage,
+      abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
       photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,

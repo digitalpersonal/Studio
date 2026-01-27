@@ -116,22 +116,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
     if (isLoggingIn) return;
 
     const target = e.target as any;
-    const email = target.email.value;
-    const password = target.password.value;
+    const email = target.email.value.trim();
+    const password = target.password.value.trim();
+
+    if (!email || !password) {
+      addToast("Por favor, preencha todos os campos.", "error");
+      return;
+    }
 
     setIsLoggingIn(true);
     try {
       const allUsers = await SupabaseService.getAllUsers(true);
-      const user = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password) || null;
+      const user = allUsers.find(u => 
+        u.email.toLowerCase() === email.toLowerCase() && 
+        u.password === password
+      ) || null;
 
       if (user) {
-        onLogin(user);
+        if (user.status === 'SUSPENDED') {
+          addToast("Seu acesso está temporariamente suspenso. Procure a recepção.", "error");
+        } else {
+          onLogin(user);
+        }
       } else {
         addToast("E-mail ou senha incorretos.", "error");
       }
     } catch (error: any) {
       console.error("Login Error:", error);
-      addToast(`Erro de conexão com o Supabase.`, "error");
+      addToast(`Erro de conexão com o servidor.`, "error");
     } finally {
       setIsLoggingIn(false);
     }
