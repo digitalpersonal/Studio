@@ -50,7 +50,7 @@ const mapPostFromDb = (p: any): Post => ({
 
 const mapUserFromDb = (u: any): User => ({
   ...u,
-  password: u.password, // Explicitamente garantindo que a senha venha do banco
+  password: u.password, // Mapeamento essencial para permitir login e edição
   planId: u.plan_id,
   avatarUrl: u.avatar_url,
   joinDate: u.join_date,
@@ -458,6 +458,7 @@ export const SupabaseService = {
       duration_minutes: c.durationMinutes,
       instructor: c.instructor,
       max_capacity: c.maxCapacity,
+      // Fix: Use camelCase properties from ClassSession object
       enrolled_student_ids: c.enrolledStudentIds || [],
       waitlist_student_ids: c.waitlistStudentIds || [],
       type: c.type,
@@ -738,6 +739,7 @@ export const SupabaseService = {
       hydration_percentage: a.hydrationPercentage, 
       abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
+      // Fix: Use camelCase property from Assessment object
       medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
       photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
       fms: a.fms || {}, circumferences: a.circumferences || {}, notes: a.notes
@@ -832,9 +834,9 @@ export const SupabaseService = {
 
   addPersonalizedWorkout: async (w: Omit<PersonalizedWorkout, 'id'>): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('personalized_workouts').insert([{
+    const { data, error = null } = await supabase.from('personalized_workouts').insert([{
       title: w.title, description: w.description, video_url: w.videoUrl,
-      student_ids: w.studentIds, instructor_name: w.instructorName, created_at: w.createdAt
+      student_ids: w.studentIds, instructor_name: w.instructorName
     }]).select().single();
     if (error) throw error;
     invalidateCache();
@@ -863,7 +865,7 @@ export const SupabaseService = {
     if (!supabase) return [];
     try {
         const { data, error } = await supabase.from('posts').select('*, users!inner(name, avatar_url), post_comments(*, users(name, avatar_url))').order('timestamp', { ascending: false });
-        if (error) throw error; // Corrected from postError
+        if (error) throw error;
         return (data || []).map(mapPostFromDb);
     } catch (e) {
         return [];

@@ -116,7 +116,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
     if (isLoggingIn) return;
 
     const target = e.target as any;
-    const email = target.email.value.trim();
+    const email = target.email.value.trim().toLowerCase();
     const password = target.password.value.trim();
 
     if (!email || !password) {
@@ -128,7 +128,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
     try {
       const allUsers = await SupabaseService.getAllUsers(true);
       const user = allUsers.find(u => 
-        u.email.toLowerCase() === email.toLowerCase() && 
+        u.email.toLowerCase() === email && 
         u.password === password
       ) || null;
 
