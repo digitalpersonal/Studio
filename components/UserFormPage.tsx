@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, UserRole, Anamnesis, Address, Plan } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import {
-  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck, AlertCircle, HeartPulse, Dumbbell, BookOpen, User as UserIcon, Phone, FileHeart, CheckCircle2
+  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck, AlertCircle, HeartPulse, Dumbbell, BookOpen, User as UserIcon, Phone, FileHeart, CheckCircle2, Lock
 } from 'lucide-react';
 
 interface UserFormPageProps {
@@ -147,6 +147,8 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     if (!formData.email?.trim()) { setActiveTab('basic'); return "O e-mail é obrigatório."; }
     if (!formData.phoneNumber?.trim()) { setActiveTab('basic'); return "O WhatsApp é obrigatório."; }
     
+    if (!editingUser && !formData.password?.trim()) { setActiveTab('basic'); return "A senha é obrigatória para novos cadastros."; }
+
     if (isStudent) {
       if (!formData.cpf?.trim()) { setActiveTab('basic'); return "O CPF é obrigatório para alunos."; }
       if (!formData.rg?.trim()) { setActiveTab('basic'); return "O RG é obrigatório para alunos."; }
@@ -254,27 +256,32 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" placeholder="(00) 00000-0000" value={formData.phoneNumber || ''} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
                   </div>
                   
-                  {!editingUser && (
-                      <div className="relative group">
-                          <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Senha de Acesso"/></label>
-                          <div className="relative">
-                              <input 
-                                required 
-                                type={showPassword ? "text" : "password"} 
-                                className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none pr-12" 
-                                value={formData.password || ''} 
-                                onChange={e => setFormData({...formData, password: e.target.value})} 
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
-                              >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                              </button>
-                          </div>
+                  <div className="relative group">
+                      <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">
+                        {editingUser ? (
+                          <span className="flex items-center gap-1"><Lock size={10}/> Alterar Senha <span className="text-[8px] opacity-60">(vazio p/ manter)</span></span>
+                        ) : (
+                          <RequiredLabel text="Senha de Acesso"/>
+                        )}
+                      </label>
+                      <div className="relative">
+                          <input 
+                            required={!editingUser}
+                            type={showPassword ? "text" : "password"} 
+                            className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none pr-12" 
+                            placeholder={editingUser ? "Deixe em branco para não alterar" : "Crie uma senha forte"}
+                            value={formData.password || ''} 
+                            onChange={e => setFormData({...formData, password: e.target.value})} 
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
+                          >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
                       </div>
-                  )}
+                  </div>
 
                   <div className="sm:col-span-2">
                       <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Função / Nível de Acesso</label>
