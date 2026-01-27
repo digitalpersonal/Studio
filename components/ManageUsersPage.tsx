@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, UserRole, Anamnesis, Address, Payment, ViewState, AppNavParams, ClassSession } from '../types';
 import {
   X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin,
@@ -6,7 +6,7 @@ import {
   AlertTriangle, MessageCircle, CheckCheck, UserPlus, AlertCircle, 
   CheckCircle2, Loader2, Send, Users as UsersIcon, Trash2, 
   Calendar, ListOrdered, ClipboardList, BookOpen, Zap, ZapOff, BadgePercent,
-  TrendingUp
+  TrendingUp, MousePointer2
 } from 'lucide-react';
 import { SupabaseService } from '../services/supabaseService';
 import { ContractService } from '../services/contractService';
@@ -26,6 +26,12 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     const [showEnrolledClasses, setShowEnrolledClasses] = useState<User | null>(null);
     const [manualPaymentModal, setManualPaymentModal] = useState<{ student: User, payment: Payment } | null>(null);
     const { addToast } = useToast();
+
+    // Ref para a funcionalidade de arrastar a tabela
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
 
     const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
     const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
@@ -51,7 +57,26 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         }
     };
 
-    // Definição de Peso Hierárquico para permissões
+    // Lógica de Arrastar (Drag to Scroll)
+    const handleMouseDown = (e: React.MouseEvent) => {
+        if (!scrollContainerRef.current) return;
+        setIsDragging(true);
+        setStartX(e.pageX - scrollContainerRef.current.offsetLeft);
+        setScrollLeft(scrollContainerRef.current.scrollLeft);
+    };
+
+    const handleMouseLeaveOrUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging || !scrollContainerRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - scrollContainerRef.current.offsetLeft;
+        const walk = (x - startX) * 2; // Velocidade do scroll
+        scrollContainerRef.current.scrollLeft = scrollLeft - walk;
+    };
+
     const roleRank = {
         [UserRole.SUPER_ADMIN]: 4,
         [UserRole.ADMIN]: 3,
@@ -60,7 +85,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     };
 
     const canManageUser = (targetUser: User) => {
-        if (targetUser.id === currentUser.id) return false; // Não edita a si mesmo na lista
+        if (targetUser.id === currentUser.id) return false;
         return roleRank[currentUser.role] > roleRank[targetUser.role];
     };
 
@@ -173,7 +198,12 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
             setShowUserForm(false);
             refreshList();
         } catch (error: any) {
-            addToast(`Erro ao salvar: ${error.message}`, "error");
+            console.error("Erro ao salvar usuário:", error);
+            if (error.message?.includes('users_email_key') || error.code === '23505') {
+                addToast("Este e-mail já está em uso por outro usuário.", "error");
+            } else {
+                addToast(`Erro ao salvar: ${error.message || 'Verifique os dados.'}`, "error");
+            }
         } finally {
             setIsLoading(false);
         }
@@ -215,7 +245,10 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-white">Gestão de Alunos & Equipe</h2>
-                    <p className="text-slate-400 text-sm">Central de comando para controle operacional e financeiro.</p>
+                    <p className="text-slate-400 text-sm flex items-center gap-2">
+                       <MousePointer2 size={14} className="text-brand-500" /> 
+                       Dica: Clique e arraste a tabela para o lado. O nome do aluno fica sempre visível.
+                    </p>
                 </div>
                 {(isAdmin || isTrainer) && (
                   <button onClick={() => handleOpenForm(null)} className="bg-brand-600 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all active:scale-95">
@@ -224,12 +257,20 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 )}
             </div>
 
-            <div className="bg-dark-950 rounded-[2.5rem] border border-dark-800 overflow-hidden shadow-2xl">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-400 min-w-[1300px]">
+            <div className="bg-dark-950 rounded-[2.5rem] border border-dark-800 overflow-hidden shadow-2xl relative">
+                <div 
+                    ref={scrollContainerRef}
+                    onMouseDown={handleMouseDown}
+                    onMouseLeave={handleMouseLeaveOrUp}
+                    onMouseUp={handleMouseLeaveOrUp}
+                    onMouseMove={handleMouseMove}
+                    className={`overflow-x-auto select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} custom-scrollbar`}
+                >
+                    <table className="w-full text-left text-sm text-slate-400 min-w-[1400px] border-separate border-spacing-0">
                         <thead className="bg-dark-900/50 font-bold uppercase text-[10px] tracking-widest text-slate-500">
                             <tr>
-                                <th className="px-6 py-6">Identificação</th>
+                                {/* Cabeçalho da coluna fixa */}
+                                <th className="px-6 py-6 sticky left-0 z-30 bg-dark-950 shadow-[4px_0_10px_rgba(0,0,0,0.3)] border-r border-dark-800">Identificação</th>
                                 <th className="px-6 py-6">Saúde / Status</th>
                                 <th className="px-6 py-6">Financeiro</th>
                                 <th className="px-6 py-6 text-right">Ações de Gestão</th>
@@ -245,27 +286,27 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                 const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())[0];
                                 const enrolledCount = classes.filter(c => c.enrolledStudentIds.includes(s.id)).length;
                                 const isSuspended = s.status === 'SUSPENDED';
-
-                                // Hierarquia de permissões rigorosa
                                 const canEdit = canManageUser(s);
 
                                 return (
                                     <tr key={s.id} className={`hover:bg-dark-900/40 transition-colors group ${isSuspended ? 'opacity-60 grayscale-[0.5]' : ''}`}>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="relative">
+                                        {/* Coluna Fixa */}
+                                        <td className="px-6 py-4 sticky left-0 z-20 bg-dark-950 shadow-[4px_0_10px_rgba(0,0,0,0.3)] border-r border-dark-800 group-hover:bg-dark-900/60 transition-colors">
+                                            <div className="flex items-center gap-4 min-w-[250px]">
+                                                <div className="relative shrink-0">
                                                     <img src={String(s.avatarUrl || `https://ui-avatars.com/api/?name=${String(s.name)}`)} className="w-12 h-12 rounded-2xl border-2 border-dark-800 shadow-lg object-cover" />
                                                     <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-dark-950 ${isSuspended ? 'bg-red-600' : (s.role === UserRole.STUDENT ? 'bg-brand-500' : 'bg-blue-500')}`}></div>
                                                 </div>
-                                                <div>
+                                                <div className="overflow-hidden">
                                                     <div className="flex items-center gap-2">
-                                                        <p className="text-white font-bold text-base">{String(s.name)}</p>
-                                                        {isSuspended && <span className="bg-red-500/20 text-red-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-red-500/30">Suspenso</span>}
+                                                        <p className="text-white font-bold text-base truncate">{String(s.name)}</p>
+                                                        {isSuspended && <span className="shrink-0 bg-red-500/20 text-red-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-red-500/30">Suspenso</span>}
                                                     </div>
                                                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{getRoleLabel(s.role)}</p>
                                                 </div>
                                             </div>
                                         </td>
+                                        
                                         <td className="px-6 py-4">
                                             {s.role === UserRole.STUDENT && (
                                                 <div className="flex flex-col gap-1.5">
@@ -296,7 +337,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex justify-end items-center gap-1.5 flex-wrap max-w-[650px] ml-auto">
-                                                {/* Categoria: Status & Suspensão */}
                                                 {canEdit && s.role === UserRole.STUDENT && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         <ActionButton 
@@ -308,7 +348,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                     </div>
                                                 )}
 
-                                                {/* Categoria: Gestão Cadastral e Saúde */}
                                                 {canEdit && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         <ActionButton icon={Edit} color="blue" onClick={() => handleOpenForm(s)} title="Editar Cadastro" />
@@ -321,7 +360,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                     </div>
                                                 )}
 
-                                                {/* Categoria: Visualização de Performance */}
                                                 {s.role === UserRole.STUDENT && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         <ActionButton icon={ListOrdered} color="cyan" onClick={() => setShowEnrolledClasses(s)} title="Aulas Matriculadas" />
@@ -331,7 +369,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                     </div>
                                                 )}
 
-                                                {/* Categoria: Financeiro & Documentos */}
                                                 {isAdmin && s.role === UserRole.STUDENT && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         <ActionButton icon={DollarSign} color="emerald" onClick={() => onNavigate('FINANCIAL', { studentId: s.id })} title="Fluxo Financeiro" />
@@ -364,7 +401,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                     </div>
                                                 )}
 
-                                                {/* Categoria: WhatsApp & Cobrança */}
                                                 {(isAdmin || isTrainer) && s.phoneNumber && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         {isAdmin && latestDebt && (
@@ -386,7 +422,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 </div>
             </div>
 
-            {/* Modal de Baixa Manual com Desconto */}
             {manualPaymentModal && (
                 <ManualPaymentModal 
                     student={manualPaymentModal.student}
@@ -397,7 +432,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 />
             )}
 
-            {/* Modal de Aulas do Aluno */}
             {showEnrolledClasses && (
                 <EnrolledClassesModal 
                     student={showEnrolledClasses} 
@@ -406,7 +440,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 />
             )}
 
-            {/* Modal de WhatsApp Livre */}
             {showWhatsAppModal && (
                 <WhatsAppMessageModal 
                     student={showWhatsAppModal}
@@ -418,7 +451,6 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     );
 };
 
-// Modal de Baixa Manual com Desconto
 const ManualPaymentModal = ({ student, payment, onConfirm, onCancel, isLoading }: { student: User, payment: Payment, onConfirm: (p: Payment, discount: number) => void, onCancel: () => void, isLoading: boolean }) => {
     const [discount, setDiscount] = useState(0);
     const finalAmount = Math.max(0, payment.amount - discount);
@@ -467,7 +499,7 @@ const ManualPaymentModal = ({ student, payment, onConfirm, onCancel, isLoading }
                         disabled={isLoading}
                         className="py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-emerald-600/20 hover:bg-emerald-500 flex items-center justify-center gap-2"
                     >
-                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCheck size={16} />}
+                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
                         Confirmar
                     </button>
                 </div>
@@ -476,7 +508,6 @@ const ManualPaymentModal = ({ student, payment, onConfirm, onCancel, isLoading }
     );
 };
 
-// Componente de botão de ação otimizado
 const ActionButton = ({ icon: Icon, color, onClick, disabled, title }: { icon: any, color: string, onClick: () => void, disabled?: boolean, title: string }) => {
     const colorClasses: Record<string, string> = {
         blue: "bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white",
@@ -506,7 +537,7 @@ const ActionButton = ({ icon: Icon, color, onClick, disabled, title }: { icon: a
 const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, classes: ClassSession[], onClose: () => void }) => {
     return (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
-            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-lg w-full space-y-6 relative overflow-hidden">
+            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-lg w-full space-y-6 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
                 <div className="flex justify-between items-center">
                     <div>

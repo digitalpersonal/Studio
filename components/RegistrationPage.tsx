@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, UserRole, Plan } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { SettingsService } from '../services/settingsService';
-import { Dumbbell, ArrowLeft, Send, Loader2, CheckCircle2, Eye, EyeOff, UserCircle, HandCoins } from 'lucide-react';
+import { Dumbbell, ArrowLeft, Send, Loader2, CheckCircle2, Eye, EyeOff, UserCircle, HandCoins, AlertCircle } from 'lucide-react';
 import { useToast } from '../App';
 
 interface RegistrationPageProps {
@@ -116,13 +116,19 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
             }
             
             addToast("Cadastro realizado com sucesso!", "success");
-            
-            // Redireciona via callback de login
             onLogin(createdUser); 
         } catch (error: any) {
             console.error("Erro no registro:", error);
-            addToast(error.message || "Erro ao registrar usuário. Verifique se o e-mail já existe.", "error");
-            setIsLoading(false); // Mantém o loading false apenas se der erro, pois o sucesso unmounta o componente
+            
+            // Tratamento específico para e-mail duplicado
+            if (error.message?.includes('users_email_key') || error.code === '23505') {
+                addToast("Este e-mail já está cadastrado. Tente usar outro e-mail ou faça login.", "error");
+                setStep('FORM_INPUT'); // Volta para o passo do formulário para o usuário corrigir
+            } else {
+                addToast(error.message || "Erro ao registrar usuário. Tente novamente.", "error");
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 

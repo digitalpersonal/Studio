@@ -3,7 +3,7 @@ import { User, UserRole, Address, Anamnesis } from '../types';
 import { UserFormPage } from './UserFormPage';
 import { useToast } from '../App';
 import { SupabaseService } from '../services/supabaseService';
-import { Award } from 'lucide-react'; // Example icon for header
+import { Award } from 'lucide-react';
 
 interface CompleteProfilePageProps {
   currentUser: User;
@@ -20,26 +20,28 @@ export const CompleteProfilePage: React.FC<CompleteProfilePageProps> = ({
     try {
       const payload: User = {
         ...formData,
-        profileCompleted: true, // Mark profile as complete
+        profileCompleted: true,
       };
       
       const updatedUser = await SupabaseService.updateUser(payload);
       
-      // The logic to create payments is now centralized in ManageUsersPage's onSave,
-      // which is what this component's onSave prop calls. We just need to pass the flag.
       if (wasPlanNewlyAssigned) {
           addToast(`Seu plano foi ativado e as faturas geradas!`, "info");
       }
 
       addToast("Seu perfil foi completado com sucesso! Bem-vindo(a)!", "success");
-      onProfileComplete(updatedUser); // Update global user state and navigate to Dashboard
+      onProfileComplete(updatedUser);
     } catch (error: any) {
-      console.error("Erro ao completar perfil:", error.message || JSON.stringify(error));
-      addToast(`Erro ao salvar seu perfil: ${error.message || JSON.stringify(error)}`, "error");
+      console.error("Erro ao completar perfil:", error);
+      
+      if (error.message?.includes('users_email_key') || error.code === '23505') {
+          addToast("Este e-mail já está sendo usado por outra conta. Escolha outro e-mail.", "error");
+      } else {
+          addToast(`Erro ao salvar seu perfil: ${error.message || 'Verifique sua conexão.'}`, "error");
+      }
     }
   };
 
-  // Ensure initial form data has default objects for nested properties if missing
   const initialFormData: Partial<User> = {
     ...currentUser,
     address: currentUser.address || {
@@ -59,19 +61,17 @@ export const CompleteProfilePage: React.FC<CompleteProfilePageProps> = ({
       emergencyContactName: '', emergencyContactPhone: '',
       updatedAt: new Date().toISOString().split('T')[0],
     },
-    // Ensure basic profile fields like name, email, phone are pre-filled
     name: currentUser.name || '',
     email: currentUser.email || '',
     phoneNumber: currentUser.phoneNumber || '',
-    // Add other fields that might be missing and are required for contract/plan
     cpf: currentUser.cpf || '',
     rg: currentUser.rg || '',
     nationality: currentUser.nationality || '',
     maritalStatus: currentUser.maritalStatus || '',
     profession: currentUser.profession || '',
-    planValue: currentUser.planValue !== undefined ? currentUser.planValue : 150, // Default for new student
-    planDuration: currentUser.planDuration !== undefined ? currentUser.planDuration : 12, // Default for new student
-    billingDay: currentUser.billingDay !== undefined ? currentUser.billingDay : 5, // Default for new student
+    planValue: currentUser.planValue !== undefined ? currentUser.planValue : 150,
+    planDuration: currentUser.planDuration !== undefined ? currentUser.planDuration : 12,
+    billingDay: currentUser.billingDay !== undefined ? currentUser.billingDay : 5,
   };
 
 
@@ -86,19 +86,17 @@ export const CompleteProfilePage: React.FC<CompleteProfilePageProps> = ({
         </p>
       </header>
 
-      {/* UserFormPage is used here to handle the profile completion */}
       <UserFormPage
-        editingUser={currentUser} // Pass the current user as the one being edited
-        initialFormData={initialFormData} // Pre-fill with existing data
+        editingUser={currentUser}
+        initialFormData={initialFormData}
         onSave={handleSaveProfile}
         onCancel={() => {
-          // This button won't exist in the CompleteProfilePage context if it's mandatory.
           addToast("Por favor, complete seu perfil para acessar o aplicativo.", "info");
         }}
         addToast={addToast}
-        initialActiveTab="basic" // Start on the basic info tab
-        currentUserRole={currentUser.role} // Pass the user's own role
-        isCompletingProfile={true} // Specify this is the profile completion flow
+        initialActiveTab="basic"
+        currentUserRole={currentUser.role}
+        isCompletingProfile={true}
       />
     </div>
   );
