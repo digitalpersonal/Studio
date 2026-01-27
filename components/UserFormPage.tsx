@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { User, UserRole, Anamnesis, Address, Plan } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import {
-  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck, AlertCircle, HeartPulse, Dumbbell, BookOpen, User as UserIcon, Phone, FileHeart, CheckCircle2, Lock
+  X, Info, Repeat, Stethoscope, HandCoins, ArrowLeft, Save, MapPin, Calendar, Eye, EyeOff, ShieldCheck, AlertCircle, HeartPulse, Dumbbell, BookOpen, User as UserIcon, Phone, FileHeart, CheckCircle2, Lock, AlertTriangle
 } from 'lucide-react';
 
 interface UserFormPageProps {
@@ -59,6 +60,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
   const [activeTab, setActiveTab] = useState<'basic' | 'plan' | 'anamnesis'>(initialActiveTab);
   const [showPassword, setShowPassword] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [showValidationSummary, setShowValidationSummary] = useState(false);
 
   useEffect(() => {
     const mainContainer = document.getElementById('main-scroll-container');
@@ -79,6 +81,40 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     fetchPlans();
   }, [addToast]);
 
+  // Lógica de Validação em tempo real para feedback visual
+  const missingFields = useMemo(() => {
+    const list: Record<'basic' | 'plan' | 'anamnesis', string[]> = { basic: [], plan: [], anamnesis: [] };
+    const isStudent = (formData.role || UserRole.STUDENT) === UserRole.STUDENT;
+
+    if (!formData.name?.trim()) list.basic.push("Nome Completo");
+    if (!formData.email?.trim()) list.basic.push("E-mail");
+    if (!formData.phoneNumber?.trim()) list.basic.push("WhatsApp");
+    if (!formData.password?.trim()) list.basic.push("Senha");
+    if (!formData.birthDate) list.basic.push("Data de Nascimento");
+
+    if (isStudent) {
+      if (!formData.cpf?.trim()) list.basic.push("CPF");
+      if (!formData.rg?.trim()) list.basic.push("RG");
+      const address = formData.address;
+      if (!address?.zipCode?.trim()) list.basic.push("CEP");
+      if (!address?.street?.trim()) list.basic.push("Logradouro");
+      if (!address?.number?.trim()) list.basic.push("Número");
+      if (!address?.neighborhood?.trim()) list.basic.push("Bairro");
+      if (!address?.city?.trim()) list.basic.push("Cidade");
+      if (!address?.state?.trim()) list.basic.push("Estado");
+
+      if (!formData.planId) list.plan.push("Seleção de Plano");
+
+      const anamnesis = formData.anamnesis;
+      if (!anamnesis?.emergencyContactName?.trim()) list.anamnesis.push("Nome Contato Emergência");
+      if (!anamnesis?.emergencyContactPhone?.trim()) list.anamnesis.push("Telefone Emergência");
+    }
+
+    return list;
+  }, [formData]);
+
+  const totalMissing = missingFields.basic.length + missingFields.plan.length + missingFields.anamnesis.length;
+
   const plansByType = useMemo(() => {
     return plans.reduce((acc, plan) => {
         const type = plan.planType;
@@ -97,7 +133,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
         planValue: plan.price,
         planDuration: plan.durationMonths,
     }));
-    addToast(`Plano '${plan.title}' selecionado. Salve para aplicar.`, 'info');
+    addToast(`Plano '${plan.title}' selecionado.`, 'info');
   };
 
   const isSuperAdmin = currentUserRole === UserRole.SUPER_ADMIN;
@@ -140,48 +176,18 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     setActiveTab(initialActiveTab);
   }, [initialFormData, initialActiveTab]);
 
-  const validateForm = () => {
-    const isStudent = (formData.role || UserRole.STUDENT) === UserRole.STUDENT;
-
-    if (!formData.name?.trim()) { setActiveTab('basic'); return "O nome é obrigatório."; }
-    if (!formData.email?.trim()) { setActiveTab('basic'); return "O e-mail é obrigatório."; }
-    if (!formData.phoneNumber?.trim()) { setActiveTab('basic'); return "O WhatsApp é obrigatório."; }
-    if (!formData.password?.trim()) { setActiveTab('basic'); return "A senha de acesso é obrigatória."; }
-
-    if (isStudent) {
-      if (!formData.cpf?.trim()) { setActiveTab('basic'); return "O CPF é obrigatório para alunos."; }
-      if (!formData.rg?.trim()) { setActiveTab('basic'); return "O RG é obrigatório para alunos."; }
-      const address = formData.address;
-      if (!address?.street?.trim() || !address?.number?.trim() || !address?.neighborhood?.trim() || !address?.city?.trim() || !address?.state?.trim() || !address?.zipCode?.trim()) {
-        setActiveTab('basic');
-        return "Todos os campos do endereço são obrigatórios.";
-      }
-    }
-
-    if (isStudent) {
-      if (!formData.planId) { setActiveTab('plan'); return "É obrigatório selecionar um plano para o aluno."; }
-    }
-
-    if (isStudent) {
-      const anamnesis = formData.anamnesis;
-      if (!anamnesis?.emergencyContactName?.trim()) { setActiveTab('anamnesis'); return "O nome do contato de emergência é obrigatório."; }
-      if (!anamnesis?.emergencyContactPhone?.trim()) { setActiveTab('anamnesis'); return "O telefone de emergência é obrigatório."; }
-      if (anamnesis?.hasMedicalCondition && !anamnesis.medicalConditionDescription?.trim()) { setActiveTab('anamnesis'); return "Por favor, descreva a condição médica."; }
-      if (anamnesis?.hasRecentSurgeryOrInjury && !anamnesis.recentSurgeryOrInjuryDetails?.trim()) { setActiveTab('anamnesis'); return "Por favor, detalhe as cirurgias ou lesões recentes."; }
-      if (anamnesis?.takesMedication && !anamnesis.medicationDescription?.trim()) { setActiveTab('anamnesis'); return "Por favor, liste os medicamentos em uso."; }
-      if (anamnesis?.hasAllergies && !anamnesis.allergiesDescription?.trim()) { setActiveTab('anamnesis'); return "Por favor, descreva suas alergias."; }
-      if (anamnesis?.smokesOrDrinks && !anamnesis.smokingDrinkingFrequency?.trim()) { setActiveTab('anamnesis'); return "Por favor, informe a frequência do consumo de álcool/cigarro."; }
-    }
-    
-    return null;
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const error = validateForm();
-    if (error) {
-      addToast(error, "error");
+    if (totalMissing > 0) {
+      setShowValidationSummary(true);
+      addToast(`Faltam ${totalMissing} campos obrigatórios. Verifique os avisos.`, "error");
+      
+      // Tenta pular para a primeira aba com erro
+      if (missingFields.basic.length > 0) setActiveTab('basic');
+      else if (missingFields.plan.length > 0) setActiveTab('plan');
+      else if (missingFields.anamnesis.length > 0) setActiveTab('anamnesis');
+      
       return;
     }
 
@@ -212,7 +218,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
           {editingUser && !isCompletingProfile && (
              <button onClick={onCancel} className="text-slate-500 hover:text-white p-2 rounded-full transition-colors"><ArrowLeft size={24} /></button>
           )}
-          <h3 className="text-white font-black text-xl uppercase tracking-tighter">{editingUser ? (isCompletingProfile ? '' : 'Editar Cadastro') : 'Novo Cadastro'}</h3>
+          <h3 className="text-white font-black text-xl uppercase tracking-tighter">{editingUser ? (isCompletingProfile ? 'Finalizar meu Perfil' : 'Editar Cadastro') : 'Novo Cadastro'}</h3>
         </div>
         {!isCompletingProfile && (
           <button onClick={onCancel} className="text-slate-500 hover:text-white p-2"><X size={24}/></button>
@@ -228,11 +234,15 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${
+            className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all relative ${
               activeTab === tab.id ? 'border-brand-500 text-brand-500 bg-brand-500/5' : 'border-transparent text-slate-500 hover:text-white'
             }`}
           >
-            <tab.icon size={16} /> <span className="hidden sm:inline">{tab.label}</span>
+            <tab.icon size={16} /> 
+            <span className="hidden sm:inline">{tab.label}</span>
+            {missingFields[tab.id as keyof typeof missingFields].length > 0 && (
+              <div className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+            )}
           </button>
         ))}
       </div>
@@ -244,15 +254,15 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Nome Completo"/></label>
-                    <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    <input className={`w-full bg-dark-900 border ${!formData.name?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="E-mail"/></label>
-                    <input required type="email" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    <input type="email" className={`w-full bg-dark-900 border ${!formData.email?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="WhatsApp"/></label>
-                    <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" placeholder="(00) 00000-0000" value={formData.phoneNumber || ''} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
+                    <input className={`w-full bg-dark-900 border ${!formData.phoneNumber?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} placeholder="(00) 00000-0000" value={formData.phoneNumber || ''} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
                   </div>
                   
                   <div className="relative group">
@@ -261,9 +271,8 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                       </label>
                       <div className="relative">
                           <input 
-                            required
                             type={showPassword ? "text" : "password"} 
-                            className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none pr-12 font-mono" 
+                            className={`w-full bg-dark-900 border ${!formData.password?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none pr-12 font-mono transition-all`} 
                             placeholder="Defina a senha"
                             value={formData.password || ''} 
                             onChange={e => setFormData({...formData, password: e.target.value})} 
@@ -272,7 +281,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
                             className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-white transition-colors"
-                            title={showPassword ? "Ocultar senha" : "Ver senha atual"}
                           >
                             {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                           </button>
@@ -302,15 +310,20 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                       )}
                   </div>
 
+                  <div className="sm:col-span-2 border-t border-dark-800 pt-4 mt-2">
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Data de Nascimento"/></label>
+                    <input type="date" className={`w-full bg-dark-900 border ${!formData.birthDate ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none font-bold transition-all`} value={formData.birthDate || ''} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
+                  </div>
+
                   {(formData.role === UserRole.STUDENT || !isAdmin) && (
                     <>
                       <div>
                         <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="CPF"/></label>
-                        <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" placeholder="000.000.000-00" value={formData.cpf || ''} onChange={e => setFormData({...formData, cpf: e.target.value})} />
+                        <input className={`w-full bg-dark-900 border ${!formData.cpf?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} placeholder="000.000.000-00" value={formData.cpf || ''} onChange={e => setFormData({...formData, cpf: e.target.value})} />
                       </div>
                       <div>
                         <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="RG"/></label>
-                        <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" placeholder="MG-00.000.000" value={formData.rg || ''} onChange={e => setFormData({...formData, rg: e.target.value})} />
+                        <input className={`w-full bg-dark-900 border ${!formData.rg?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} placeholder="MG-00.000.000" value={formData.rg || ''} onChange={e => setFormData({...formData, rg: e.target.value})} />
                       </div>
                     </>
                   )}
@@ -320,12 +333,12 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                 <div className="space-y-4 pt-4 border-t border-dark-800">
                   <h4 className="text-white font-bold text-sm flex items-center gap-2"><MapPin size={18} className="text-brand-500"/> Endereço Completo</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="CEP"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.zipCode || ''} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
-                    <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Logradouro"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.street || ''} onChange={e => handleAddressChange('street', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Número"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.number || ''} onChange={e => handleAddressChange('number', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Bairro"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.neighborhood || ''} onChange={e => handleAddressChange('neighborhood', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Cidade"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.city || ''} onChange={e => handleAddressChange('city', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Estado"/></label><input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.address?.state || ''} onChange={e => handleAddressChange('state', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="CEP"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.zipCode?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.address?.zipCode || ''} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
+                    <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Logradouro"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.street?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.address?.street || ''} onChange={e => handleAddressChange('street', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Número"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.number?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.address?.number || ''} onChange={e => handleAddressChange('number', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Bairro"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.neighborhood?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.address?.neighborhood || ''} onChange={e => handleAddressChange('neighborhood', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Cidade"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.city?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.address?.city || ''} onChange={e => handleAddressChange('city', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Estado"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.state?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.address?.state || ''} onChange={e => handleAddressChange('state', e.target.value)} /></div>
                   </div>
                 </div>
               )}
@@ -334,6 +347,12 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
 
           {activeTab === 'plan' && (formData.role === UserRole.STUDENT || !isAdmin) && (
              <div className="space-y-8 animate-fade-in">
+                {!formData.planId && (
+                   <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-center gap-3">
+                      <AlertCircle className="text-red-500 shrink-0" size={20} />
+                      <p className="text-xs text-red-200 font-bold uppercase tracking-widest">Selecione um plano para continuar.</p>
+                   </div>
+                )}
                 {['MENSAL', 'TRIMESTRAL', 'SEMESTRAL', 'KIDS', 'AVULSO'].map(type => (
                     plansByType[type] && (
                         <div key={type}>
@@ -370,7 +389,21 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   <p className="text-xs text-brand-200 leading-relaxed font-medium">As informações de saúde e contato de emergência são <b>obrigatórias</b> para a segurança do aluno durante as atividades físicas.</p>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 pt-6">
+                <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><Phone size={16} className="text-brand-500"/>Contato de Emergência</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Nome"/></label>
+                    <input className={`w-full bg-dark-900 border ${!formData.anamnesis?.emergencyContactName?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.anamnesis?.emergencyContactName || ''} onChange={e => handleAnamnesisChange('emergencyContactName', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Telefone"/></label>
+                    <input className={`w-full bg-dark-900 border ${!formData.anamnesis?.emergencyContactPhone?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all`} value={formData.anamnesis?.emergencyContactPhone || ''} onChange={e => handleAnamnesisChange('emergencyContactPhone', e.target.value)} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6 pt-6 border-t border-dark-800">
                 <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><HeartPulse size={16} className="text-brand-500"/>Saúde e Histórico Médico</h4>
                 
                 <ConditionalTextarea 
@@ -386,7 +419,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     label="Cirurgias ou lesões recentes (últimos 12 meses)?"
                     isChecked={!!formData.anamnesis?.hasRecentSurgeryOrInjury}
                     onCheckboxChange={(c) => handleAnamnesisChange('hasRecentSurgeryOrInjury', c)}
-                    placeholder="Detalhes sobre a cirurgia ou lesão..."
+                    placeholder="Detalhes sobre a cirurgia ou lenção..."
                     value={formData.anamnesis?.recentSurgeryOrInjuryDetails || ''}
                     onTextChange={(v) => handleAnamnesisChange('recentSurgeryOrInjuryDetails', v)}
                     required={!!formData.anamnesis?.hasRecentSurgeryOrInjury}
@@ -409,10 +442,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     onTextChange={(v) => handleAnamnesisChange('allergiesDescription', v)}
                     required={!!formData.anamnesis?.hasAllergies}
                 />
-                <div>
-                  <label className="block text-slate-400 text-sm font-bold mb-2">Realizou exames recentes (ex: FMS, composição corporal)?</label>
-                  <textarea placeholder="Resultados relevantes..." className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.recentExamsResults || ''} onChange={(e) => handleAnamnesisChange('recentExamsResults', e.target.value)} />
-                </div>
               </div>
 
               <div className="space-y-6 pt-6 border-t border-dark-800">
@@ -421,42 +450,48 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                     <div className="sm:col-span-2"><label className="block text-slate-400 text-sm font-bold mb-2">Principal objetivo (ex: melhorar corrida, ganho de força, perda de peso)?</label><textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.mainGoal || ''} onChange={(e) => handleAnamnesisChange('mainGoal', e.target.value)} /></div>
                     <div><label className="block text-slate-400 text-sm font-bold mb-2">Frequência de treinos (semana)</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.anamnesis?.trainingFrequency || '3-4x'} onChange={e => handleAnamnesisChange('trainingFrequency', e.target.value)}><option value="1-2x">1-2 vezes</option><option value="3-4x">3-4 vezes</option><option value="5x+">5 ou mais</option></select></div>
                     <div><label className="block text-slate-400 text-sm font-bold mb-2">Nível de atividade</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.anamnesis?.activityLevel || 'MODERATE'} onChange={e => handleAnamnesisChange('activityLevel', e.target.value)}><option value="SEDENTARY">Sedentário</option><option value="MODERATE">Moderado</option><option value="ATHLETE">Atleta</option></select></div>
-                    <div className="sm:col-span-2"><label className="block text-slate-400 text-sm font-bold mb-2">Experiência com treinamento funcional ou corrida?</label><textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.trainingExperience || ''} onChange={(e) => handleAnamnesisChange('trainingExperience', e.target.value)} /></div>
-                </div>
-              </div>
-
-              <div className="space-y-6 pt-6 border-t border-dark-800">
-                <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><BookOpen size={16} className="text-brand-500"/>Hábitos e Avaliação</h4>
-                <ConditionalTextarea 
-                    label="Fuma ou consome álcool?"
-                    isChecked={!!formData.anamnesis?.smokesOrDrinks}
-                    onCheckboxChange={(c) => handleAnamnesisChange('smokesOrDrinks', c)}
-                    placeholder="Qual a frequência?"
-                    value={formData.anamnesis?.smokingDrinkingFrequency || ''}
-                    onTextChange={(v) => handleAnamnesisChange('smokingDrinkingFrequency', v)}
-                    required={!!formData.anamnesis?.smokesOrDrinks}
-                />
-                 <div><label className="block text-slate-400 text-sm font-bold mb-2">Qualidade do sono (horas/noite)</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.sleepQuality || ''} onChange={(e) => handleAnamnesisChange('sleepQuality', e.target.value)} /></div>
-                 <div><label className="block text-slate-400 text-sm font-bold mb-2">Dieta atual (ex: restritiva, balanceada)?</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm" value={formData.anamnesis?.currentDiet || ''} onChange={(e) => handleAnamnesisChange('currentDiet', e.target.value)} /></div>
-              </div>
-
-              <div className="space-y-4 pt-6 border-t border-dark-800">
-                <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><Phone size={16} className="text-brand-500"/>Contato de Emergência</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Nome"/></label>
-                    <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.anamnesis?.emergencyContactName || ''} onChange={e => handleAnamnesisChange('emergencyContactName', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Telefone"/></label>
-                    <input required className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.anamnesis?.emergencyContactPhone || ''} onChange={e => handleAnamnesisChange('emergencyContactPhone', e.target.value)} />
-                  </div>
                 </div>
               </div>
             </div>
           )}
         </form>
       </div>
+
+      {/* Resumo de Validação */}
+      {showValidationSummary && totalMissing > 0 && (
+          <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-3xl animate-fade-in space-y-4">
+              <div className="flex items-center gap-2 text-red-500">
+                  <AlertTriangle size={20} />
+                  <h4 className="font-black uppercase text-xs tracking-widest">Verifique os itens pendentes:</h4>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  {missingFields.basic.length > 0 && (
+                      <div>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-dark-800 pb-1">Dados Pessoais</p>
+                          <ul className="space-y-1">
+                              {missingFields.basic.map(f => <li key={f} className="text-[10px] text-red-400 font-bold flex items-center gap-1.5"><div className="w-1 h-1 bg-red-500 rounded-full" /> {f}</li>)}
+                          </ul>
+                      </div>
+                  )}
+                  {missingFields.plan.length > 0 && (
+                      <div>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-dark-800 pb-1">Plano</p>
+                          <ul className="space-y-1">
+                              {missingFields.plan.map(f => <li key={f} className="text-[10px] text-red-400 font-bold flex items-center gap-1.5"><div className="w-1 h-1 bg-red-500 rounded-full" /> {f}</li>)}
+                          </ul>
+                      </div>
+                  )}
+                  {missingFields.anamnesis.length > 0 && (
+                      <div>
+                          <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-dark-800 pb-1">Saúde / Emergência</p>
+                          <ul className="space-y-1">
+                              {missingFields.anamnesis.map(f => <li key={f} className="text-[10px] text-red-400 font-bold flex items-center gap-1.5"><div className="w-1 h-1 bg-red-500 rounded-full" /> {f}</li>)}
+                          </ul>
+                      </div>
+                  )}
+              </div>
+          </div>
+      )}
 
       <div className={`p-6 border-t border-dark-800 flex flex-col sm:flex-row gap-4 bg-dark-950 rounded-b-2xl ${isCompletingProfile ? '-mx-8 -mb-8' : ''}`}>
         {!isCompletingProfile && (
@@ -465,9 +500,10 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
         <button 
           form="user-form"
           type="submit" 
-          className="flex-1 py-5 bg-brand-600 text-white font-black rounded-2xl uppercase text-[10px] tracking-widest shadow-2xl shadow-brand-600/30 hover:bg-brand-500 transition-all flex items-center justify-center gap-2"
+          className={`flex-1 py-5 ${totalMissing > 0 ? 'bg-dark-800 text-slate-500 grayscale' : 'bg-brand-600 text-white shadow-brand-600/30 hover:bg-brand-500'} font-black rounded-2xl uppercase text-[10px] tracking-widest shadow-2xl transition-all flex items-center justify-center gap-2`}
         >
-          <Save size={18} /> {isCompletingProfile ? 'Concluir Cadastro' : (editingUser ? 'Salvar Alterações' : 'Finalizar e Salvar')}
+          {totalMissing > 0 ? <AlertTriangle size={18} /> : <Save size={18} />}
+          {isCompletingProfile ? 'Concluir Cadastro' : (editingUser ? 'Salvar Alterações' : 'Finalizar e Salvar')}
         </button>
       </div>
     </div>

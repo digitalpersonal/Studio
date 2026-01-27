@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, UserRole, Plan } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { SettingsService } from '../services/settingsService';
-import { Dumbbell, ArrowLeft, Send, Loader2, CheckCircle2, Eye, EyeOff, UserCircle, HandCoins, AlertCircle } from 'lucide-react';
+import { Dumbbell, ArrowLeft, Send, Loader2, CheckCircle2, Eye, EyeOff, UserCircle, HandCoins, AlertCircle, Calendar } from 'lucide-react';
 import { useToast } from '../App';
 
 interface RegistrationPageProps {
@@ -18,6 +19,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [plans, setPlans] = useState<Plan[]>([]);
@@ -41,6 +43,16 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
             fetchPlans();
         }
     }, [step, addToast]);
+
+    const pendingItems = useMemo(() => {
+        const list = [];
+        if (!name.trim()) list.push("Seu nome");
+        if (!email.trim() || !email.includes('@')) list.push("E-mail válido");
+        if (!password.trim() || password.length < 6) list.push("Senha (mín. 6 dígitos)");
+        if (!phoneNumber.trim() || phoneNumber.length < 10) list.push("WhatsApp");
+        if (!birthDate) list.push("Data de nascimento");
+        return list;
+    }, [name, email, password, phoneNumber, birthDate]);
     
     const handleCodeValidation = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -58,6 +70,15 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleNextToPlans = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (pendingItems.length > 0) {
+            addToast(`Por favor, preencha: ${pendingItems.join(', ')}`, "error");
+            return;
+        }
+        setStep('PLAN_SELECTION');
     };
 
     const handleRegister = async () => {
@@ -82,18 +103,19 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 role: UserRole.STUDENT,
                 joinDate: new Date().toISOString().split('T')[0],
                 phoneNumber,
+                birthDate: birthDate, 
                 avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`,
                 planId: selectedPlan.id,
                 planValue: selectedPlan.price,
+                planDiscount: 0,
                 planDuration: selectedPlan.durationMonths,
                 billingDay: 5,
                 planStartDate: new Date().toISOString().split('T')[0],
                 profileCompleted: false,
                 address: { zipCode: '', street: '', number: '', neighborhood: '', city: '', state: '' },
-                anamnesis: { hasMedicalCondition: false, hasRecentSurgeryOrInjury: false, takesMedication: false, hasAllergies: false, emergencyContactName: '', emergencyContactPhone: '', updatedAt: new Date().toISOString() },
+                anamnesis: { emergencyContactName: '', emergencyContactPhone: '', updatedAt: new Date().toISOString() },
                 cpf: '',
                 rg: '',
-                birthDate: '',
             };
 
             const createdUser = await SupabaseService.addUser(newUser);
@@ -102,7 +124,6 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 throw new Error("Falha ao criar usuário no banco de dados.");
             }
 
-            // Cria o primeiro pagamento
             try {
                 await SupabaseService.addPayment({
                     studentId: createdUser.id,
@@ -119,11 +140,9 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
             onLogin(createdUser); 
         } catch (error: any) {
             console.error("Erro no registro:", error);
-            
-            // Tratamento específico para e-mail duplicado
             if (error.message?.includes('users_email_key') || error.code === '23505') {
                 addToast("Este e-mail já está cadastrado. Tente usar outro e-mail ou faça login.", "error");
-                setStep('FORM_INPUT'); // Volta para o passo do formulário para o usuário corrigir
+                setStep('FORM_INPUT');
             } else {
                 addToast(error.message || "Erro ao registrar usuário. Tente novamente.", "error");
             }
@@ -189,19 +208,45 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 )}
 
                 {step === 'FORM_INPUT' && (
-                    <form onSubmit={(e) => { e.preventDefault(); setStep('PLAN_SELECTION'); }} className="space-y-4">
+                    <form onSubmit={handleNextToPlans} className="space-y-4">
                         <div className="mb-4 text-left">
                             <h3 className="text-xl font-black text-gray-800">Seus Dados</h3>
                             <p className="text-sm text-gray-500">Crie sua conta de acesso.</p>
                         </div>
-                        <input type="text" required className="w-full bg-gray-100 border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none" placeholder="Nome Completo" value={name} onChange={e => setName(e.target.value)} />
-                        <input type="email" required className="w-full bg-gray-100 border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none" placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} />
+                        <input type="text" required className={`w-full bg-gray-100 border ${!name.trim() ? 'border-gray-300' : 'border-emerald-500/50'} rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none transition-all`} placeholder="Nome Completo" value={name} onChange={e => setName(e.target.value)} />
+                        <input type="email" required className={`w-full bg-gray-100 border ${!email.trim() || !email.includes('@') ? 'border-gray-300' : 'border-emerald-500/50'} rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none transition-all`} placeholder="E-mail" value={email} onChange={e => setEmail(e.target.value)} />
                         <div className="relative">
-                            <input type={showPassword ? "text" : "password"} required className="w-full bg-gray-100 border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none pr-12" placeholder="Crie sua Senha" value={password} onChange={e => setPassword(e.target.value)} />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500">{showPassword ? <EyeOff/> : <Eye/>}</button>
+                            <input type={showPassword ? "text" : "password"} required className={`w-full bg-gray-100 border ${!password.trim() || password.length < 6 ? 'border-gray-300' : 'border-emerald-500/50'} rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none pr-12 transition-all`} placeholder="Crie sua Senha" value={password} onChange={e => setPassword(e.target.value)} />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500">{showPassword ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                         </div>
-                        <input type="tel" required className="w-full bg-gray-100 border-gray-300 rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none" placeholder="WhatsApp (DDD+Número)" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
-                        <button type="submit" className="w-full bg-brand-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-lg shadow-brand-600/20 active:scale-95 transition-all">Avançar para Planos</button>
+                        <input type="tel" required className={`w-full bg-gray-100 border ${!phoneNumber.trim() ? 'border-gray-300' : 'border-emerald-500/50'} rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none transition-all`} placeholder="WhatsApp (DDD+Número)" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
+                        
+                        <div className="text-left space-y-1">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1">
+                                Data de Nascimento <span className="text-red-500 font-bold">*</span>
+                            </label>
+                            <input type="date" required className={`w-full bg-gray-100 border ${!birthDate ? 'border-gray-300' : 'border-emerald-500/50'} rounded-2xl p-5 text-gray-900 focus:border-brand-500 outline-none transition-all`} value={birthDate} onChange={e => setBirthDate(e.target.value)} />
+                        </div>
+
+                        {pendingItems.length > 0 && (
+                            <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 text-left animate-fade-in">
+                                <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2 flex items-center gap-1.5"><AlertCircle size={14}/> Itens faltantes:</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {pendingItems.map(item => (
+                                        <span key={item} className="bg-white px-2 py-1 rounded-lg border border-orange-200 text-[9px] font-bold text-orange-700 uppercase">
+                                            {item}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <button 
+                            type="submit" 
+                            className={`w-full ${pendingItems.length > 0 ? 'bg-gray-200 text-gray-400 grayscale' : 'bg-brand-600 text-white shadow-brand-600/20'} font-black py-5 rounded-2xl uppercase tracking-widest transition-all active:scale-95`}
+                        >
+                            {pendingItems.length > 0 ? 'Complete os dados' : 'Avançar para Planos'}
+                        </button>
                     </form>
                 )}
 

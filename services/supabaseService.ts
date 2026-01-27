@@ -15,6 +15,12 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   }
 }
 
+// Helper para tratar strings de data vazias antes de enviar para o Postgres
+const formatDateForDb = (dateStr?: string) => {
+  if (!dateStr || dateStr.trim() === "") return null;
+  return dateStr;
+};
+
 // --- MAPPERS ---
 const mapPlanFromDb = (p: any): Plan => ({
   id: p.id,
@@ -329,8 +335,8 @@ export const SupabaseService = {
       phone_number: u.phoneNumber,
       profile_completed: u.profileCompleted,
       status: u.status || 'ACTIVE',
-      join_date: u.joinDate,
-      birth_date: u.birthDate,
+      join_date: formatDateForDb(u.joinDate),
+      birth_date: formatDateForDb(u.birthDate),
       cpf: u.cpf,
       rg: u.rg,
       nationality: u.nationality,
@@ -342,7 +348,7 @@ export const SupabaseService = {
       plan_discount: u.planDiscount || 0,
       plan_duration: u.planDuration,
       billing_day: u.billingDay,
-      plan_start_date: u.planStartDate,
+      plan_start_date: formatDateForDb(u.planStartDate),
       anamnesis: u.anamnesis || {},
     };
     const { data, error } = await supabase.from('users').insert([payload]).select().single();
@@ -366,7 +372,7 @@ export const SupabaseService = {
       profile_completed: u.profileCompleted,
       status: u.status,
       suspended_at: u.suspendedAt,
-      birth_date: u.birthDate,
+      birth_date: formatDateForDb(u.birthDate),
       cpf: u.cpf,
       rg: u.rg,
       nationality: u.nationality,
@@ -378,7 +384,7 @@ export const SupabaseService = {
       plan_discount: u.planDiscount || 0,
       plan_duration: u.planDuration,
       billing_day: u.billingDay,
-      plan_start_date: u.planStartDate,
+      plan_start_date: formatDateForDb(u.planStartDate),
       anamnesis: u.anamnesis || {},
       strava_access_token: u.stravaAccessToken,
       strava_refresh_token: u.stravaRefreshToken,
@@ -421,7 +427,7 @@ export const SupabaseService = {
       title: c.title,
       description: c.description,
       day_of_week: c.dayOfWeek,
-      date: c.date,
+      date: formatDateForDb(c.date),
       start_time: c.startTime,
       duration_minutes: c.durationMinutes,
       instructor: c.instructor,
@@ -433,7 +439,7 @@ export const SupabaseService = {
       wod: c.wod,
       workout_details: c.workoutDetails,
       feedback: c.feedback,
-      cycle_start_date: c.cycleStartDate,
+      cycle_start_date: formatDateForDb(c.cycleStartDate),
       week_of_cycle: c.weekOfCycle,
       week_focus: c.weekFocus,
       estimated_volume_minutes: c.estimatedVolumeMinutes,
@@ -453,12 +459,11 @@ export const SupabaseService = {
       title: c.title,
       description: c.description,
       day_of_week: c.dayOfWeek,
-      date: c.date,
+      date: formatDateForDb(c.date),
       start_time: c.startTime,
       duration_minutes: c.durationMinutes,
       instructor: c.instructor,
       max_capacity: c.maxCapacity,
-      // Fix: Use camelCase properties from ClassSession object
       enrolled_student_ids: c.enrolledStudentIds || [],
       waitlist_student_ids: c.waitlistStudentIds || [],
       type: c.type,
@@ -466,7 +471,7 @@ export const SupabaseService = {
       wod: c.wod,
       workout_details: c.workoutDetails,
       feedback: c.feedback,
-      cycle_start_date: c.cycleStartDate,
+      cycle_start_date: formatDateForDb(c.cycleStartDate),
       week_of_cycle: c.weekOfCycle,
       week_focus: c.weekFocus,
       estimated_volume_minutes: c.estimatedVolumeMinutes,
@@ -524,7 +529,7 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('payments').insert([{
       student_id: p.studentId, amount: p.amount, status: p.status, 
-      due_date: p.dueDate, description: p.description, discount: p.discount || 0
+      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount || 0
     }]).select().single();
     if (error) throw error;
     invalidateCache();
@@ -537,7 +542,7 @@ export const SupabaseService = {
         student_id: p.studentId,
         amount: p.amount,
         status: p.status,
-        due_date: p.dueDate,
+        due_date: formatDateForDb(p.dueDate),
         description: p.description,
         discount: p.discount || 0,
     }));
@@ -560,7 +565,7 @@ export const SupabaseService = {
       student_id: p.studentId,
       amount: p.amount,
       status: p.status,
-      due_date: p.dueDate,
+      due_date: formatDateForDb(p.dueDate),
       description: p.description,
       discount: p.discount
     }).eq('id', p.id).select().single();
@@ -608,7 +613,7 @@ export const SupabaseService = {
   getAttendanceByClassAndDate: async (classId: string, date: string): Promise<AttendanceRecord[]> => {
     if (!supabase) return [];
     try {
-        const { data, error } = await supabase.from('attendance').select('*').eq('class_id', classId).eq('date', date);
+        const { data, error } = await supabase.from('attendance').select('*').eq('class_id', classId).eq('date', formatDateForDb(date));
         if (error) throw error;
         return (data || []).map(mapAttendanceFromDb);
     } catch (e) {
@@ -621,13 +626,13 @@ export const SupabaseService = {
     if (records.length === 0) return;
     const promises = records.map(async r => {
         const payload = { 
-            class_id: r.classId, student_id: r.studentId, date: r.date, is_present: r.isPresent,
+            class_id: r.classId, student_id: r.studentId, date: formatDateForDb(r.date), is_present: r.isPresent,
             total_time_seconds: r.totalTimeSeconds, 
             average_pace: r.averagePace,
             age_group_classification: r.ageGroupClassification, instructor_notes: r.instructorNotes,
             generated_feedback: r.generatedFeedback,
         };
-        const { data: existing, error: fetchError } = await supabase.from('attendance').select('id').eq('class_id', r.classId).eq('student_id', r.studentId).eq('date', r.date).maybeSingle();
+        const { data: existing, error: fetchError } = await supabase.from('attendance').select('id').eq('class_id', r.classId).eq('student_id', r.studentId).eq('date', formatDateForDb(r.date)).maybeSingle();
         if (fetchError) throw fetchError;
         if (existing) {
             const { error: updateError } = await supabase.from('attendance').update(payload).eq('id', existing.id);
@@ -658,7 +663,7 @@ export const SupabaseService = {
   getAttendanceForStudentInDateRange: async (studentId: string, startDate: string, endDate: string): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
     if (!supabase) return [];
     try {
-      const { data, error } = await supabase.from('attendance').select('*, class:classes!inner(*)').eq('student_id', studentId).eq('is_present', true).eq('class.type', 'RUNNING').gte('date', startDate).lte('date', endDate).order('date', { ascending: true });
+      const { data, error } = await supabase.from('attendance').select('*, class:classes!inner(*)').eq('student_id', studentId).eq('is_present', true).eq('class.type', 'RUNNING').gte('date', formatDateForDb(startDate)).lte('date', formatDateForDb(endDate)).order('date', { ascending: true });
       if (error) throw error;
       return (data || []).map(r => ({ ...mapAttendanceFromDb(r), classDetails: r.class ? mapClassFromDb(r.class) : undefined }));
     } catch (e) {
@@ -671,7 +676,7 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('cycle_summaries').insert([{
       student_id: summary.studentId,
-      cycle_end_date: summary.cycleEndDate,
+      cycle_end_date: formatDateForDb(summary.cycleEndDate),
       summary_text: summary.summaryText,
       start_pace: summary.startPace,
       end_pace: summary.endPace,
@@ -733,13 +738,12 @@ export const SupabaseService = {
   addAssessment: async (a: Omit<Assessment, 'id'>): Promise<Assessment> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('assessments').insert([{
-      student_id: a.studentId, date: a.date, status: a.status, weight: a.weight, height: a.height,
+      student_id: a.studentId, date: formatDateForDb(a.date), status: a.status, weight: a.weight, height: a.height,
       body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
       hydration_percentage: a.hydrationPercentage, 
       abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
-      // Fix: Use camelCase property from Assessment object
       medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
       photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
       fms: a.fms || {}, circumferences: a.circumferences || {}, notes: a.notes
@@ -752,7 +756,7 @@ export const SupabaseService = {
   updateAssessment: async (a: Assessment): Promise<Assessment> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('assessments').update({
-      date: a.date, status: a.status, weight: a.weight, height: a.height,
+      date: formatDateForDb(a.date), status: a.status, weight: a.weight, height: a.height,
       body_fat_percentage: a.bodyFatPercentage,
       skeletal_muscle_mass: a.skeletalMuscleMass,
       visceral_fat_level: a.visceralFatLevel,
@@ -845,7 +849,7 @@ export const SupabaseService = {
 
   updatePersonalizedWorkout: async (w: PersonalizedWorkout): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('personalized_workouts').update({
+    const { data, error = null } = await supabase.from('personalized_workouts').update({
       title: w.title, description: w.description, video_url: w.videoUrl,
       student_ids: w.studentIds, instructor_name: w.instructorName
     }).eq('id', w.id).select().single();

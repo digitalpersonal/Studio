@@ -1,7 +1,8 @@
+
 import React, { useState } from 'react';
 import { User } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, Clock, Flag } from 'lucide-react';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 const RUNNING_BANNER_URL = "https://digitalfreeshop.com.br/logostudio/corrida.jpeg";
@@ -12,100 +13,61 @@ interface LandingPageProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const PricingSection = () => {
-  const plans = [
-    {
-      title: "Trimestral",
-      description: "Ideal para quem busca comprometimento a médio prazo com desconto.",
-      prices: [
-        { freq: "2x na semana", value: "100,00" },
-        { freq: "3x na semana", value: "110,00" },
-        { freq: "4x na semana", value: "120,00" },
-        { freq: "5x na semana", value: "130,00" },
-      ],
-      contract: "3 meses de contrato",
-      highlight: false,
-    },
-    {
-      title: "Mensal",
-      description: "Flexibilidade total para treinar no seu ritmo, sem compromisso.",
-      prices: [
-        { freq: "2x na semana", value: "110,00" },
-        { freq: "3x na semana", value: "140,00" },
-        { freq: "4x na semana", value: "150,00" },
-        { freq: "5x na semana", value: "160,00" },
-      ],
-      contract: "Plano mensal sem contrato",
-      highlight: true,
-    },
-    {
-      title: "Semestral",
-      description: "O melhor custo-benefício para quem está focado nos resultados.",
-      prices: [
-        { freq: "2x na semana", value: "95,00" },
-        { freq: "3x na semana", value: "105,00" },
-        { freq: "4x na semana", value: "115,00" },
-        { freq: "5x na semana", value: "125,00" },
-      ],
-      contract: "6 meses de contrato",
-      highlight: false,
-    },
-  ];
+const HoursSection = () => {
+    return (
+        <section className="py-20 px-8 bg-dark-950 border-t border-dark-800">
+            <div className="max-w-6xl mx-auto text-center">
+                <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-4">
+                    Nossos <span className="text-brand-500">Horários</span>
+                </h2>
+                <p className="max-w-2xl mx-auto text-slate-400 mb-12">
+                    Confira nossos horários de funcionamento e treinos especiais.
+                </p>
 
-  return (
-    <section className="py-20 px-8 bg-dark-900">
-      <div className="max-w-6xl mx-auto text-center">
-        <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter">
-          Conheça Nossos <span className="text-brand-500">Planos</span>
-        </h2>
-        <p className="mt-4 max-w-2xl mx-auto text-slate-400">
-          Escolha o plano que melhor se adapta à sua rotina e objetivos. Todos os planos incluem acompanhamento profissional e acesso à nossa comunidade.
-        </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {/* Bloco 1: Seg/Qua/Sex */}
+                    <div className="bg-dark-900/40 p-8 rounded-[2.5rem] border border-dark-800 hover:border-brand-500/30 transition-all group">
+                        <div className="bg-dark-800 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                            <Clock className="text-brand-500" size={32} />
+                        </div>
+                        <h3 className="text-white font-black uppercase tracking-tighter text-xl mb-4">Seg, Qua e Sex</h3>
+                        <div className="space-y-2 text-slate-300 font-bold">
+                            <p className="text-2xl">05:00 <span className="text-slate-600 text-sm font-black uppercase">às</span> 12:00</p>
+                            <div className="h-px bg-dark-800 w-12 mx-auto my-2 opacity-50"></div>
+                            <p className="text-2xl">14:00 <span className="text-slate-600 text-sm font-black uppercase">às</span> 21:00</p>
+                        </div>
+                    </div>
 
-        <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
-          {plans.map((plan, index) => (
-            <div
-              key={index}
-              className={`text-left rounded-[2.5rem] p-8 border transition-all duration-300 ${
-                plan.highlight
-                  ? 'bg-dark-950 border-brand-500 lg:scale-105 shadow-2xl shadow-brand-500/20'
-                  : 'bg-dark-950 border-dark-800 hover:border-dark-700'
-              }`}
-            >
-              <h3 className="text-2xl font-black uppercase tracking-tighter text-brand-500">{plan.title}</h3>
-              <p className="text-xs text-slate-500 font-bold h-8 mt-1">{plan.description}</p>
-              
-              <ul className="mt-6 space-y-4">
-                {plan.prices.map((price, pIndex) => (
-                  <li key={pIndex} className="flex justify-between items-center border-t border-dark-800 pt-4">
-                    <span className="text-slate-300">{price.freq}</span>
-                    <span className="text-white font-bold text-lg">R$ {price.value}</span>
-                  </li>
-                ))}
-              </ul>
+                    {/* Bloco 2: Ter/Qui */}
+                    <div className="bg-dark-900/40 p-8 rounded-[2.5rem] border border-dark-800 hover:border-brand-500/30 transition-all group">
+                        <div className="bg-dark-800 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                            <Clock className="text-brand-500" size={32} />
+                        </div>
+                        <h3 className="text-white font-black uppercase tracking-tighter text-xl mb-4">Terça e Quinta</h3>
+                        <div className="space-y-2 text-slate-300 font-bold">
+                            <p className="text-2xl">05:00 <span className="text-slate-600 text-sm font-black uppercase">às</span> 10:00</p>
+                            <div className="h-px bg-dark-800 w-12 mx-auto my-2 opacity-50"></div>
+                            <p className="text-2xl">16:00 <span className="text-slate-600 text-sm font-black uppercase">às</span> 21:00</p>
+                        </div>
+                    </div>
 
-              <p className="text-center text-[10px] text-slate-600 font-black uppercase tracking-widest mt-8 bg-dark-900 py-2 px-4 rounded-full border border-dark-800">
-                {plan.contract}
-              </p>
+                    {/* Bloco 3: Clube de Corrida */}
+                    <div className="bg-brand-600 p-8 rounded-[2.5rem] shadow-2xl shadow-brand-600/20 text-white flex flex-col items-center justify-center relative overflow-hidden group">
+                        <Flag className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform" size={150} />
+                        <div className="bg-white/20 w-16 h-16 rounded-3xl flex items-center justify-center mb-6 backdrop-blur-md">
+                            <Flag className="text-white" size={32} />
+                        </div>
+                        <h3 className="font-black uppercase tracking-tighter text-xl mb-2">Clube de Corrida</h3>
+                        <p className="text-brand-100 text-xs font-bold uppercase tracking-widest mb-4">Segunda e Quarta</p>
+                        <div className="bg-white/10 px-6 py-3 rounded-2xl backdrop-blur-sm border border-white/20">
+                            <p className="text-3xl font-black italic">19:00 <span className="text-xs uppercase opacity-60">às</span> 20:00</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-          ))}
-        </div>
-
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            <div className="bg-dark-950 border border-dark-800 rounded-2xl p-6 flex justify-between items-center">
-                <h4 className="font-bold text-white">Treinamento Kids <span className="text-slate-400 font-medium text-xs">(2x na semana)</span></h4>
-                <span className="text-brand-500 font-black text-2xl">R$90,00</span>
-            </div>
-            <div className="bg-dark-950 border border-dark-800 rounded-2xl p-6 flex justify-between items-center">
-                <h4 className="font-bold text-white">Treinamento Avulso</h4>
-                <span className="text-brand-500 font-black text-2xl">R$30,00</span>
-            </div>
-        </div>
-      </div>
-    </section>
-  );
+        </section>
+    );
 };
-
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToRegistration, addToast }) => {
   const [showPassword, setShowPassword] = useState(false);
@@ -187,35 +149,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
             <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8 items-center">
               <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-dark-900 group">
                 <div className="relative">
-                  <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&q=80&w=1470" alt="Mulher levantando peso em treino funcional" className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&q=80&w=1470" alt="Treino Funcional" className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 p-8">
                     <h3 className="text-3xl font-black uppercase text-white tracking-tighter">Treino Funcional</h3>
-                    <p className="text-slate-300 mt-2">Ganhe força, agilidade e resistência com treinos dinâmicos e desafiadores.</p>
+                    <p className="text-slate-300 mt-2">Ganhe força, agilidade e resistência com treinos dinâmicos.</p>
                   </div>
                 </div>
               </div>
               <div className="rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-dark-900 group">
                 <div className="relative">
-                  <img src={RUNNING_BANNER_URL} alt="Grupo de pessoas correndo ao ar livre" className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <img src={RUNNING_BANNER_URL} alt="Clube de Corrida" className="w-full h-96 object-cover group-hover:scale-105 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 p-8">
                     <h3 className="text-3xl font-black uppercase text-white tracking-tighter">Clube de Corrida</h3>
-                    <p className="text-slate-300 mt-2">Explore novos percursos, supere seus limites e corra com o nosso team.</p>
+                    <p className="text-slate-300 mt-2">Explore novos percursos e supere seus limites.</p>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <PricingSection />
-  
-          <section className="py-24 bg-dark-900 text-center px-8">
-             <h2 className="text-4xl font-black text-white uppercase tracking-tighter">Por que esperar pelo amanhã?</h2>
-             <p className="max-w-3xl mx-auto mt-4 text-slate-400">
-               Dar o primeiro passo é o movimento mais importante na sua busca por saúde e bem-estar. No Studio, você não encontra apenas equipamentos, mas uma comunidade pronta para te apoiar em cada etapa.
-             </p>
-          </section>
+          <HoursSection />
   
           <section id="login-section" className="py-24 bg-dark-950 px-8 scroll-mt-20">
             <div className="max-w-md mx-auto">

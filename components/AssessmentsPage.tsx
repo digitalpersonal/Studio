@@ -1,9 +1,14 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Assessment, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { GeminiService } from '../services/geminiService';
-import { Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, X, Gauge, TrendingUp, Users, AlertCircle, Camera, Image as ImageIcon } from 'lucide-react';
+import { 
+  Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, 
+  ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, 
+  X, Gauge, TrendingUp, Users, AlertCircle, Camera, Image as ImageIcon,
+  Upload, CheckCircle2, RotateCcw
+} from 'lucide-react';
 
 interface AssessmentsPageProps {
   currentUser: User;
@@ -86,12 +91,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
       }
     } catch (error: any) {
       console.error("Erro ao salvar avaliação:", error);
-      const errorMsg = error.message || '';
-      if (errorMsg.includes("column") || errorMsg.includes("fms")) {
-         addToast("Erro de Banco: Certifique-se de executar o SQL de atualização no painel do Supabase.", "error");
-      } else {
-         addToast(`Erro ao salvar avaliação: ${errorMsg || 'Erro de conexão'}`, "error");
-      }
+      addToast(`Erro ao salvar avaliação: ${error.message || 'Erro de conexão'}`, "error");
     } finally {
       setLoading(false);
     }
@@ -173,7 +173,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
       <div className="space-y-4">
         {selectedStudentId && assessments.length > 0 ? (
           assessments.map(assessment => (
-            <div key={assessment.id} className="bg-dark-950 p-6 rounded-[2rem] border border-dark-800 shadow-xl overflow-hidden relative">
+            <div key={assessment.id} className="bg-dark-950 p-6 rounded-[2.5rem] border border-dark-800 shadow-xl overflow-hidden relative">
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-brand-600/10 rounded-2xl border border-brand-600/20 text-brand-500">
@@ -196,7 +196,6 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                 )}
               </div>
 
-              {/* Exibição Resumida */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-dark-900/50 p-4 rounded-2xl border border-dark-800">
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Massa Corporal</p>
@@ -227,7 +226,6 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
 
                   {expandedAssessment === assessment.id && (
                     <div className="mt-8 space-y-8 animate-fade-in">
-                        {/* Seção 1: Bioimpedância & Saúde */}
                         <div className="space-y-4">
                             <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
                                 <Activity size={16} className="text-brand-500" /> Bioimpedância & Metabolismo
@@ -239,7 +237,6 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                             </div>
                         </div>
 
-                        {/* Seção de Fotos */}
                         <div className="space-y-4">
                             <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
                                 <Camera size={16} className="text-brand-500" /> Registro Fotográfico
@@ -257,7 +254,6 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                             </div>
                         </div>
 
-                        {/* Seção 2: Potência & Saltos */}
                         <div className="space-y-4">
                             <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
                                 <Zap size={16} className="text-brand-500" /> Potência & Performance
@@ -270,20 +266,27 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                             </div>
                         </div>
 
-                        {/* Seção 3: Protocolo FMS */}
                         <div className="space-y-4">
                             <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
                                 <ClipboardList size={16} className="text-brand-500" /> Protocolo FMS (Functional Movement Screen)
                             </h5>
                             <div className="bg-dark-900/30 rounded-2xl p-6 border border-dark-800">
                                 {assessment.fms ? (
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                                        <FMSScore label="Agachamento Profundo" score={assessment.fms.deepSquat} />
-                                        <FMSScore label="Passo Sobre Barreira" score={assessment.fms.hurdleStep} />
-                                        <FMSScore label="Avanço em Linha Reta" score={assessment.fms.inlineLunge} />
-                                        <FMSScore label="Mobilidade de Ombro" score={assessment.fms.shoulderMobility} />
-                                        <FMSScore label="Elevação Perna Estendida" score={assessment.fms.activeStraightLegRaise} />
-                                        <FMSScore label="Estabilidade Rotacional" score={assessment.fms.rotationalStability} />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 gap-6 pb-4 border-b border-dark-800/30">
+                                            <FMSScore label="Agachamento Profundo" score={assessment.fms.deepSquat} />
+                                            <FMSScore label="Estabilidade de Tronco" score={assessment.fms.trunkStability} />
+                                        </div>
+                                        <FMSScore label="Passo Barreira (E)" score={assessment.fms.hurdleStep_L} />
+                                        <FMSScore label="Passo Barreira (D)" score={assessment.fms.hurdleStep_R} />
+                                        <FMSScore label="Avanço Linha (E)" score={assessment.fms.inlineLunge_L} />
+                                        <FMSScore label="Avanço Linha (D)" score={assessment.fms.inlineLunge_R} />
+                                        <FMSScore label="Mobilidade Ombro (E)" score={assessment.fms.shoulderMobility_L} />
+                                        <FMSScore label="Mobilidade Ombro (D)" score={assessment.fms.shoulderMobility_R} />
+                                        <FMSScore label="Elevação Perna (E)" score={assessment.fms.activeStraightLegRaise_L} />
+                                        <FMSScore label="Elevação Perna (D)" score={assessment.fms.activeStraightLegRaise_R} />
+                                        <FMSScore label="Est. Rotacional (E)" score={assessment.fms.rotationalStability_L} />
+                                        <FMSScore label="Est. Rotacional (D)" score={assessment.fms.rotationalStability_R} />
                                     </div>
                                 ) : (
                                     <p className="text-slate-600 text-xs italic">Nenhum dado FMS registrado.</p>
@@ -291,7 +294,6 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                             </div>
                         </div>
 
-                        {/* Seção 4: Perímetros */}
                         <div className="space-y-4">
                             <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
                                 <Ruler size={16} className="text-brand-500" /> Perímetros Musculares (cm)
@@ -344,7 +346,6 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
   );
 };
 
-// Componentes Auxiliares de UI
 const MetricDetail = ({ label, value, unit }: { label: string, value?: number | string, unit: string }) => (
     <div className="bg-dark-900/50 p-3 rounded-xl border border-dark-800">
         <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p>
@@ -410,8 +411,12 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       photoSideUrl: '',
       photoBackUrl: '',
       fms: {
-        deepSquat: 0, hurdleStep: 0, inlineLunge: 0,
-        shoulderMobility: 0, activeStraightLegRaise: 0, rotationalStability: 0
+        deepSquat: 0, trunkStability: 0, 
+        hurdleStep_L: 0, hurdleStep_R: 0,
+        inlineLunge_L: 0, inlineLunge_R: 0,
+        shoulderMobility_L: 0, shoulderMobility_R: 0,
+        activeStraightLegRaise_L: 0, activeStraightLegRaise_R: 0,
+        rotationalStability_L: 0, rotationalStability_R: 0
       },
       circumferences: {
         chest: 0, waist: 0, abdomen: 0, hips: 0,
@@ -420,6 +425,50 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       },
     }
   );
+  
+  const [compressing, setCompressing] = useState(false);
+  const fileInputRefs = {
+    front: useRef<HTMLInputElement>(null),
+    side: useRef<HTMLInputElement>(null),
+    back: useRef<HTMLInputElement>(null)
+  };
+
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 800; 
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
+          else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return reject("Erro no Canvas");
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.6));
+        };
+      };
+    });
+  };
+
+  const handleFileUpload = async (type: 'photoFrontUrl' | 'photoSideUrl' | 'photoBackUrl', file: File) => {
+    setCompressing(true);
+    try {
+      const base64 = await compressImage(file);
+      setFormData(prev => ({ ...prev, [type]: base64 }));
+    } catch (e) {
+      console.error("Erro ao comprimir imagem:", e);
+    } finally {
+      setCompressing(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -512,72 +561,86 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
         </section>
 
         <section className="space-y-6 pt-6 border-t border-dark-800">
-            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Camera size={18}/> Fotos de Acompanhamento</h4>
-            <p className="text-slate-500 text-xs -mt-4">Opcional. Cole os links das imagens para registro visual.</p>
-            <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">URL Foto Frontal</label>
-                    <input type="url" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="https://..." value={formData.photoFrontUrl || ''} onChange={e => setFormData({ ...formData, photoFrontUrl: e.target.value })} />
-                </div>
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">URL Foto Lateral</label>
-                    <input type="url" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="https://..." value={formData.photoSideUrl || ''} onChange={e => setFormData({ ...formData, photoSideUrl: e.target.value })} />
-                </div>
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">URL Foto Costas</label>
-                    <input type="url" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-mono text-xs" placeholder="https://..." value={formData.photoBackUrl || ''} onChange={e => setFormData({ ...formData, photoBackUrl: e.target.value })} />
-                </div>
-            </div>
-        </section>
-
-        <section className="space-y-6 pt-6 border-t border-dark-800">
-            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Zap size={18}/> Potência & Performance</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Abdominal (reps)</label>
-                    <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.abdominalTest || ''} onChange={e => setFormData({ ...formData, abdominalTest: Number(e.target.value) })} />
-                </div>
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Horiz. (cm)</label>
-                    <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.horizontalJump || ''} onChange={e => setFormData({ ...formData, horizontalJump: Number(e.target.value) })} />
-                </div>
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Vert. (cm)</label>
-                    <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.verticalJump || ''} onChange={e => setFormData({ ...formData, verticalJump: Number(e.target.value) })} />
-                </div>
-                <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Med. Ball (m)</label>
-                    <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.medicineBallThrow || ''} onChange={e => setFormData({ ...formData, medicineBallThrow: Number(e.target.value) })} />
-                </div>
+            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Camera size={18}/> Registro por Imagem</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <ImageUploadButton 
+                    label="Frontal" 
+                    value={formData.photoFrontUrl} 
+                    onFileSelect={(f) => handleFileUpload('photoFrontUrl', f)}
+                    onClear={() => setFormData(prev => ({ ...prev, photoFrontUrl: '' }))}
+                    inputRef={fileInputRefs.front}
+                    compressing={compressing}
+                />
+                <ImageUploadButton 
+                    label="Lateral" 
+                    value={formData.photoSideUrl} 
+                    onFileSelect={(f) => handleFileUpload('photoSideUrl', f)}
+                    onClear={() => setFormData(prev => ({ ...prev, photoSideUrl: '' }))}
+                    inputRef={fileInputRefs.side}
+                    compressing={compressing}
+                />
+                <ImageUploadButton 
+                    label="Costas" 
+                    value={formData.photoBackUrl} 
+                    onFileSelect={(f) => handleFileUpload('photoBackUrl', f)}
+                    onClear={() => setFormData(prev => ({ ...prev, photoBackUrl: '' }))}
+                    inputRef={fileInputRefs.back}
+                    compressing={compressing}
+                />
             </div>
         </section>
 
         <section className="space-y-6 pt-6 border-t border-dark-800">
             <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><ClipboardList size={18}/> Protocolo FMS</h4>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                {Object.keys(formData.fms || {}).map((key) => {
-                  const labels: any = {
-                    deepSquat: 'Agachamento Profundo',
-                    hurdleStep: 'Passo Sobre Barreira',
-                    inlineLunge: 'Avanço em Linha Reta',
-                    shoulderMobility: 'Mobilidade Ombro',
-                    activeStraightLegRaise: 'Elev. Perna Estendida',
-                    rotationalStability: 'Estabilidade Rotacional'
-                  };
-                  return (
-                    <div key={key}>
-                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">{labels[key]}</label>
-                        <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold" value={formData.fms![key as keyof typeof formData.fms] || 0} onChange={e => handleFmsChange(key as any, e.target.value)}>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {/* Notas Únicas */}
+                <div className="col-span-full grid grid-cols-2 gap-4 pb-4 border-b border-dark-800/30">
+                    <div>
+                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Agachamento Profundo</label>
+                        <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold" value={formData.fms?.deepSquat || 0} onChange={e => handleFmsChange('deepSquat', e.target.value)}>
                             {[0,1,2,3].map(v => <option key={v} value={v}>{v} Pontos</option>)}
                         </select>
                     </div>
-                  );
-                })}
+                    <div>
+                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Estabilidade de Tronco</label>
+                        <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold" value={formData.fms?.trunkStability || 0} onChange={e => handleFmsChange('trunkStability', e.target.value)}>
+                            {[0,1,2,3].map(v => <option key={v} value={v}>{v} Pontos</option>)}
+                        </select>
+                    </div>
+                </div>
+
+                {/* Bilaterais */}
+                {[
+                  { id: 'hurdleStep', label: 'Passo Sobre Barreira' },
+                  { id: 'inlineLunge', label: 'Avanço em Linha Reta' },
+                  { id: 'shoulderMobility', label: 'Mobilidade de Ombro' },
+                  { id: 'activeStraightLegRaise', label: 'Elevação Perna Estendida' },
+                  { id: 'rotationalStability', label: 'Estabilidade Rotacional' }
+                ].map((move) => (
+                  <div key={move.id} className="space-y-2">
+                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest border-l-2 border-brand-500 pl-2">{move.label}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-600 text-[9px] font-bold uppercase mb-1">Esquerdo</label>
+                        <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-xs font-bold" value={formData.fms?.[`${move.id}_L` as keyof typeof formData.fms] || 0} onChange={e => handleFmsChange(`${move.id}_L` as any, e.target.value)}>
+                          {[0,1,2,3].map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-slate-600 text-[9px] font-bold uppercase mb-1">Direito</label>
+                        <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-xs font-bold" value={formData.fms?.[`${move.id}_R` as keyof typeof formData.fms] || 0} onChange={e => handleFmsChange(`${move.id}_R` as any, e.target.value)}>
+                          {[0,1,2,3].map(v => <option key={v} value={v}>{v}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
             </div>
         </section>
 
         <section className="pt-6 border-t border-dark-800 space-y-6">
-          <h4 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2"><Ruler size={18} className="text-brand-500"/> Perímetros Bilaterais (cm)</h4>
+          <h4 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2"><Ruler size={18} className="text-brand-500"/> Perímetros (cm)</h4>
           <div className="bg-dark-900/40 p-6 rounded-[2.5rem] border border-dark-800 space-y-8">
               <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Tórax</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.chest || ''} onChange={e => handleCircumferenceChange('chest', e.target.value)} /></div>
@@ -587,29 +650,50 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                   <p className="col-span-2 text-[9px] font-black text-brand-500 uppercase tracking-widest border-b border-dark-800/50 pb-1">Superiores</p>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Braço Dir.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.rightArm || ''} onChange={e => handleCircumferenceChange('rightArm', e.target.value)} /></div>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Braço Esq.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.leftArm || ''} onChange={e => handleCircumferenceChange('leftArm', e.target.value)} /></div>
-                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Ant. Braço D.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.rightForearm || ''} onChange={e => handleCircumferenceChange('rightForearm', e.target.value)} /></div>
-                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Ant. Braço E.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.leftForearm || ''} onChange={e => handleCircumferenceChange('leftForearm', e.target.value)} /></div>
               </div>
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                   <p className="col-span-2 text-[9px] font-black text-brand-500 uppercase tracking-widest border-b border-dark-800/50 pb-1">Inferiores</p>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Coxa Dir.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.rightThigh || ''} onChange={e => handleCircumferenceChange('rightThigh', e.target.value)} /></div>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Coxa Esq.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.leftThigh || ''} onChange={e => handleCircumferenceChange('leftThigh', e.target.value)} /></div>
-                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Pant. Dir.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.rightCalf || ''} onChange={e => handleCircumferenceChange('rightCalf', e.target.value)} /></div>
-                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Pant. Esq.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.leftCalf || ''} onChange={e => handleCircumferenceChange('leftCalf', e.target.value)} /></div>
               </div>
           </div>
         </section>
 
-        <section className="pt-6 border-t border-dark-800 space-y-4">
-            <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Observações Técnicas / Laudo</label>
-            <textarea className="w-full h-32 bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none text-sm" placeholder="Descreva observações sobre a postura, dores ou recomendações de treino..." value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
-        </section>
-
         <div className="flex gap-4 pt-4">
           <button type="button" onClick={onCancel} className="flex-1 py-5 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700 transition-all">Cancelar</button>
-          <button type="submit" className="flex-1 py-5 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-brand-600/30 hover:bg-brand-500 transition-all active:scale-95">Finalizar Avaliação</button>
+          <button type="submit" disabled={compressing} className="flex-1 py-5 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl shadow-brand-600/30 hover:bg-brand-500 transition-all active:scale-95 disabled:opacity-50">
+            {compressing ? <Loader2 className="animate-spin mx-auto"/> : 'Finalizar Avaliação'}
+          </button>
         </div>
       </form>
     </div>
   );
+};
+
+const ImageUploadButton = ({ label, value, onFileSelect, onClear, inputRef, compressing }: any) => {
+    return (
+        <div className="space-y-2">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{label}</p>
+            <div 
+                onClick={() => !value && inputRef.current?.click()}
+                className={`h-40 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center relative overflow-hidden transition-all cursor-pointer ${
+                    value ? 'border-brand-500/50 bg-dark-900' : 'border-dark-700 hover:border-brand-500/30 hover:bg-dark-900/50'
+                }`}
+            >
+                {value ? (
+                    <>
+                        <img src={value} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/60 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button type="button" onClick={(e) => { e.stopPropagation(); onClear(); }} className="p-2 bg-red-600 text-white rounded-lg"><X size={16} /></button>
+                        </div>
+                    </>
+                ) : (
+                    <>
+                        {compressing ? <Loader2 className="animate-spin text-brand-500" size={24} /> : <Upload className="text-slate-600" size={24} />}
+                    </>
+                )}
+            </div>
+            <input type="file" ref={inputRef} className="hidden" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) onFileSelect(file); }} />
+        </div>
+    );
 };

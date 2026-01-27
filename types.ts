@@ -1,3 +1,4 @@
+
 export enum UserRole {
   SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
@@ -191,11 +192,17 @@ export interface Assessment {
   photoBackUrl?: string;
   fms?: {
     deepSquat?: number;
-    hurdleStep?: number;
-    inlineLunge?: number;
-    shoulderMobility?: number;
-    activeStraightLegRaise?: number;
-    rotationalStability?: number;
+    trunkStability?: number;
+    hurdleStep_L?: number;
+    hurdleStep_R?: number;
+    inlineLunge_L?: number;
+    inlineLunge_R?: number;
+    shoulderMobility_L?: number;
+    shoulderMobility_R?: number;
+    activeStraightLegRaise_L?: number;
+    activeStraightLegRaise_R?: number;
+    rotationalStability_L?: number;
+    rotationalStability_R?: number;
   };
   circumferences?: {
     chest?: number;
