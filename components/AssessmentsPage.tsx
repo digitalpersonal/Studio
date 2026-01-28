@@ -7,7 +7,7 @@ import {
   Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, 
   ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, 
   X, Gauge, TrendingUp, Users, AlertCircle, Camera, Image as ImageIcon,
-  Upload, CheckCircle2, RotateCcw
+  Upload, CheckCircle2, RotateCcw, Sparkles
 } from 'lucide-react';
 
 interface AssessmentsPageProps {
@@ -24,6 +24,8 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedAssessment, setExpandedAssessment] = useState<string | null>(null);
+  const [analyzingIA, setAnalyzingIA] = useState<string | null>(null);
+  const [iaFeedback, setIaFeedback] = useState<Record<string, string>>({});
 
   const isStaff = currentUser.role !== UserRole.STUDENT;
 
@@ -114,6 +116,19 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
     }
   };
 
+  const handleAnalyzeIA = async (assessment: Assessment) => {
+    setAnalyzingIA(assessment.id);
+    try {
+        const student = students.find(s => s.id === assessment.studentId);
+        const result = await GeminiService.analyzeProgress(student?.name || 'Aluno', [assessment]);
+        setIaFeedback(prev => ({ ...prev, [assessment.id]: result }));
+    } catch (e) {
+        addToast("Erro na análise de IA.", "error");
+    } finally {
+        setAnalyzingIA(null);
+    }
+  };
+
   if (loading && !showForm) {
     return (
       <div className="flex justify-center items-center h-full min-h-[500px]">
@@ -184,17 +199,34 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Avaliação Concluída</p>
                   </div>
                 </div>
-                {isStaff && (
-                  <div className="flex gap-2">
-                    <button onClick={() => { setEditingAssessment(assessment); setShowForm(true); }} className="p-2 bg-dark-800 text-slate-400 rounded-xl hover:text-white transition-colors">
-                      <Edit size={16} />
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => handleAnalyzeIA(assessment)}
+                        disabled={analyzingIA === assessment.id}
+                        className="p-2 bg-brand-600/10 text-brand-500 rounded-xl hover:bg-brand-600 hover:text-white transition-all disabled:opacity-50"
+                        title="Analisar com IA"
+                    >
+                        {analyzingIA === assessment.id ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                     </button>
-                    <button onClick={() => handleDeleteAssessment(assessment.id)} className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                )}
+                    {isStaff && (
+                      <>
+                        <button onClick={() => { setEditingAssessment(assessment); setShowForm(true); }} className="p-2 bg-dark-800 text-slate-400 rounded-xl hover:text-white transition-colors">
+                          <Edit size={16} />
+                        </button>
+                        <button onClick={() => handleDeleteAssessment(assessment.id)} className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                </div>
               </div>
+
+              {iaFeedback[assessment.id] && (
+                  <div className="mb-6 p-4 bg-brand-500/5 border border-brand-500/20 rounded-2xl animate-fade-in">
+                      <p className="text-[9px] font-black text-brand-500 uppercase flex items-center gap-2 mb-2"><Sparkles size={14}/> Laudo da IA</p>
+                      <p className="text-sm text-brand-100 leading-relaxed italic">"{iaFeedback[assessment.id]}"</p>
+                  </div>
+              )}
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="bg-dark-900/50 p-4 rounded-2xl border border-dark-800">
@@ -274,8 +306,8 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                                 {assessment.fms ? (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                         <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 gap-6 pb-4 border-b border-dark-800/30">
-                                            <FMSScore label="Agachamento Profundo" score={assessment.fms.deepSquat} />
-                                            <FMSScore label="Estabilidade de Tronco" score={assessment.fms.trunkStability} />
+                                            <FMSScore label="Agachamento Profundo (Central)" score={assessment.fms.deepSquat} />
+                                            <FMSScore label="Estabilidade de Tronco (Central)" score={assessment.fms.trunkStability} />
                                         </div>
                                         <FMSScore label="Passo Barreira (E)" score={assessment.fms.hurdleStep_L} />
                                         <FMSScore label="Passo Barreira (D)" score={assessment.fms.hurdleStep_R} />
@@ -542,7 +574,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                     <input required type="number" step="1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.height || ''} onChange={e => setFormData({ ...formData, height: Number(e.target.value) })} />
                 </div>
                 <div>
-                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">% de Gordura</label>
+                    <label className="block text-slate-500 text-[10px) font-bold uppercase mb-1">% de Gordura</label>
                     <input required type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.bodyFatPercentage || ''} onChange={e => setFormData({ ...formData, bodyFatPercentage: Number(e.target.value) })} />
                 </div>
                 <div>
@@ -556,6 +588,32 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                 <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">TMB (kcal)</label>
                     <input type="number" step="1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.basalMetabolicRate || ''} onChange={e => setFormData({ ...formData, basalMetabolicRate: Number(e.target.value) })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Hidratação (%)</label>
+                    <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none font-bold" value={formData.hydrationPercentage || ''} onChange={e => setFormData({ ...formData, hydrationPercentage: Number(e.target.value) })} />
+                </div>
+            </div>
+        </section>
+
+        <section className="space-y-6 pt-6 border-t border-dark-800">
+            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Zap size={18}/> Testes de Performance</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Abdominal (reps)</label>
+                    <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold outline-none" value={formData.abdominalTest || ''} onChange={e => setFormData({ ...formData, abdominalTest: Number(e.target.value) })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Horizontal (cm)</label>
+                    <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold outline-none" value={formData.horizontalJump || ''} onChange={e => setFormData({ ...formData, horizontalJump: Number(e.target.value) })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Salto Vertical (cm)</label>
+                    <input type="number" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold outline-none" value={formData.verticalJump || ''} onChange={e => setFormData({ ...formData, verticalJump: Number(e.target.value) })} />
+                </div>
+                <div>
+                    <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Arr. Med. Ball (m)</label>
+                    <input type="number" step="0.1" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold outline-none" value={formData.medicineBallThrow || ''} onChange={e => setFormData({ ...formData, medicineBallThrow: Number(e.target.value) })} />
                 </div>
             </div>
         </section>
@@ -594,23 +652,23 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
             <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><ClipboardList size={18}/> Protocolo FMS</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                {/* Notas Únicas */}
+                {/* NOTAS ÚNICAS (CENTRAIS) */}
                 <div className="col-span-full grid grid-cols-2 gap-4 pb-4 border-b border-dark-800/30">
                     <div>
-                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Agachamento Profundo</label>
+                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Agachamento Profundo (Único)</label>
                         <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold" value={formData.fms?.deepSquat || 0} onChange={e => handleFmsChange('deepSquat', e.target.value)}>
                             {[0,1,2,3].map(v => <option key={v} value={v}>{v} Pontos</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Estabilidade de Tronco</label>
+                        <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Estabilidade de Tronco (Única)</label>
                         <select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white font-bold" value={formData.fms?.trunkStability || 0} onChange={e => handleFmsChange('trunkStability', e.target.value)}>
                             {[0,1,2,3].map(v => <option key={v} value={v}>{v} Pontos</option>)}
                         </select>
                     </div>
                 </div>
 
-                {/* Bilaterais */}
+                {/* BILATERAIS (ESQUERDO E DIREITO) */}
                 {[
                   { id: 'hurdleStep', label: 'Passo Sobre Barreira' },
                   { id: 'inlineLunge', label: 'Avanço em Linha Reta' },
@@ -645,18 +703,29 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
               <div className="grid grid-cols-2 gap-4">
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Tórax</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.chest || ''} onChange={e => handleCircumferenceChange('chest', e.target.value)} /></div>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Abdômen</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.abdomen || ''} onChange={e => handleCircumferenceChange('abdomen', e.target.value)} /></div>
+                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Cintura</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.waist || ''} onChange={e => handleCircumferenceChange('waist', e.target.value)} /></div>
+                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Quadril</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.hips || ''} onChange={e => handleCircumferenceChange('hips', e.target.value)} /></div>
               </div>
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                   <p className="col-span-2 text-[9px] font-black text-brand-500 uppercase tracking-widest border-b border-dark-800/50 pb-1">Superiores</p>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Braço Dir.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.rightArm || ''} onChange={e => handleCircumferenceChange('rightArm', e.target.value)} /></div>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Braço Esq.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.leftArm || ''} onChange={e => handleCircumferenceChange('leftArm', e.target.value)} /></div>
+                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Ant.Braço Dir.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.rightForearm || ''} onChange={e => handleCircumferenceChange('rightForearm', e.target.value)} /></div>
+                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Ant.Braço Esq.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.leftForearm || ''} onChange={e => handleCircumferenceChange('leftForearm', e.target.value)} /></div>
               </div>
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                   <p className="col-span-2 text-[9px] font-black text-brand-500 uppercase tracking-widest border-b border-dark-800/50 pb-1">Inferiores</p>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Coxa Dir.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.rightThigh || ''} onChange={e => handleCircumferenceChange('rightThigh', e.target.value)} /></div>
                   <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Coxa Esq.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.leftThigh || ''} onChange={e => handleCircumferenceChange('leftThigh', e.target.value)} /></div>
+                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Pant. Dir.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.rightCalf || ''} onChange={e => handleCircumferenceChange('rightCalf', e.target.value)} /></div>
+                  <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Pant. Esq.</label><input type="number" step="0.1" className="w-full bg-dark-950 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.circumferences?.leftCalf || ''} onChange={e => handleCircumferenceChange('leftCalf', e.target.value)} /></div>
               </div>
           </div>
+        </section>
+
+        <section className="space-y-4 pt-6 border-t border-dark-800">
+            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><FileText size={18}/> Anotações Gerais</h4>
+            <textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white font-bold text-sm focus:border-brand-500 outline-none h-32 resize-none" placeholder="Observações sobre o desempenho, dores relatadas, etc..." value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
         </section>
 
         <div className="flex gap-4 pt-4">
