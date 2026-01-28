@@ -1,9 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-// Fix: Added MessageCircle to the import list from lucide-react
-import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, Clock, Flag, CheckCircle2, Star, Zap, MessageCircle } from 'lucide-react';
+import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, Clock, Flag, CheckCircle2, Star, Zap, MessageCircle, Code } from 'lucide-react';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 const RUNNING_BANNER_URL = "https://digitalfreeshop.com.br/logostudio/corrida.jpeg";
@@ -14,7 +13,7 @@ interface LandingPageProps {
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
-const PlansSection = ({ onNavigate }: { onNavigate: () => void }) => {
+const PlansSection = ({ onNavigate, academyPhone }: { onNavigate: () => void, academyPhone?: string }) => {
     const mainPlans = [
         { title: 'Plano Mensal', price: '140', freq: '3x na semana', desc: 'Ideal para quem busca flexibilidade total.', icon: Zap, color: 'brand' },
         { title: 'Plano Mensal Plus', price: '150', freq: '4x na semana', desc: 'Nosso plano mais popular para constância.', icon: Star, color: 'brand', popular: true },
@@ -22,6 +21,11 @@ const PlansSection = ({ onNavigate }: { onNavigate: () => void }) => {
         { title: 'Semestral', price: '105', freq: '3x na semana', desc: 'Para quem vive o estilo de vida Studio.', icon: CheckCircle2, color: 'emerald' },
         { title: 'Treino Kids', price: '90', freq: '2x na semana', desc: 'Saúde e movimento para os pequenos.', icon: Star, color: 'purple' },
     ];
+
+    // Formata o link do WhatsApp dinamicamente
+    const cleanPhone = academyPhone?.replace(/\D/g, '') || '5535991048020';
+    const waNumber = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre os planos do Studio.")}`;
 
     return (
         <section className="py-24 px-8 bg-dark-950">
@@ -80,7 +84,7 @@ const PlansSection = ({ onNavigate }: { onNavigate: () => void }) => {
                         <h4 className="text-white font-black uppercase tracking-tighter text-xl">Ainda tem dúvidas?</h4>
                         <p className="text-slate-500 text-sm">Fale com nossa equipe e agende uma aula experimental gratuita.</p>
                     </div>
-                    <a href="https://wa.me/5535991048020" target="_blank" rel="noreferrer" className="bg-emerald-600 text-white font-black py-4 px-8 rounded-2xl uppercase tracking-widest text-xs flex items-center gap-2 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-600/20">
+                    <a href={waUrl} target="_blank" rel="noreferrer" className="bg-emerald-600 text-white font-black py-4 px-8 rounded-2xl uppercase tracking-widest text-xs flex items-center gap-2 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-600/20">
                         <MessageCircle size={18} /> Conversar no WhatsApp
                     </a>
                 </div>
@@ -148,6 +152,21 @@ const HoursSection = () => {
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToRegistration, addToast }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [academyPhone, setAcademyPhone] = useState<string | undefined>();
+
+  useEffect(() => {
+    const fetchAcademyInfo = async () => {
+      try {
+        const settings = await SupabaseService.getAcademySettings();
+        if (settings?.phone) {
+          setAcademyPhone(settings.phone);
+        }
+      } catch (e) {
+        console.error("Erro ao buscar dados da academia para o WhatsApp:", e);
+      }
+    };
+    fetchAcademyInfo();
+  }, []);
 
   const handleLoginFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,6 +213,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
       loginSection.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  const cleanWaNumber = academyPhone?.replace(/\D/g, '') || '5535991048020';
+  const waNumber = cleanWaNumber.startsWith('55') ? cleanWaNumber : `55${cleanWaNumber}`;
 
   return (
       <div className="bg-dark-950 text-white min-h-screen font-sans animate-fade-in">
@@ -248,7 +270,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
 
           <HoursSection />
 
-          <PlansSection onNavigate={onNavigateToRegistration} />
+          <PlansSection onNavigate={onNavigateToRegistration} academyPhone={academyPhone} />
   
           <section id="login-section" className="py-24 bg-dark-950 px-8 scroll-mt-20">
             <div className="max-w-md mx-auto">
@@ -292,8 +314,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
           </section>
 
           <footer className="py-12 bg-dark-900 text-center border-t border-dark-800">
+             <div className="flex justify-center gap-8 mb-8">
+                <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-emerald-500 transition-colors group">
+                    <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-emerald-500 group-hover:bg-emerald-500/10 transition-all">
+                        <MessageCircle size={20} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest">Suporte</span>
+                </a>
+                <a href="https://wa.me/5535991048020?text=Olá! Gostaria de falar com o desenvolvedor do app Studio." target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-brand-500 transition-colors group">
+                    <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-brand-500 group-hover:bg-brand-500/10 transition-all">
+                        <Code size={20} />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest">Desenvolvedor</span>
+                </a>
+             </div>
             <p className="text-slate-500 text-sm">© {new Date().getFullYear()} Studio - Todos os direitos reservados.</p>
-            <p className="text-xs text-slate-600 mt-2">Desenvolvido por Multiplus - Silvio T. de Sá Filho</p>
+            <p className="text-xs text-slate-600 mt-2">Desenvolvido por <span className="text-brand-500 font-bold">Multiplus</span> - Silvio T. de Sá Filho</p>
           </footer>
         </main>
       </div>

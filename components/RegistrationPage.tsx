@@ -6,7 +6,7 @@ import { SettingsService } from '../services/settingsService';
 import { 
     Dumbbell, ArrowLeft, Loader2, CheckCircle2, Eye, EyeOff, 
     UserCircle, HandCoins, ChevronRight, Check, FileText, Calendar,
-    HeartPulse, Phone, AlertCircle, ClipboardList, Activity
+    HeartPulse, Phone, AlertCircle, ClipboardList, Activity, MessageCircle, Code
 } from 'lucide-react';
 import { useToast } from '../App';
 
@@ -22,6 +22,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [step, setStep] = useState<RegStep>('CODE_INPUT');
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [academyPhone, setAcademyPhone] = useState('5535991048020');
     
     // 1 & 2. Dados Cadastrais
     const [inviteCode, setInviteCode] = useState('');
@@ -48,6 +49,18 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     });
 
     const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
+
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            try {
+                const settings = await SettingsService.getSettings();
+                if (settings?.phone) {
+                    setAcademyPhone(settings.phone.replace(/\D/g, ''));
+                }
+            } catch (e) {}
+        };
+        fetchInitialData();
+    }, []);
 
     useEffect(() => {
         if (step === 'PLAN_SELECTION') {
@@ -194,6 +207,8 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
             </div>
         );
     };
+
+    const waNumber = academyPhone.startsWith('55') ? academyPhone : `55${academyPhone}`;
 
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -356,9 +371,25 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                     </div>
                 )}
                 
-                {step === 'CODE_INPUT' && (
-                    <button type="button" onClick={onCancelRegistration} className="w-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 mt-10 transition-colors flex items-center justify-center gap-3 group"><ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform"/> Já sou membro? Entrar agora</button>
-                )}
+                <div className="mt-10 border-t border-slate-100 pt-8">
+                     <div className="flex justify-center gap-8 mb-6">
+                        <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-400 hover:text-emerald-500 transition-colors group">
+                            <div className="p-3 bg-slate-50 rounded-full border border-slate-200 group-hover:border-emerald-500 group-hover:bg-emerald-500/10 transition-all">
+                                <MessageCircle size={18} />
+                            </div>
+                            <span className="text-[8px] font-black uppercase tracking-widest">Suporte</span>
+                        </a>
+                        <a href="https://wa.me/5535991048020?text=Olá! Gostaria de falar com o desenvolvedor do app Studio." target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-400 hover:text-brand-500 transition-colors group">
+                            <div className="p-3 bg-slate-50 rounded-full border border-slate-200 group-hover:border-brand-500 group-hover:bg-brand-500/10 transition-all">
+                                <Code size={18} />
+                            </div>
+                            <span className="text-[8px] font-black uppercase tracking-widest">Desenvolvedor</span>
+                        </a>
+                     </div>
+                    {step === 'CODE_INPUT' && (
+                        <button type="button" onClick={onCancelRegistration} className="w-full text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] hover:text-brand-500 transition-colors flex items-center justify-center gap-3 group"><ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform"/> Já sou membro? Entrar agora</button>
+                    )}
+                </div>
             </div>
         </div>
     );

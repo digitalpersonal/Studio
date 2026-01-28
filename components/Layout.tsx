@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { User, UserRole, ViewState } from '../types';
 import { 
@@ -26,7 +27,8 @@ import {
   PlusSquare,
   Share2,
   TrendingUp,
-  BookOpen
+  BookOpen,
+  Code
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -258,6 +260,12 @@ export const Layout: React.FC<LayoutProps> = ({
                         <MessageCircle size={20} />
                     </div>
                     <span className="text-xs font-bold">Suporte</span>
+                </a>
+                <a href="https://wa.me/5535991048020?text=Olá! Gostaria de falar com o desenvolvedor do app Studio." target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-brand-500 transition-colors group">
+                    <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-brand-500 group-hover:bg-brand-500/10 transition-all">
+                        <Code size={20} />
+                    </div>
+                    <span className="text-xs font-bold">Desenvolvedor</span>
                 </a>
              </div>
              <p className="text-slate-600 text-sm mb-2">Desenvolvido por <span className="text-brand-500 font-bold">Multiplus</span> - Silvio T. de Sá Filho</p>
