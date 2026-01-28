@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import { Layout } from './components/Layout';
 import { User, UserRole, ViewState, ClassSession, Assessment, Payment, Post, Anamnesis, Route, Challenge, PersonalizedWorkout, Address, AcademySettings, AppNavParams } from './types';
@@ -117,6 +118,28 @@ export const WhatsAppAutomation = {
     window.open(url, '_blank');
   }
 };
+
+/* -------------------------------------------------------------------------- */
+/*                            GERENCIAMENTO DE SESSÃO                         */
+/* -------------------------------------------------------------------------- */
+
+function getInitialState(): { user: User | null; view: ViewState } {
+  try {
+    const storedUser = localStorage.getItem('studioCurrentUser');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      if (user && user.id && user.role) {
+        const view = (user.role === UserRole.STUDENT && !user.profileCompleted)
+          ? 'COMPLETE_PROFILE'
+          : 'DASHBOARD';
+        return { user, view };
+      }
+    }
+  } catch {
+    localStorage.removeItem('studioCurrentUser');
+  }
+  return { user: null, view: 'LOGIN' };
+}
 
 /* -------------------------------------------------------------------------- */
 /*                                   PÁGINAS                                  */
@@ -354,8 +377,9 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
 
 // Main App Component
 export function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [currentView, setCurrentView] = useState<ViewState>('LOGIN');
+  const [initialState] = useState(getInitialState);
+  const [currentUser, setCurrentUser] = useState<User | null>(initialState.user);
+  const [currentView, setCurrentView] = useState<ViewState>(initialState.view);
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextToastId = useRef(0);
@@ -369,18 +393,28 @@ export function App() {
   const removeToast = (id: number) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
+  
+  const handleUpdateUser = (user: User) => {
+    localStorage.setItem('studioCurrentUser', JSON.stringify(user));
+    setCurrentUser(user);
+  };
 
   const handleLogin = (user: User) => {
+    // Persiste o usuário antes de mudar a view
+    localStorage.setItem('studioCurrentUser', JSON.stringify(user));
     setCurrentUser(user);
-    if (user.role === UserRole.STUDENT && user.profileCompleted === false) {
-      setCurrentView('COMPLETE_PROFILE');
-    } else {
-      setCurrentView('DASHBOARD');
-    }
-    addToast(`Olá, ${String(user.name).split(' ')[0]}! Sessão em nuvem ativada.`, "success");
+    
+    // Define a view destino
+    const nextView = (user.role === UserRole.STUDENT && !user.profileCompleted)
+      ? 'COMPLETE_PROFILE'
+      : 'DASHBOARD';
+    
+    setCurrentView(nextView);
+    addToast(`Bem-vindo, ${String(user.name).split(' ')[0]}!`, "success");
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('studioCurrentUser');
     setCurrentUser(null);
     setCurrentView('LOGIN');
     addToast("Sessão encerrada.", "info");
@@ -392,6 +426,7 @@ export function App() {
   };
 
   const handleProfileComplete = (updatedUser: User) => {
+    localStorage.setItem('studioCurrentUser', JSON.stringify(updatedUser));
     setCurrentUser(updatedUser);
     setCurrentView('DASHBOARD');
   };
@@ -404,8 +439,7 @@ export function App() {
       return <LandingPage onLogin={handleLogin} onNavigateToRegistration={() => handleNavigate('REGISTRATION')} addToast={addToast} />;
     }
 
-    // Isolate Complete Profile view from the main Layout
-    if (currentView === 'COMPLETE_PROFILE' && currentUser.role === UserRole.STUDENT && !currentUser.profileCompleted) {
+    if (currentUser.role === UserRole.STUDENT && !currentUser.profileCompleted) {
       return (
         <ToastContext.Provider value={{ addToast }}>
           <div className="min-h-screen bg-dark-900 text-slate-200 font-sans">
@@ -418,7 +452,6 @@ export function App() {
       );
     }
     
-    // Render all other views within the main Layout
     return (
       <ToastContext.Provider value={{ addToast }}>
         <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
@@ -435,7 +468,8 @@ export function App() {
           {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
           {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} />}
-          {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={setCurrentUser} addToast={addToast} />}
+          {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={handleUpdateUser} addToast={addToast} />}
+          {currentView === 'COMPLETE_PROFILE' && <DashboardPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
         </Layout>
         <ToastContainer toasts={toasts} removeToast={removeToast} />
       </ToastContext.Provider>
