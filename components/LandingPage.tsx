@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, Clock, Flag } from 'lucide-react';
+// Fix: Added MessageCircle to the import list from lucide-react
+import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, Clock, Flag, CheckCircle2, Star, Zap, MessageCircle } from 'lucide-react';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 const RUNNING_BANNER_URL = "https://digitalfreeshop.com.br/logostudio/corrida.jpeg";
@@ -12,6 +13,81 @@ interface LandingPageProps {
   onNavigateToRegistration: () => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
+
+const PlansSection = ({ onNavigate }: { onNavigate: () => void }) => {
+    const mainPlans = [
+        { title: 'Plano Mensal', price: '140', freq: '3x na semana', desc: 'Ideal para quem busca flexibilidade total.', icon: Zap, color: 'brand' },
+        { title: 'Plano Mensal Plus', price: '150', freq: '4x na semana', desc: 'Nosso plano mais popular para constância.', icon: Star, color: 'brand', popular: true },
+        { title: 'Trimestral', price: '110', freq: '3x na semana', desc: 'Foco em resultados de médio prazo.', icon: CheckCircle2, color: 'emerald' },
+        { title: 'Semestral', price: '105', freq: '3x na semana', desc: 'Para quem vive o estilo de vida Studio.', icon: CheckCircle2, color: 'emerald' },
+        { title: 'Treino Kids', price: '90', freq: '2x na semana', desc: 'Saúde e movimento para os pequenos.', icon: Star, color: 'purple' },
+    ];
+
+    return (
+        <section className="py-24 px-8 bg-dark-950">
+            <div className="max-w-6xl mx-auto">
+                <div className="text-center mb-16">
+                    <h2 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter mb-4">
+                        Nossos <span className="text-brand-500">Planos</span>
+                    </h2>
+                    <p className="text-slate-400 font-medium max-w-xl mx-auto">
+                        Escolha a modalidade que melhor se adapta ao seu ritmo e comece sua transformação hoje.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {mainPlans.map((plan, i) => (
+                        <div key={i} className={`relative p-8 rounded-[3rem] border transition-all group overflow-hidden ${
+                            plan.popular 
+                            ? 'bg-brand-600/10 border-brand-500 shadow-[0_0_40px_rgba(249,115,22,0.15)] scale-105 z-10' 
+                            : 'bg-dark-900/40 border-dark-800 hover:border-brand-500/50'
+                        }`}>
+                            {plan.popular && (
+                                <div className="absolute top-6 right-8 bg-brand-500 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full">
+                                    Mais Popular
+                                </div>
+                            )}
+                            
+                            <plan.icon className={`${plan.popular ? 'text-brand-500' : 'text-slate-600'} mb-6 group-hover:scale-110 transition-transform`} size={32} />
+                            
+                            <h3 className="text-white font-black uppercase tracking-tighter text-2xl mb-2">{plan.title}</h3>
+                            <p className="text-slate-500 text-xs font-bold uppercase mb-6">{plan.freq}</p>
+                            
+                            <div className="flex items-baseline gap-1 mb-6">
+                                <span className="text-slate-500 text-lg font-bold">R$</span>
+                                <span className="text-5xl font-black text-white tracking-tighter">{plan.price}</span>
+                                <span className="text-slate-500 text-sm font-bold">/mês</span>
+                            </div>
+
+                            <p className="text-slate-400 text-sm mb-8 leading-relaxed">{plan.desc}</p>
+
+                            <button 
+                                onClick={onNavigate}
+                                className={`w-full py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all ${
+                                    plan.popular 
+                                    ? 'bg-brand-600 text-white shadow-xl shadow-brand-600/30 hover:bg-brand-500' 
+                                    : 'bg-dark-800 text-white hover:bg-brand-600'
+                                }`}
+                            >
+                                Quero este plano
+                            </button>
+                        </div>
+                    ))}
+                </div>
+
+                <div className="mt-16 bg-dark-900/50 p-8 rounded-[2.5rem] border border-dark-800 flex flex-col md:flex-row items-center justify-between gap-6">
+                    <div className="text-center md:text-left">
+                        <h4 className="text-white font-black uppercase tracking-tighter text-xl">Ainda tem dúvidas?</h4>
+                        <p className="text-slate-500 text-sm">Fale com nossa equipe e agende uma aula experimental gratuita.</p>
+                    </div>
+                    <a href="https://wa.me/5535991048020" target="_blank" rel="noreferrer" className="bg-emerald-600 text-white font-black py-4 px-8 rounded-2xl uppercase tracking-widest text-xs flex items-center gap-2 hover:bg-emerald-500 transition-all shadow-xl shadow-emerald-600/20">
+                        <MessageCircle size={18} /> Conversar no WhatsApp
+                    </a>
+                </div>
+            </div>
+        </section>
+    );
+};
 
 const HoursSection = () => {
     return (
@@ -133,7 +209,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
   
         <main className="relative z-20">
           <section className="min-h-[80vh] flex flex-col items-center justify-center text-center p-8">
-            <img src={LOGO_URL} alt="Logo do Studio" className="w-48 h-auto mb-8 shadow-2xl" />
+            <img src={LOGO_URL} alt="Logo do Studio" className="w-48 h-auto mb-8 shadow-2xl rounded-2xl" />
             <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter animate-fade-in" style={{ animationDelay: '0.2s' }}>
               Sua Jornada <span className="text-brand-500">Começa Agora</span>
             </h1>
@@ -171,6 +247,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
           </section>
 
           <HoursSection />
+
+          <PlansSection onNavigate={onNavigateToRegistration} />
   
           <section id="login-section" className="py-24 bg-dark-950 px-8 scroll-mt-20">
             <div className="max-w-md mx-auto">
@@ -179,9 +257,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
                 <p className="text-slate-500 mt-2 text-sm uppercase font-bold tracking-widest">Acesse sua conta para ver seus treinos e evolução.</p>
               </div>
               <form onSubmit={handleLoginFormSubmit} className="space-y-4">
-                <input type="email" name="email" required className="w-full bg-dark-900 border-2 border-dark-800 rounded-2xl p-5 text-white placeholder:text-slate-500 focus:border-brand-500 outline-none transition-colors" placeholder="Seu e-mail" />
+                <input 
+                  type="email" 
+                  name="email" 
+                  required 
+                  className="w-full bg-dark-900 border-2 border-dark-800 rounded-2xl p-5 text-white placeholder:text-slate-500 focus:border-brand-500 outline-none transition-colors font-bold" 
+                  placeholder="Seu e-mail" 
+                />
                 <div className="relative">
-                  <input type={showPassword ? "text" : "password"} name="password" required className="w-full bg-dark-900 border-2 border-dark-800 rounded-2xl p-5 text-white placeholder:text-slate-500 focus:border-brand-500 outline-none pr-14 transition-colors" placeholder="Sua senha" />
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    name="password" 
+                    required 
+                    className="w-full bg-dark-900 border-2 border-dark-800 rounded-2xl p-5 text-white placeholder:text-slate-500 focus:border-brand-500 outline-none pr-14 transition-colors font-bold" 
+                    placeholder="Sua senha" 
+                  />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-500">{showPassword ? <EyeOff size={20} /> : <Eye size={20} />}</button>
                 </div>
                 <button 

@@ -126,9 +126,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 description: `Matrícula - ${selectedPlan.title}`
             }).catch(console.warn);
             
-            addToast("Conta criada! Redirecionando para o Dashboard...", "success");
-            
-            // Garantimos que o login aconteça com o objeto completo
+            addToast("Conta criada! Redirecionando...", "success");
             onLogin(createdUser); 
         } catch (error: any) {
             if (error.message?.includes('users_email_key') || error.code === '23505') {
@@ -164,7 +162,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="bg-white p-6 md:p-12 rounded-[3rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] w-full max-w-xl border border-slate-100 animate-fade-in">
                 <div className="text-center mb-6">
-                    <img src={LOGO_URL} alt="Studio Logo" className="w-40 mx-auto mb-6" />
+                    <img src={LOGO_URL} alt="Studio Logo" className="w-40 mx-auto mb-6 rounded-2xl" />
                     <ProgressBar />
                 </div>
                 
@@ -174,7 +172,15 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                             <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Portal de Matrícula</h3>
                             <p className="text-sm text-slate-500">Insira seu código de convite para começar.</p>
                         </div>
-                        <input type="text" required className="w-full bg-slate-100 border-slate-200 rounded-3xl p-6 text-slate-900 focus:border-brand-500 outline-none text-center font-black tracking-[0.3em] uppercase text-2xl" placeholder="CÓDIGO" value={inviteCode} onChange={e => setInviteCode(e.target.value)} disabled={isLoading}/>
+                        <input 
+                            type="text" 
+                            required 
+                            className="w-full bg-slate-100 border-2 border-slate-200 rounded-3xl p-6 text-black focus:border-brand-500 outline-none text-center font-black tracking-[0.3em] uppercase text-2xl" 
+                            placeholder="CÓDIGO" 
+                            value={inviteCode} 
+                            onChange={e => setInviteCode(e.target.value)} 
+                            disabled={isLoading}
+                        />
                         <button type="submit" className="w-full bg-brand-600 text-white font-black py-6 rounded-3xl uppercase tracking-widest shadow-2xl shadow-brand-600/30 active:scale-95 transition-all flex items-center justify-center gap-3" disabled={isLoading}>
                             {isLoading ? <Loader2 className="animate-spin" /> : <ChevronRight size={24}/>} Iniciar Cadastro
                         </button>
@@ -187,35 +193,35 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="sm:col-span-2">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Nome Completo</label>
-                                <input className="w-full bg-slate-100 border-slate-200 rounded-2xl p-4 text-sm focus:border-brand-500 outline-none" value={name} onChange={e => setName(e.target.value)} />
+                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" value={name} onChange={e => setName(e.target.value)} />
                             </div>
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">E-mail</label>
-                                <input className="w-full bg-slate-100 border-slate-200 rounded-2xl p-4 text-sm focus:border-brand-500 outline-none" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" type="email" value={email} onChange={e => setEmail(e.target.value)} />
                             </div>
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">WhatsApp</label>
-                                <input className="w-full bg-slate-100 border-slate-200 rounded-2xl p-4 text-sm focus:border-brand-500 outline-none" type="tel" placeholder="(00) 00000-0000" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
+                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" type="tel" placeholder="(00) 00000-0000" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
                             </div>
                             
                             <div className="relative">
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Escolha uma Senha</label>
-                                <input className="w-full bg-slate-100 border-slate-200 rounded-2xl p-4 text-sm focus:border-brand-500 outline-none pr-12" type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} />
+                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none pr-12" type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} />
                                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 bottom-4 text-slate-400">{showPassword ? <EyeOff size={20}/> : <Eye size={20}/>}</button>
                             </div>
                             
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Data de Nascimento</label>
-                                <input className="w-full bg-slate-100 border-slate-200 rounded-2xl p-4 text-sm focus:border-brand-500 outline-none font-bold" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} />
+                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} />
                             </div>
 
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">CPF</label>
-                                <input className="w-full bg-slate-100 border-slate-200 rounded-2xl p-4 text-sm focus:border-brand-500 outline-none" placeholder="Apenas números" value={cpf} onChange={e => setCpf(e.target.value)} />
+                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" placeholder="Apenas números" value={cpf} onChange={e => setCpf(e.target.value)} />
                             </div>
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">RG</label>
-                                <input className="w-full bg-slate-100 border-slate-200 rounded-2xl p-4 text-sm focus:border-brand-500 outline-none" value={rg} onChange={e => setRg(e.target.value)} />
+                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" value={rg} onChange={e => setRg(e.target.value)} />
                             </div>
                         </div>
 
