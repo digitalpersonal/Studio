@@ -22,13 +22,13 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [isLoading, setIsLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     
-    // Dados Cadastrais (Sincronizados com o Dashboard)
+    // Dados Cadastrais
     const [inviteCode, setInviteCode] = useState('');
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
-    const [birthDate, setBirthDate] = useState('');
+    const [birthDateMasked, setBirthDateMasked] = useState(''); // Estado para a máscara DD/MM/AAAA
     const [cpf, setCpf] = useState('');
     const [rg, setRg] = useState('');
 
@@ -55,17 +55,26 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
         }
     }, [step, addToast]);
 
+    // Função para aplicar máscara de data DD/MM/AAAA
+    const handleBirthDateChange = (value: string) => {
+        const digits = value.replace(/\D/g, "");
+        let masked = digits;
+        if (digits.length > 2) masked = digits.slice(0, 2) + "/" + digits.slice(2);
+        if (digits.length > 4) masked = masked.slice(0, 5) + "/" + digits.slice(4, 8);
+        setBirthDateMasked(masked);
+    };
+
     const isPersonalDataValid = useMemo(() => {
         return (
             name.trim().length > 3 &&
             email.includes('@') &&
             password.length >= 6 &&
             phoneNumber.trim().length >= 10 &&
-            birthDate !== '' &&
+            birthDateMasked.length === 10 && // Verifica se completou DD/MM/AAAA
             cpf.trim().length >= 11 &&
             rg.trim().length >= 5
         );
-    }, [name, email, password, phoneNumber, birthDate, cpf, rg]);
+    }, [name, email, password, phoneNumber, birthDateMasked, cpf, rg]);
 
     const handleCodeValidation = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -92,6 +101,10 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
             const selectedPlan = plans.find(p => p.id === selectedPlanId);
             if (!selectedPlan) throw new Error("Plano inválido.");
 
+            // Converter DD/MM/AAAA para YYYY-MM-DD para o banco
+            const [day, month, year] = birthDateMasked.split('/');
+            const isoDate = `${year}-${month}-${day}`;
+
             const newUser: Omit<User, 'id'> = {
                 name,
                 email,
@@ -99,7 +112,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 role: UserRole.STUDENT,
                 joinDate: new Date().toISOString().split('T')[0],
                 phoneNumber,
-                birthDate,
+                birthDate: isoDate,
                 avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`,
                 planId: selectedPlan.id,
                 planValue: selectedPlan.price,
@@ -108,7 +121,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                 billingDay: 5,
                 planStartDate: new Date().toISOString().split('T')[0],
                 profileCompleted: true, 
-                address: { zipCode: '37810-000', street: 'Cidade', number: 'SN', neighborhood: 'Centro', city: 'Guaranésia', state: 'MG' }, // Endereço padrão simplificado
+                address: { zipCode: '37810-000', street: 'Cidade', number: 'SN', neighborhood: 'Centro', city: 'Guaranésia', state: 'MG' },
                 anamnesis: { emergencyContactName: 'Não informado', emergencyContactPhone: 'Não informado', updatedAt: new Date().toISOString() },
                 cpf,
                 rg,
@@ -117,7 +130,6 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
 
             const createdUser = await SupabaseService.addUser(newUser);
 
-            // Tenta gerar a primeira fatura
             await SupabaseService.addPayment({
                 studentId: createdUser.id,
                 amount: createdUser.planValue || selectedPlan.price,
@@ -212,7 +224,15 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                             
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Data de Nascimento</label>
-                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" type="date" value={birthDate} onChange={e => setBirthDate(e.target.value)} />
+                                <input 
+                                    className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" 
+                                    type="text" 
+                                    inputMode="numeric"
+                                    maxLength={10}
+                                    placeholder="DD/MM/AAAA" 
+                                    value={birthDateMasked} 
+                                    onChange={e => handleBirthDateChange(e.target.value)} 
+                                />
                             </div>
 
                             <div>

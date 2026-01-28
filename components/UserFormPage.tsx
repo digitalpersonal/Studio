@@ -33,6 +33,21 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
   currentUserRole,
   isCompletingProfile = false,
 }) => {
+  // Estado local para a data formatada DD/MM/AAAA
+  const formatIsoToBr = (isoDate?: string) => {
+    if (!isoDate) return '';
+    const [year, month, day] = isoDate.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatBrToIso = (brDate: string) => {
+    if (brDate.length !== 10) return '';
+    const [day, month, year] = brDate.split('/');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [birthDateMasked, setBirthDateMasked] = useState(formatIsoToBr(initialFormData.birthDate));
+
   const [formData, setFormData] = useState<Partial<User>>(() => ({
     ...initialFormData,
     address: initialFormData.address || {
@@ -57,6 +72,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     billingDay: initialFormData.billingDay !== undefined ? initialFormData.billingDay : 5,
     planStartDate: initialFormData.planStartDate || new Date().toISOString().split('T')[0],
   }));
+
   const [activeTab, setActiveTab] = useState<'basic' | 'plan' | 'anamnesis'>(initialActiveTab);
   const [showPassword, setShowPassword] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -81,7 +97,18 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     fetchPlans();
   }, [addToast]);
 
-  // Lógica de Validação em tempo real para feedback visual
+  const handleBirthDateMask = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    let masked = digits;
+    if (digits.length > 2) masked = digits.slice(0, 2) + "/" + digits.slice(2);
+    if (digits.length > 4) masked = masked.slice(0, 5) + "/" + digits.slice(4, 8);
+    setBirthDateMasked(masked);
+    
+    if (masked.length === 10) {
+        setFormData(prev => ({ ...prev, birthDate: formatBrToIso(masked) }));
+    }
+  };
+
   const missingFields = useMemo(() => {
     const list: Record<'basic' | 'plan' | 'anamnesis', string[]> = { basic: [], plan: [], anamnesis: [] };
     const isStudent = (formData.role || UserRole.STUDENT) === UserRole.STUDENT;
@@ -90,7 +117,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     if (!formData.email?.trim()) list.basic.push("E-mail");
     if (!formData.phoneNumber?.trim()) list.basic.push("WhatsApp");
     if (!formData.password?.trim()) list.basic.push("Senha");
-    if (!formData.birthDate) list.basic.push("Data de Nascimento");
+    if (birthDateMasked.length !== 10) list.basic.push("Data de Nascimento");
 
     if (isStudent) {
       if (!formData.cpf?.trim()) list.basic.push("CPF");
@@ -111,7 +138,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     }
 
     return list;
-  }, [formData]);
+  }, [formData, birthDateMasked]);
 
   const totalMissing = missingFields.basic.length + missingFields.plan.length + missingFields.anamnesis.length;
 
@@ -148,46 +175,15 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
     }
   };
 
-  useEffect(() => {
-    setFormData(() => ({
-      ...initialFormData,
-      address: initialFormData.address || {
-        zipCode: '', street: '', number: '', complement: '',
-        neighborhood: '', city: '', state: ''
-      },
-      anamnesis: initialFormData.anamnesis || {
-        hasMedicalCondition: false, medicalConditionDescription: '',
-        hasRecentSurgeryOrInjury: false, recentSurgeryOrInjuryDetails: '',
-        takesMedication: false, medicationDescription: '',
-        hasAllergies: false, allergiesDescription: '',
-        recentExamsResults: '',
-        mainGoal: '', trainingFrequency: '3-4x', activityLevel: 'MODERATE',
-        trainingExperience: '', availableEquipment: '', preferredTrainingTimes: '',
-        smokesOrDrinks: false, smokingDrinkingFrequency: '',
-        sleepQuality: '', currentDiet: '', bodyMeasurements: '',
-        emergencyContactName: '', emergencyContactPhone: '',
-        updatedAt: new Date().toISOString().split('T')[0],
-      },
-      planValue: initialFormData.planValue !== undefined ? initialFormData.planValue : 150,
-      planDuration: initialFormData.planDuration !== undefined ? initialFormData.planDuration : 12,
-      billingDay: initialFormData.billingDay !== undefined ? initialFormData.billingDay : 5,
-      planStartDate: initialFormData.planStartDate || new Date().toISOString().split('T')[0],
-    }));
-    setActiveTab(initialActiveTab);
-  }, [initialFormData, initialActiveTab]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (totalMissing > 0) {
       setShowValidationSummary(true);
       addToast(`Faltam ${totalMissing} campos obrigatórios. Verifique os avisos.`, "error");
-      
-      // Tenta pular para a primeira aba com erro
       if (missingFields.basic.length > 0) setActiveTab('basic');
       else if (missingFields.plan.length > 0) setActiveTab('plan');
       else if (missingFields.anamnesis.length > 0) setActiveTab('anamnesis');
-      
       return;
     }
 
@@ -254,15 +250,15 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Nome Completo"/></label>
-                    <input className={`w-full bg-dark-900 border ${!formData.name?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    <input className={`w-full bg-dark-900 border ${!formData.name?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="E-mail"/></label>
-                    <input type="email" className={`w-full bg-dark-900 border ${!formData.email?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} />
+                    <input type="email" className={`w-full bg-dark-900 border ${!formData.email?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} />
                   </div>
                   <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="WhatsApp"/></label>
-                    <input className={`w-full bg-dark-900 border ${!formData.phoneNumber?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} placeholder="(00) 00000-0000" value={formData.phoneNumber || ''} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
+                    <input className={`w-full bg-dark-900 border ${!formData.phoneNumber?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} placeholder="(00) 00000-0000" value={formData.phoneNumber || ''} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
                   </div>
                   
                   <div className="relative group">
@@ -272,7 +268,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                       <div className="relative">
                           <input 
                             type={showPassword ? "text" : "password"} 
-                            className={`w-full bg-dark-900 border ${!formData.password?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none pr-12 font-mono transition-all font-bold`} 
+                            className={`w-full bg-dark-900 border ${!formData.password?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none pr-12 font-mono transition-all`} 
                             placeholder="Defina a senha"
                             value={formData.password || ''} 
                             onChange={e => setFormData({...formData, password: e.target.value})} 
@@ -292,7 +288,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                       {isAdmin ? (
                         <select
                             required
-                            className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm font-bold"
+                            className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-black font-bold focus:border-brand-500 outline-none text-sm"
                             value={formData.role || UserRole.STUDENT}
                             onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
                         >
@@ -312,18 +308,26 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
 
                   <div className="sm:col-span-2 border-t border-dark-800 pt-4 mt-2">
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Data de Nascimento"/></label>
-                    <input type="date" className={`w-full bg-dark-900 border ${!formData.birthDate ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none font-bold transition-all`} value={formData.birthDate || ''} onChange={e => setFormData({...formData, birthDate: e.target.value})} />
+                    <input 
+                      type="text" 
+                      inputMode="numeric"
+                      maxLength={10}
+                      placeholder="DD/MM/AAAA"
+                      className={`w-full bg-dark-900 border ${birthDateMasked.length !== 10 ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} 
+                      value={birthDateMasked} 
+                      onChange={e => handleBirthDateMask(e.target.value)} 
+                    />
                   </div>
 
                   {(formData.role === UserRole.STUDENT || !isAdmin) && (
                     <>
                       <div>
                         <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="CPF"/></label>
-                        <input className={`w-full bg-dark-900 border ${!formData.cpf?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} placeholder="000.000.000-00" value={formData.cpf || ''} onChange={e => setFormData({...formData, cpf: e.target.value})} />
+                        <input className={`w-full bg-dark-900 border ${!formData.cpf?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} placeholder="000.000.000-00" value={formData.cpf || ''} onChange={e => setFormData({...formData, cpf: e.target.value})} />
                       </div>
                       <div>
                         <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="RG"/></label>
-                        <input className={`w-full bg-dark-900 border ${!formData.rg?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} placeholder="MG-00.000.000" value={formData.rg || ''} onChange={e => setFormData({...formData, rg: e.target.value})} />
+                        <input className={`w-full bg-dark-900 border ${!formData.rg?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} placeholder="MG-00.000.000" value={formData.rg || ''} onChange={e => setFormData({...formData, rg: e.target.value})} />
                       </div>
                     </>
                   )}
@@ -333,12 +337,12 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                 <div className="space-y-4 pt-4 border-t border-dark-800">
                   <h4 className="text-white font-bold text-sm flex items-center gap-2"><MapPin size={18} className="text-brand-500"/> Endereço Completo</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="CEP"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.zipCode?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.address?.zipCode || ''} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
-                    <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Logradouro"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.street?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.address?.street || ''} onChange={e => handleAddressChange('street', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Número"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.number?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.address?.number || ''} onChange={e => handleAddressChange('number', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Bairro"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.neighborhood?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.address?.neighborhood || ''} onChange={e => handleAddressChange('neighborhood', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Cidade"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.city?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.address?.city || ''} onChange={e => handleAddressChange('city', e.target.value)} /></div>
-                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Estado"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.state?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.address?.state || ''} onChange={e => handleAddressChange('state', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="CEP"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.zipCode?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.address?.zipCode || ''} onChange={e => handleAddressChange('zipCode', e.target.value)} /></div>
+                    <div className="sm:col-span-2"><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Logradouro"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.street?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.address?.street || ''} onChange={e => handleAddressChange('street', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Número"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.number?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.address?.number || ''} onChange={e => handleAddressChange('number', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Bairro"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.neighborhood?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.address?.neighborhood || ''} onChange={e => handleAddressChange('neighborhood', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Cidade"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.city?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.address?.city || ''} onChange={e => handleAddressChange('city', e.target.value)} /></div>
+                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Estado"/></label><input className={`w-full bg-dark-900 border ${!formData.address?.state?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.address?.state || ''} onChange={e => handleAddressChange('state', e.target.value)} /></div>
                   </div>
                 </div>
               )}
@@ -394,11 +398,11 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Nome"/></label>
-                    <input className={`w-full bg-dark-900 border ${!formData.anamnesis?.emergencyContactName?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.anamnesis?.emergencyContactName || ''} onChange={e => handleAnamnesisChange('emergencyContactName', e.target.value)} />
+                    <input className={`w-full bg-dark-900 border ${!formData.anamnesis?.emergencyContactName?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.anamnesis?.emergencyContactName || ''} onChange={e => handleAnamnesisChange('emergencyContactName', e.target.value)} />
                   </div>
                   <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Telefone"/></label>
-                    <input className={`w-full bg-dark-900 border ${!formData.anamnesis?.emergencyContactPhone?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white outline-none transition-all font-bold`} value={formData.anamnesis?.emergencyContactPhone || ''} onChange={e => handleAnamnesisChange('emergencyContactPhone', e.target.value)} />
+                    <input className={`w-full bg-dark-900 border ${!formData.anamnesis?.emergencyContactPhone?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-black font-bold outline-none transition-all`} value={formData.anamnesis?.emergencyContactPhone || ''} onChange={e => handleAnamnesisChange('emergencyContactPhone', e.target.value)} />
                   </div>
                 </div>
               </div>
@@ -447,9 +451,9 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
               <div className="space-y-6 pt-6 border-t border-dark-800">
                 <h4 className="font-bold text-white uppercase text-xs tracking-widest flex items-center gap-2 border-b border-dark-800 pb-3"><Dumbbell size={16} className="text-brand-500"/>Objetivos e Estilo de Vida</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2"><label className="block text-slate-400 text-sm font-bold mb-2">Principal objetivo (ex: melhorar corrida, ganho de força, perda de peso)?</label><textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none text-sm font-bold" value={formData.anamnesis?.mainGoal || ''} onChange={(e) => handleAnamnesisChange('mainGoal', e.target.value)} /></div>
-                    <div><label className="block text-slate-400 text-sm font-bold mb-2">Frequência de treinos (semana)</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.anamnesis?.trainingFrequency || '3-4x'} onChange={e => handleAnamnesisChange('trainingFrequency', e.target.value)}><option value="1-2x">1-2 vezes</option><option value="3-4x">3-4 vezes</option><option value="5x+">5 ou mais</option></select></div>
-                    <div><label className="block text-slate-400 text-sm font-bold mb-2">Nível de atividade</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white text-sm font-bold" value={formData.anamnesis?.activityLevel || 'MODERATE'} onChange={e => handleAnamnesisChange('activityLevel', e.target.value)}><option value="SEDENTARY">Sedentário</option><option value="MODERATE">Moderado</option><option value="ATHLETE">Atleta</option></select></div>
+                    <div className="sm:col-span-2"><label className="block text-slate-400 text-sm font-bold mb-2">Principal objetivo (ex: melhorar corrida, ganho de força, perda de peso)?</label><textarea className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-black font-bold focus:border-brand-500 outline-none text-sm resize-none h-24" value={formData.anamnesis?.mainGoal || ''} onChange={(e) => handleAnamnesisChange('mainGoal', e.target.value)} /></div>
+                    <div><label className="block text-slate-400 text-sm font-bold mb-2">Frequência de treinos (semana)</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-black font-bold text-sm" value={formData.anamnesis?.trainingFrequency || '3-4x'} onChange={e => handleAnamnesisChange('trainingFrequency', e.target.value)}><option value="1-2x">1-2 vezes</option><option value="3-4x">3-4 vezes</option><option value="5x+">5 ou mais</option></select></div>
+                    <div><label className="block text-slate-400 text-sm font-bold mb-2">Nível de atividade</label><select className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-black font-bold text-sm" value={formData.anamnesis?.activityLevel || 'MODERATE'} onChange={e => handleAnamnesisChange('activityLevel', e.target.value)}><option value="SEDENTARY">Sedentário</option><option value="MODERATE">Moderado</option><option value="ATHLETE">Atleta</option></select></div>
                 </div>
               </div>
             </div>
@@ -457,7 +461,6 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
         </form>
       </div>
 
-      {/* Resumo de Validação */}
       {showValidationSummary && totalMissing > 0 && (
           <div className="p-6 bg-red-500/5 border border-red-500/20 rounded-3xl animate-fade-in space-y-4">
               <div className="flex items-center gap-2 text-red-500">
@@ -518,7 +521,7 @@ const ConditionalTextarea = ({ label, isChecked, onCheckboxChange, placeholder, 
     </label>
     {isChecked && (
       <div className="mt-3 animate-fade-in">
-        <textarea required={required} placeholder={placeholder} className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none resize-none" value={value} onChange={(e) => onTextChange(e.target.value)} />
+        <textarea required={required} placeholder={placeholder} className="w-full h-24 bg-dark-900 border border-dark-700 rounded-xl p-4 text-black font-bold text-sm focus:border-brand-500 outline-none resize-none" value={value} onChange={(e) => onTextChange(e.target.value)} />
       </div>
     )}
   </div>
