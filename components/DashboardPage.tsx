@@ -25,7 +25,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [isLive, setIsLive] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
+  const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.TRAINER;
   const isStudent = currentUser.role === UserRole.STUDENT;
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       const [uData, cData, pData, chalData, aData] = await Promise.all([
         SupabaseService.getAllUsers(force),
         SupabaseService.getClasses(force),
-        isManagement ? SupabaseService.getPayments(undefined, force) : SupabaseService.getPayments(currentUser.id, force),
+        (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN) ? SupabaseService.getPayments(undefined, force) : SupabaseService.getPayments(currentUser.id, force),
         SupabaseService.getGlobalChallengeProgress(force),
         isStudent ? SupabaseService.getAttendanceForStudent(currentUser.id, 'RUNNING') : Promise.resolve([])
       ]);
@@ -57,7 +57,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     } finally {
       setLoading(false);
     }
-  }, [currentUser.id, isManagement, isStudent]);
+  }, [currentUser.id, currentUser.role, isStudent]);
 
   useEffect(() => {
     loadData(true);
@@ -103,7 +103,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     
     const recentPaid = payments
       .filter(p => p.status === 'PAID')
-      .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()) // Assuming dueDate can act as payment date for sorting
+      .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()) 
       .slice(0, 5);
 
     return {
@@ -146,8 +146,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard icon={Users} label="Alunos Ativos" value={stats.activeCount} color="blue" />
+        {/* Card de Alunos Ativos visível apenas para STAFF */}
+        {isManagement && <MetricCard icon={Users} label="Alunos Ativos" value={stats.activeCount} color="blue" />}
+        
         <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
+        
         {isManagement ? (
           <>
             <MetricCard icon={AlertTriangle} label="Alunos Devedores" value={stats.overdueCount} color="red" />
@@ -281,7 +284,6 @@ const RecentActivityCard = ({ payments }: { payments: any[] }) => (
                 <div key={p.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center ${p.discount > 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-dark-800 border-dark-700 text-slate-400'}`}>
-                            {/* O ideal seria ter uma coluna 'payment_method' para diferenciar. Por enquanto, usamos um ícone genérico. */}
                             <CheckCheck size={18} />
                         </div>
                         <div>
