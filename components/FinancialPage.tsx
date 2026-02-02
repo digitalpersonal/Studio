@@ -210,8 +210,8 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                         onChange={e => setYearFilter(Number(e.target.value))}
                         className="bg-dark-900 border border-dark-700 rounded-xl p-2 text-white text-xs font-bold outline-none"
                     >
-                        <option value={2024}>2024</option>
                         <option value={2025}>2025</option>
+                        <option value={2026}>2026</option>
                     </select>
                </div>
            </div>
@@ -333,7 +333,6 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
   );
 };
 
-// ... Resto dos componentes (ManualPaymentModal, CheckoutModal, PaymentFormModal) permanecem os mesmos ...
 const ManualPaymentModal = ({ payment, onConfirm, onCancel, isProcessing }: any) => {
     const [discount, setDiscount] = useState(payment.discount || 0);
     const finalAmount = Math.max(0, payment.amount - discount);
