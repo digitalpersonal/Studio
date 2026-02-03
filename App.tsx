@@ -400,19 +400,15 @@ export function App() {
   };
 
   const handleLogin = (user: User) => {
-    // CRÍTICO: Persistência IMEDIATA para garantir que o estado 'profileCompleted' seja lido corretamente
     localStorage.setItem('studioCurrentUser', JSON.stringify(user));
+    setCurrentUser(user);
     
-    // Define a view destino
     const nextView = (user.role === UserRole.STUDENT && !user.profileCompleted)
       ? 'COMPLETE_PROFILE'
       : 'DASHBOARD';
     
-    // Atualiza estados
-    setCurrentUser(user);
     setCurrentView(nextView);
-    
-    addToast(`Boas-vindas, ${String(user.name).split(' ')[0]}!`, "success");
+    addToast(`Bem-vindo, ${String(user.name).split(' ')[0]}!`, "success");
   };
 
   const handleLogout = () => {
@@ -458,18 +454,18 @@ export function App() {
       <ToastContext.Provider value={{ addToast }}>
         <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
           {currentView === 'DASHBOARD' && <DashboardPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
-          {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
-          {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} selectedStudentId={navParams.studentId} />}
+          {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
+          {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} initialStudentId={navParams.studentId} />}
+          {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} onNavigate={handleNavigate} selectedStudentId={navParams.studentId} />}
           {currentView === 'MANAGE_USERS' && <ManageUsersPage currentUser={currentUser} onNavigate={handleNavigate} />}
           {currentView === 'SETTINGS' && <SettingsPage currentUser={currentUser} />}
-          {currentView === 'RANKING' && <RankingPage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} addToast={addToast} />}
+          {currentView === 'RANKING' && <RankingPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
+          {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
           {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'FEED' && <FeedPage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
+          {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
           {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
-          {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} />}
+          {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} onNavigate={handleNavigate} />}
           {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={handleUpdateUser} addToast={addToast} />}
           {currentView === 'COMPLETE_PROFILE' && <DashboardPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
         </Layout>

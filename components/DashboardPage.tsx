@@ -1,17 +1,18 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord } from '../types';
+import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord, ViewState } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
   CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag, Dumbbell,
-  User as UserIcon, Download, List, CheckCheck
+  User as UserIcon, Download, List, CheckCheck, ArrowLeft, Award
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
 
 interface DashboardPageProps {
   currentUser: User;
-  onNavigate: (view: any, params?: any) => void;
+  onNavigate: (view: ViewState, params?: any) => void;
   addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }
 
@@ -31,7 +32,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000); // Atualiza a cada minuto para verificar o status da aula
+    }, 60000); 
     return () => clearInterval(timer);
   }, []);
 
@@ -43,7 +44,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         SupabaseService.getClasses(force),
         (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN) ? SupabaseService.getPayments(undefined, force) : SupabaseService.getPayments(currentUser.id, force),
         SupabaseService.getGlobalChallengeProgress(force),
-        isStudent ? SupabaseService.getAttendanceForStudent(currentUser.id, 'RUNNING') : Promise.resolve([])
+        isStudent ? SupabaseService.getAttendanceForStudent(currentUser.id) : Promise.resolve([])
       ]);
       setAllUsers(uData || []);
       setClasses(cData || []);
@@ -61,7 +62,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
 
   useEffect(() => {
     loadData(true);
-    const unsubscribe = SupabaseService.subscribe((table) => {
+    const unsubscribe = SupabaseService.subscribe(() => {
       loadData(false); 
     });
     return () => unsubscribe();
@@ -84,12 +85,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     const suspendedCount = students.filter(u => u.status === 'SUSPENDED').length;
     const todayClasses = classes.filter(c => c.dayOfWeek === todayName).sort((a,b) => a.startTime.localeCompare(b.startTime));
     const overdue = payments.filter(p => p.status === 'OVERDUE');
-    const totalOverdue = overdue.reduce((acc, p) => acc + (p.amount || 0), 0);
     
-    const lastRunPerformance = attendance
+    // Performance de corrida apenas
+    const runningAttendance = attendance.filter(a => a.classDetails?.type === 'RUNNING');
+    const lastRunPerformance = runningAttendance
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
-    const birthdays = allUsers
+    const allBirthdays = allUsers
       .filter(u => {
         if (!u.birthDate) return false;
         const bDate = new Date(u.birthDate);
@@ -101,23 +103,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         return dayA - dayB;
       });
     
+    const visibleBirthdays = isManagement ? allBirthdays : allBirthdays.slice(0, 3);
+    
     const recentPaid = payments
       .filter(p => p.status === 'PAID')
       .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()) 
       .slice(0, 5);
+
+    const challengeProgressPercent = challengeData.challenge?.targetValue 
+      ? Math.min(100, (challengeData.totalDistance / challengeData.challenge.targetValue) * 100)
+      : 0;
 
     return {
       activeCount: activeStudents.length,
       suspendedCount,
       todayClassesCount: todayClasses.length,
       overdueCount: new Set(overdue.map(p => p.studentId)).size,
-      totalOverdueAmount: totalOverdue,
       todayClasses,
-      birthdays,
+      visibleBirthdays,
       lastRunPerformance,
       recentPaid,
+      totalAttendance: attendance.length,
+      challengeProgressPercent
     };
-  }, [allUsers, classes, payments, todayName, currentMonth, attendance]);
+  }, [allUsers, classes, payments, todayName, currentMonth, attendance, isManagement, challengeData]);
 
   if (loading && allUsers.length === 0) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
@@ -146,30 +155,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card de Alunos Ativos visível apenas para STAFF */}
-        {isManagement && <MetricCard icon={Users} label="Alunos Ativos" value={stats.activeCount} color="blue" />}
-        
-        <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
-        
         {isManagement ? (
           <>
+            <MetricCard icon={Users} label="Alunos Ativos" value={stats.activeCount} color="blue" />
+            <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
             <MetricCard icon={AlertTriangle} label="Alunos Devedores" value={stats.overdueCount} color="red" />
             <MetricCard icon={ZapOff} label="Alunos Suspensos" value={stats.suspendedCount} color="purple" />
           </>
-        ) : stats.lastRunPerformance ? (
-           <MetricCard 
-             icon={Flag} 
-             label="Última Corrida" 
-             value={stats.lastRunPerformance.averagePace || 'N/A'} 
-             subValue={new Date(stats.lastRunPerformance.date).toLocaleDateString('pt-BR')}
-             color="emerald"
-           />
         ) : (
-          <div className="bg-brand-600 p-6 rounded-[2.5rem] text-white flex flex-col justify-center shadow-xl shadow-brand-600/20 relative overflow-hidden group">
-             <Sparkles className="absolute -right-4 -top-4 text-white/10 group-hover:rotate-12 transition-transform" size={100} />
-             <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Próxima Meta</p>
-             <p className="text-xl font-black mt-1">Vença o seu ontem!</p>
-          </div>
+          <>
+            <MetricCard icon={CheckCircle2} label="Treinos Realizados" value={stats.totalAttendance} color="blue" />
+            <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
+            {stats.lastRunPerformance ? (
+               <MetricCard 
+                 icon={Flag} 
+                 label="Última Corrida" 
+                 value={stats.lastRunPerformance.averagePace || 'N/A'} 
+                 subValue={new Date(stats.lastRunPerformance.date).toLocaleDateString('pt-BR')}
+                 color="emerald"
+               />
+            ) : (
+               <MetricCard icon={Award} label="Sua Melhor Marca" value="--" subValue="Aguardando treinos" color="emerald" />
+            )}
+            <MetricCard 
+              icon={Trophy} 
+              label="Meta Coletiva" 
+              value={`${stats.challengeProgressPercent.toFixed(0)}%`} 
+              subValue="Desafio Global" 
+              color="purple" 
+            />
+          </>
         )}
       </div>
 
@@ -245,7 +260,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                 </div>
                 
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                  {stats.birthdays.length > 0 ? stats.birthdays.map(u => (
+                  {stats.visibleBirthdays.length > 0 ? stats.visibleBirthdays.map(u => (
                     <div key={u.id} className="flex items-center justify-between group/item">
                         <div className="flex items-center gap-3">
                             <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-xl border-2 border-dark-800 group-hover/item:border-brand-500 transition-all object-cover" />
@@ -262,7 +277,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                         </button>
                     </div>
                   )) : (
-                    <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Nenhum aniversário este mês.</p>
+                    <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Nenhum aniversário {isStudent ? 'próximo' : 'este mês'}.</p>
                   )}
                 </div>
             </div>
