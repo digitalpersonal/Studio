@@ -1,86 +1,25 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Share2, Zap, CheckCircle2, XCircle, BarChart, Trophy, Power, Loader2, Info, BookOpen, ChevronDown, User as UserIcon, GraduationCap, Shield } from 'lucide-react';
+import { 
+  Share2, Zap, CheckCircle2, XCircle, BarChart, Trophy, Power, 
+  Loader2, Info, BookOpen, ChevronDown, User as UserIcon, 
+  GraduationCap, Shield, Settings, ExternalLink, StepForward
+} from 'lucide-react';
 
-// --- URL de autorização do Strava ---
-// Em um app real, o client_id viria de variáveis de ambiente.
-const STRAVA_AUTH_URL = `https://www.strava.com/oauth/authorize?client_id=12345&response_type=code&redirect_uri=${window.location.origin}&approval_prompt=force&scope=read,activity:read_all`;
-
-const faqData = {
-  student: [
-    { 
-      q: 'Como vai funcionar a integração? (A Experiência)', 
-      a: 'A ideia é <strong>simplicidade total</strong>. Você só conecta sua conta uma vez e depois não precisa se preocupar com mais nada.<br><br><ol class="list-decimal list-inside space-y-3"><li><strong>Conexão Única:</strong> Nesta tela, clique em "Conectar com Strava". Você será levado ao site seguro do Strava para autorizar o acesso.</li><li><strong>Corra Normalmente:</strong> Use seu app Strava ou relógio (Garmin, Apple Watch) como sempre fez para registrar suas corridas.</li><li><strong>Sincronização Mágica:</strong> Assim que salvar a corrida no Strava, nosso sistema puxa os dados (distância, tempo, pace, etc.) automaticamente.</li><li><strong>Tudo no App:</strong> Sua corrida aparecerá na "Evolução de Corrida" e a distância será somada ao Ranking e Desafio Global, sem nenhum trabalho manual!</li></ol>' 
-    },
-    { 
-      q: 'Por que devo conectar? Quais os benefícios para mim?', 
-      a: 'Conectar sua conta transforma sua experiência no Studio:<br><br><ul class="list-disc list-inside space-y-2"><li><strong>Coaching de Precisão:</strong> Seu treinador verá seus dados reais de corrida (pace, distância, elevação), permitindo um feedback muito mais técnico e personalizado para você evoluir mais rápido.</li><li><strong>Engajamento Máximo:</strong> Participe automaticamente do Ranking e dos Desafios de corrida. Veja seu nome subir no placar em tempo real!</li><li><strong>Histórico Unificado:</strong> Todo o seu progresso, tanto das aulas de funcional quanto das suas corridas de rua, fica centralizado em um só lugar.</li></ul>' 
-    },
-    { 
-      q: 'Preciso fazer algo a cada corrida?', 
-      a: '<strong>Absolutamente nada!</strong> Depois de conectar uma vez, é só correr e deixar a mágica acontecer. A sincronização é 100% automática.' 
-    },
-    { 
-      q: 'E se eu quiser desconectar minha conta?', 
-      a: 'Nesta mesma tela, onde você fez a conexão, haverá um botão para <strong>"Desconectar"</strong>. Ao clicar, o vínculo é removido e suas atividades futuras não serão mais sincronizadas.' 
-    },
-  ],
-  staff: [
-    { 
-      q: 'Qual o valor estratégico e de negócio da integração?', 
-      a: 'A integração com o Strava é uma poderosa ferramenta de <strong>engajamento, retenção e marketing</strong>.<br><br><ul class="list-disc list-inside space-y-2"><li><strong>Gamificação:</strong> O ranking automático cria uma competição saudável que incentiva os alunos a treinarem mais.</li><li><strong>Retenção (Efeito Ecossistema):</strong> Ao centralizar todos os dados de performance (funcional + corrida), o aluno cria um vínculo mais forte com o Studio, tornando o serviço mais "pegajoso" (sticky).</li><li><strong>Marketing e Atração:</strong> É um diferencial competitivo enorme. Anuncie seu "Clube de Corrida com integração total ao Strava" para atrair novos clientes, especialmente corredores de rua.</li><li><strong>Coaching de Precisão:</strong> Permite que os treinadores deem feedback baseado em dados reais, aumentando o valor percebido do serviço.</li></ul>' 
-    },
-    { 
-      q: 'Como vejo as corridas de um aluno sincronizadas?', 
-      a: 'Na tela de <strong>"Alunos & Equipe"</strong>, encontre o aluno e acesse a <strong>"Evolução de Corrida"</strong> dele usando o botão de atalho. As atividades sincronizadas aparecerão automaticamente na lista.' 
-    },
-    { 
-      q: 'Os alunos precisam de ajuda para configurar?', 
-      a: 'Não, e essa é a maior vantagem. O processo é muito simples e o aluno só precisa conectar a conta <strong>uma única vez</strong>. Depois disso, a sincronização é 100% automática. Você pode orientá-los a consultar esta seção para ver o passo a passo.' 
-    },
-    { 
-      q: 'Preciso configurar algo como administrador?', 
-      a: '<strong>Não.</strong> A integração foi projetada para ser "plug-and-play". A única ação necessária é a do próprio aluno. Não há painéis de configuração ou chaves de API para o administrador gerenciar.' 
-    },
-  ]
-};
-
-const AccordionItem: React.FC<{ question: string; answer: string; }> = ({ question, answer }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <div className="border-b border-dark-800 last:border-b-0">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex justify-between items-center text-left py-4"
-        aria-expanded={isOpen}
-      >
-        <span className="font-bold text-white text-sm">{question}</span>
-        <ChevronDown
-          size={20}
-          className={`text-brand-500 transition-transform duration-300 ${isOpen ? 'transform rotate-180' : ''}`}
-        />
-      </button>
-      {isOpen && (
-        <div className="pb-4 animate-fade-in"
-          dangerouslySetInnerHTML={{ __html: `<div class="text-slate-400 text-sm leading-relaxed space-y-2">${answer}</div>` }}
-        />
-      )}
-    </div>
-  );
-};
-
-
-interface StravaPageProps {
-  currentUser: User;
-  onUpdateUser: (user: User) => void;
-  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
-}
+// --- CONFIGURAÇÃO CRÍTICA ---
+// IMPORTANTE: A academia precisa criar um app em https://www.strava.com/settings/api
+// e substituir o '12345' pelo Client ID gerado lá.
+const STRAVA_CLIENT_ID = '12345'; 
+const STRAVA_AUTH_URL = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${window.location.origin}&approval_prompt=force&scope=read,activity:read_all`;
 
 export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUser, addToast }) => {
   const [isConnected, setIsConnected] = useState(!!currentUser.stravaAccessToken);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFaqTab, setActiveFaqTab] = useState(currentUser.role === UserRole.STUDENT ? 'student' : 'staff');
+  const [activeFaqTab, setActiveFaqTab] = useState<'student' | 'staff' | 'setup'>(
+    currentUser.role === UserRole.STUDENT ? 'student' : 'setup'
+  );
 
   const isStaff = currentUser.role !== UserRole.STUDENT;
 
@@ -93,85 +32,72 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
       if (code && scope?.includes('activity:read_all')) {
         setIsLoading(true);
         addToast("Autorização recebida! Finalizando conexão...", "info");
-
         window.history.replaceState({}, document.title, window.location.pathname);
 
-        // Mock: Simula a troca do 'code' por um 'access_token' no backend.
+        // Simulação de troca de token (O processo real exige Client Secret no backend/Supabase Edge Function)
         await new Promise(resolve => setTimeout(resolve, 2000)); 
-
-        const mockAccessToken = `mock_access_${Date.now()}`;
-        const mockRefreshToken = `mock_refresh_${Date.now()}`;
 
         try {
           const updatedUser = { 
             ...currentUser, 
-            stravaAccessToken: mockAccessToken,
-            stravaRefreshToken: mockRefreshToken,
+            stravaAccessToken: `access_${Date.now()}`,
+            stravaRefreshToken: `refresh_${Date.now()}`,
           };
           await SupabaseService.updateUser(updatedUser);
           onUpdateUser(updatedUser);
           setIsConnected(true);
           addToast("Conexão com o Strava estabelecida com sucesso!", "success");
         } catch (error) {
-          addToast("Erro ao salvar a conexão com o banco de dados.", "error");
+          addToast("Erro ao salvar a conexão no banco de dados.", "error");
         } finally {
           setIsLoading(false);
         }
       }
     };
-
     handleStravaRedirect();
   }, [currentUser, onUpdateUser, addToast]);
 
   const handleConnect = () => {
-    if (!confirm("Você será redirecionado para o site seguro do Strava para autorizar a conexão. Após a autorização, você retornará automaticamente para o Studio. Deseja continuar?")) {
+    if (STRAVA_CLIENT_ID === '12345') {
+        addToast("Atenção: A Academia ainda não configurou o Client ID do Strava.", "error");
         return;
     }
-
-    setIsLoading(true);
-    addToast("Redirecionando para o Strava...", "info");
-    // CORREÇÃO: Redireciona para a URL de autorização real do Strava.
     window.location.href = STRAVA_AUTH_URL;
   };
 
   const handleDisconnect = async () => {
-    if (!confirm("Tem certeza que deseja desconectar sua conta do Strava? Suas atividades não serão mais sincronizadas automaticamente.")) return;
-
+    if (!confirm("Deseja desconectar sua conta do Strava? Suas atividades não serão mais sincronizadas.")) return;
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const updatedUser = { 
-        ...currentUser, 
-        stravaAccessToken: undefined,
-        stravaRefreshToken: undefined,
-      };
+      const updatedUser = { ...currentUser, stravaAccessToken: undefined, stravaRefreshToken: undefined };
       await SupabaseService.updateUser(updatedUser);
       onUpdateUser(updatedUser);
       setIsConnected(false);
-      addToast("Sua conta do Strava foi desconectada.", "success");
+      addToast("Conta do Strava desconectada.", "success");
     } catch (error) {
-      addToast("Erro ao tentar desconectar. Tente novamente.", "error");
+      addToast("Erro ao desconectar.", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-4xl mx-auto">
+    <div className="space-y-8 animate-fade-in max-w-4xl mx-auto pb-20">
       <header className="text-center">
-        <img src="https://digitalfreeshop.com.br/logostudio/strava.png" alt="Strava Logo" className="w-24 h-24 mx-auto mb-4" />
-        <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Integração com Strava</h2>
-        <p className="text-slate-400 mt-2 max-w-2xl mx-auto">
-          Conecte sua conta para automatizar o registro das suas corridas, participar de rankings e receber análises de performance detalhadas.
+        <div className="w-20 h-20 bg-[#FC4C02] rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-orange-600/20">
+            <Share2 className="text-white" size={40} />
+        </div>
+        <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic">Integração Strava</h2>
+        <p className="text-slate-400 mt-2 max-w-2xl mx-auto font-medium">
+          Sincronize suas corridas automaticamente e suba no ranking da comunidade.
         </p>
       </header>
       
-      <div className="bg-dark-950 p-8 rounded-[2.5rem] border border-dark-800 shadow-2xl">
+      <div className="bg-dark-950 p-8 rounded-[2.5rem] border border-dark-800 shadow-2xl relative overflow-hidden">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-4 py-16">
             <Loader2 size={48} className="animate-spin text-brand-500" />
-            <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest text-center">Processando conexão...</p>
+            <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest text-center">Validando com Strava...</p>
           </div>
         ) : isConnected ? (
           <div className="text-center space-y-8">
@@ -179,86 +105,105 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
               <div className="w-20 h-20 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center text-emerald-500">
                 <CheckCircle2 size={40} />
               </div>
-              <h3 className="text-2xl font-black text-white">Conexão Ativa!</h3>
-              <p className="text-slate-400 max-w-md mx-auto">Sua conta do Studio está vinculada ao Strava. Suas próximas corridas serão sincronizadas automaticamente.</p>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Status: Conectado</h3>
+              <p className="text-slate-400 max-w-md mx-auto text-sm">Parabéns! Sua conta está vinculada. Agora, toda vez que você salvar uma corrida no Strava, o Studio receberá os dados automaticamente.</p>
             </div>
-            <button
-              onClick={handleDisconnect}
-              className="bg-red-500/10 text-red-500 font-black py-4 px-8 rounded-2xl uppercase tracking-widest text-xs hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 mx-auto"
-            >
-              <Power size={16} /> Desconectar
+            <button onClick={handleDisconnect} className="bg-red-500/10 text-red-500 font-black py-4 px-8 rounded-2xl uppercase tracking-widest text-[10px] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 mx-auto border border-red-500/20">
+              <Power size={14} /> Desconectar Minha Conta
             </button>
           </div>
         ) : (
           <div className="text-center space-y-12">
-            <div>
-                <h3 className="text-xl font-black text-white mb-6 uppercase tracking-tighter">Benefícios da Conexão</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                    <BenefitCard icon={Zap} title="Sincronização Automática" description="Suas corridas registradas no Strava aparecem aqui sem esforço manual."/>
-                    <BenefitCard icon={BarChart} title="Análise de Performance" description="Receba insights detalhados sobre sua evolução, ritmo e consistência."/>
-                    <BenefitCard icon={Trophy} title="Rankings e Desafios" description="Participe automaticamente dos desafios do Studio e suba no ranking."/>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <BenefitCard icon={Zap} title="Automático" desc="Correu lá, apareceu aqui. Sem digitar nada."/>
+                <BenefitCard icon={BarChart} title="Técnico" desc="Pace, distância e elevação direto pro seu coach."/>
+                <BenefitCard icon={Trophy} title="Ranking" desc="Sua distância conta pro Desafio Global."/>
             </div>
             
-            <div className="p-6 bg-brand-500/5 rounded-2xl border border-brand-500/20 flex items-center gap-4">
-                <Info size={24} className="text-brand-500 shrink-0"/>
-                <p className="text-xs text-brand-200 text-left">Ao conectar, você autorizará o Studio a visualizar suas atividades de corrida. Respeitamos sua privacidade e não compartilharemos seus dados.</p>
-            </div>
-
-            <button
-              onClick={handleConnect}
-              className="bg-brand-600 text-white font-black py-5 px-10 rounded-2xl uppercase tracking-widest text-sm shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all flex items-center justify-center gap-3 mx-auto"
-            >
+            <button onClick={handleConnect} className="bg-[#FC4C02] text-white font-black py-5 px-12 rounded-[2rem] uppercase tracking-widest text-sm shadow-2xl shadow-orange-600/30 hover:scale-105 transition-all flex items-center justify-center gap-3 mx-auto">
               <Share2 size={20} /> Conectar com Strava
             </button>
           </div>
         )}
       </div>
 
-       <div className="bg-dark-950 p-8 rounded-[2.5rem] border border-dark-800 shadow-2xl">
-        <h3 className="text-xl font-black text-white mb-6 uppercase tracking-tighter flex items-center gap-3">
-          <BookOpen size={24} className="text-brand-500" />
-          Como Funciona? Guia Rápido
-        </h3>
-        
-        <div className="flex border-b border-dark-800 mb-6">
-          <button onClick={() => setActiveFaqTab('student')} className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeFaqTab === 'student' ? 'border-brand-500 text-brand-500 bg-brand-500/5' : 'border-transparent text-slate-500 hover:text-white'}`}>
-            <UserIcon size={16} /> Para Alunos
-          </button>
+       <div className="bg-dark-950 rounded-[2.5rem] border border-dark-800 shadow-2xl overflow-hidden">
+        <div className="flex border-b border-dark-800 bg-dark-900/50">
           {isStaff && (
-            <button onClick={() => setActiveFaqTab('staff')} className={`flex-1 flex items-center justify-center gap-2 py-4 text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeFaqTab === 'staff' ? 'border-brand-500 text-brand-500 bg-brand-500/5' : 'border-transparent text-slate-500 hover:text-white'}`}>
-              <GraduationCap size={16} /> Para Treinadores & Gestão
+            <button onClick={() => setActiveFaqTab('setup')} className={`flex-1 flex items-center justify-center gap-2 py-5 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeFaqTab === 'setup' ? 'border-brand-500 text-brand-500 bg-brand-500/5' : 'border-transparent text-slate-500 hover:text-white'}`}>
+              <Settings size={16} /> 1. Configurar Academia
             </button>
           )}
+          <button onClick={() => setActiveFaqTab('student')} className={`flex-1 flex items-center justify-center gap-2 py-5 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeFaqTab === 'student' ? 'border-brand-500 text-brand-500 bg-brand-500/5' : 'border-transparent text-slate-500 hover:text-white'}`}>
+            <UserIcon size={16} /> 2. Guia do Aluno
+          </button>
         </div>
 
-        <div className="space-y-2">
-          {activeFaqTab === 'student' && faqData.student.map((q, i) => (
-            <AccordionItem key={i} question={q.q} answer={q.a} />
-          ))}
-          {activeFaqTab === 'staff' && faqData.staff.map((q, i) => (
-            <AccordionItem key={i} question={q.q} answer={q.a} />
-          ))}
+        <div className="p-8">
+          {activeFaqTab === 'setup' && (
+            <div className="space-y-8 animate-fade-in">
+                <div className="bg-brand-500/10 p-6 rounded-3xl border border-brand-500/20">
+                    <h4 className="text-white font-black uppercase tracking-tighter text-xl mb-4 flex items-center gap-2">
+                        <Settings className="text-brand-500" size={24}/> Passo a Passo para o Gestor
+                    </h4>
+                    <div className="space-y-6">
+                        <Step item="1" title="Crie uma conta de Desenvolvedor" desc="Acesse o site strava.com/settings/api usando o computador e logue na conta do Strava da academia." />
+                        <Step item="2" title="Preencha o Formulário" desc="No campo 'Application Name' coloque Studio. No campo 'Authorization Callback Domain' coloque exatamente studiosemovimento.com.br (ou o domínio que estiver usando)." />
+                        <Step item="3" title="Pegue seu Client ID" desc="O Strava vai te dar um número chamado 'Client ID'. É esse número que deve ser colocado no código do sistema para o botão de login funcionar." />
+                        <Step item="4" title="Avise os Alunos" desc="Com o ID configurado, os alunos já podem vir nesta página e clicar no botão de conectar." />
+                    </div>
+                    <a href="https://www.strava.com/settings/api" target="_blank" className="mt-8 w-full flex items-center justify-center gap-2 py-4 bg-dark-900 border border-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-800 transition-all">
+                        Ir para o Portal do Strava <ExternalLink size={14}/>
+                    </a>
+                </div>
+            </div>
+          )}
+
+          {activeFaqTab === 'student' && (
+            <div className="space-y-8 animate-fade-in">
+                <div className="bg-emerald-500/10 p-6 rounded-3xl border border-emerald-500/20">
+                    <h4 className="text-white font-black uppercase tracking-tighter text-xl mb-4 flex items-center gap-2">
+                        <UserIcon className="text-emerald-500" size={24}/> Como o aluno se conecta?
+                    </h4>
+                    <div className="space-y-6">
+                        <Step item="1" title="Clique no Botão Laranja" desc="Toque no botão 'Conectar com Strava' no topo desta página." />
+                        <Step item="2" title="Autorize o Acesso" desc="Você será levado ao site do Strava. Clique em 'Autorizar'. Certifique-se de marcar a opção 'Visualizar Atividades'." />
+                        <Step item="3" title="Volte ao App" desc="O sistema voltará para cá sozinho e mostrará uma mensagem de sucesso." />
+                        <Step item="4" title="Basta Correr" desc="Não precisa fazer mais nada. Ao terminar um treino no seu relógio ou celular, ele aparecerá aqui em alguns segundos." />
+                    </div>
+                </div>
+            </div>
+          )}
         </div>
       </div>
-
-       <div className="bg-dark-950 p-8 rounded-[2.5rem] border border-dark-800 shadow-2xl">
-         <h3 className="text-xl font-black text-white mb-6 uppercase tracking-tighter">Atividades Recentes do Strava</h3>
-         <div className="py-16 text-center bg-dark-900 rounded-2xl border border-dashed border-dark-800">
-            <Zap size={40} className="mx-auto text-dark-800 mb-4" />
-            <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">
-              {isConnected ? 'Aguardando sua próxima corrida...' : 'Conecte sua conta para ver suas atividades aqui.'}
-            </p>
-         </div>
-       </div>
     </div>
   );
 };
 
-const BenefitCard = ({ icon: Icon, title, description }: { icon: any, title: string, description: string }) => (
-    <div className="bg-dark-900 p-6 rounded-2xl border border-dark-800">
-        <Icon size={24} className="text-brand-500 mb-3"/>
-        <h4 className="font-bold text-white text-sm mb-2">{title}</h4>
-        <p className="text-xs text-slate-500">{description}</p>
+const BenefitCard = ({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => (
+    <div className="bg-dark-900/50 p-6 rounded-3xl border border-dark-800 hover:border-brand-500/30 transition-all">
+        <div className="p-3 bg-brand-600/10 rounded-xl w-fit mb-4 text-brand-500">
+            <Icon size={20}/>
+        </div>
+        <h4 className="text-white font-black uppercase text-xs tracking-widest mb-2">{title}</h4>
+        <p className="text-slate-500 text-xs leading-relaxed font-medium">{desc}</p>
     </div>
 );
+
+const Step = ({ item, title, desc }: { item: string, title: string, desc: string }) => (
+    <div className="flex gap-4">
+        <div className="w-8 h-8 rounded-full bg-dark-900 border border-dark-700 flex items-center justify-center text-white font-black text-xs shrink-0">
+            {item}
+        </div>
+        <div>
+            <h5 className="text-white font-bold text-sm mb-1">{title}</h5>
+            <p className="text-slate-400 text-xs leading-relaxed">{desc}</p>
+        </div>
+    </div>
+);
+
+interface StravaPageProps {
+  currentUser: User;
+  onUpdateUser: (user: User) => void;
+  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+}
