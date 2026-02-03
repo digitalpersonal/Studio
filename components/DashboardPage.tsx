@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -32,7 +31,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date());
-    }, 60000); 
+    }, 60000); // Atualiza a cada minuto para verificar o status da aula
     return () => clearInterval(timer);
   }, []);
 
@@ -62,7 +61,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
 
   useEffect(() => {
     loadData(true);
-    const unsubscribe = SupabaseService.subscribe(() => {
+    const unsubscribe = SupabaseService.subscribe((table) => {
       loadData(false); 
     });
     return () => unsubscribe();
@@ -85,6 +84,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     const suspendedCount = students.filter(u => u.status === 'SUSPENDED').length;
     const todayClasses = classes.filter(c => c.dayOfWeek === todayName).sort((a,b) => a.startTime.localeCompare(b.startTime));
     const overdue = payments.filter(p => p.status === 'OVERDUE');
+    const totalOverdue = overdue.reduce((acc, p) => acc + (p.amount || 0), 0);
     
     const lastRunPerformance = attendance
       .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
@@ -101,9 +101,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         return dayA - dayB;
       });
     
-    // Alunos veem apenas os próximos 3 aniversariantes para privacidade da base
-    const visibleBirthdays = isManagement ? birthdays : birthdays.slice(0, 3);
-
     const recentPaid = payments
       .filter(p => p.status === 'PAID')
       .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()) 
@@ -114,12 +111,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       suspendedCount,
       todayClassesCount: todayClasses.length,
       overdueCount: new Set(overdue.map(p => p.studentId)).size,
+      totalOverdueAmount: totalOverdue,
       todayClasses,
-      visibleBirthdays,
+      birthdays,
       lastRunPerformance,
       recentPaid,
     };
-  }, [allUsers, classes, payments, todayName, currentMonth, attendance, isManagement]);
+  }, [allUsers, classes, payments, todayName, currentMonth, attendance]);
 
   if (loading && allUsers.length === 0) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
@@ -148,6 +146,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       </header>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card de Alunos Ativos visível apenas para STAFF */}
         {isManagement && <MetricCard icon={Users} label="Alunos Ativos" value={stats.activeCount} color="blue" />}
         
         <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
@@ -246,7 +245,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                 </div>
                 
                 <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                  {stats.visibleBirthdays.length > 0 ? stats.visibleBirthdays.map(u => (
+                  {stats.birthdays.length > 0 ? stats.birthdays.map(u => (
                     <div key={u.id} className="flex items-center justify-between group/item">
                         <div className="flex items-center gap-3">
                             <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-xl border-2 border-dark-800 group-hover/item:border-brand-500 transition-all object-cover" />
@@ -263,7 +262,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                         </button>
                     </div>
                   )) : (
-                    <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Nenhum aniversário {isStudent ? 'próximo' : 'este mês'}.</p>
+                    <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Nenhum aniversário este mês.</p>
                   )}
                 </div>
             </div>
