@@ -6,6 +6,14 @@ export enum UserRole {
   STUDENT = 'STUDENT'
 }
 
+export interface Notice {
+  id: string;
+  title: string;
+  content: string;
+  priority: 'INFO' | 'WARNING' | 'URGENT';
+  createdAt: string;
+}
+
 export interface Comment {
   id: string;
   postId: string;

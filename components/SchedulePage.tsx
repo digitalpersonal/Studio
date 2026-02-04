@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { ClassSession, User, UserRole, AttendanceRecord } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -391,8 +392,9 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
   };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in">
-      <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-4 md:pt-16 animate-fade-in overflow-y-auto">
+      {/* Ajustado: items-start e pt-4/pt-16 garantem que o modal nasça no topo da tela */}
+      <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh] mb-10">
         <div className="p-8 border-b border-dark-800">
            <div className="flex justify-between items-start mb-2">
               <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Chamada / Performance</h3>

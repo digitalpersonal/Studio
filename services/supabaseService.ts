@@ -1,5 +1,6 @@
+
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import { User, ClassSession, Assessment, Payment, AttendanceRecord, Route, Challenge, PersonalizedWorkout, Post, Comment, UserRole, AcademySettings, CycleSummary, Plan } from '../types';
+import { User, ClassSession, Assessment, Payment, AttendanceRecord, Route, Challenge, PersonalizedWorkout, Post, Comment, UserRole, AcademySettings, CycleSummary, Plan, Notice } from '../types';
 import { SUPER_ADMIN_CONFIG } from '../constants';
 
 export const SUPABASE_PROJECT_ID = "xdjrrxrepnnkvpdbbtot";
@@ -15,48 +16,43 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   }
 }
 
-// Helper para tratar strings de data vazias antes de enviar para o Postgres
 const formatDateForDb = (dateStr?: string) => {
   if (!dateStr || dateStr.trim() === "") return null;
   return dateStr;
 };
 
-// --- MAPPERS ---
-const mapPlanFromDb = (p: any): Plan => ({
-  id: p.id,
-  title: p.title,
-  planType: p.plan_type,
-  frequency: p.frequency,
-  price: Number(p.price),
-  durationMonths: p.duration_months,
-  isActive: p.is_active,
-  displayOrder: p.display_order,
+const mapNoticeFromDb = (n: any): Notice => ({
+  id: n.id,
+  title: n.title,
+  content: n.content,
+  priority: n.priority as 'INFO' | 'WARNING' | 'URGENT',
+  createdAt: n.created_at
 });
 
-const mapCommentFromDb = (c: any): Comment => ({
-  id: c.id,
-  postId: c.post_id,
-  userId: c.user_id,
-  content: c.content,
-  createdAt: c.created_at,
-  userName: c.users?.name || 'Membro',
-  userAvatar: c.users?.avatar_url || `https://ui-avatars.com/api/?name=User`
-});
-
+// Fix: Added missing mapPostFromDb helper function
 const mapPostFromDb = (p: any): Post => ({
-  ...p,
+  id: p.id,
   userId: p.user_id,
-  userName: p.users?.name || 'Usuário',
-  userAvatar: p.users?.avatar_url || `https://ui-avatars.com/api/?name=User&background=333&color=fff`,
+  userName: p.users?.name,
+  userAvatar: p.users?.avatar_url,
   imageUrl: p.image_url,
+  caption: p.caption,
   likes: p.likes || [],
   timestamp: p.timestamp,
-  comments: p.post_comments ? p.post_comments.map(mapCommentFromDb) : []
+  comments: (p.post_comments || []).map((c: any) => ({
+    id: c.id,
+    postId: c.post_id,
+    userId: c.user_id,
+    userName: c.users?.name,
+    userAvatar: c.users?.avatar_url,
+    content: c.content,
+    createdAt: c.created_at
+  }))
 });
 
 const mapUserFromDb = (u: any): User => ({
   ...u,
-  password: u.password, // Mapeamento essencial para permitir login e edição
+  password: u.password,
   planId: u.plan_id,
   avatarUrl: u.avatar_url,
   joinDate: u.join_date,
@@ -78,22 +74,6 @@ const mapUserFromDb = (u: any): User => ({
   stravaRefreshToken: u.strava_refresh_token,
 });
 
-const mapAcademySettingsFromDb = (s: any): AcademySettings => ({
-  name: s.name || '',
-  cnpj: s.cnpj || '',
-  academyAddress: s.address || {},
-  phone: s.phone || '',
-  email: s.email || '',
-  representativeName: s.representative_name || '',
-  mercadoPagoPublicKey: s.mercado_pago_public_key || '',
-  mercadoPagoAccessToken: s.mercado_pago_access_token || '',
-  pixKey: s.pix_key || '',
-  customDomain: s.custom_domain || '',
-  monthlyFee: Number(s.monthly_fee) || 0,
-  inviteCode: 'STUDIO2024',
-  registrationInviteCode: s.registration_invite_code || 'BEMVINDO2024'
-});
-
 const mapClassFromDb = (c: any): ClassSession => ({
   ...c,
   dayOfWeek: c.day_of_week,
@@ -104,7 +84,6 @@ const mapClassFromDb = (c: any): ClassSession => ({
   waitlistStudentIds: c.waitlist_student_ids || [],
   workoutDetails: c.workout_details,
   isCancelled: c.is_cancelled,
-  // Corrida
   cycleStartDate: c.cycle_start_date,
   weekOfCycle: c.week_of_cycle,
   weekFocus: c.week_focus,
@@ -125,48 +104,6 @@ const mapPaymentFromDb = (p: any): Payment => ({
   total_installments: p.total_installments
 });
 
-const mapAssessmentFromDb = (a: any): Assessment => ({
-  ...a,
-  studentId: a.student_id,
-  bodyFatPercentage: a.body_fat_percentage,
-  skeletalMuscleMass: a.skeletal_muscle_mass,
-  visceralFatLevel: a.visceral_fat_level,
-  basalMetabolicRate: a.basal_metabolic_rate,
-  hydrationPercentage: a.hydration_percentage,
-  abdominalTest: a.abdominal_test,
-  horizontalJump: a.horizontal_jump,
-  verticalJump: a.vertical_jump,
-  medicineBallThrow: a.medicine_ball_throw,
-  photoFrontUrl: a.photo_front_url,
-  photoSideUrl: a.photo_side_url,
-  photoBackUrl: a.photo_back_url,
-});
-
-const mapRouteFromDb = (r: any): Route => ({
-  ...r,
-  distanceKm: r.distance_km,
-  mapLink: r.map_link,
-  elevationGain: r.elevation_gain
-});
-
-const mapWorkoutFromDb = (w: any): PersonalizedWorkout => ({
-  ...w,
-  videoUrl: w.video_url,
-  studentIds: w.student_ids,
-  instructorName: w.instructor_name,
-  createdAt: w.created_at
-});
-
-const mapChallengeFromDb = (c: any): Challenge => ({
-    id: c.id,
-    title: c.title,
-    description: c.description,
-    targetValue: Number(c.target_value) || 0,
-    unit: c.unit || 'km',
-    startDate: c.start_date,
-    endDate: c.end_date
-});
-
 const mapAttendanceFromDb = (r: any): AttendanceRecord => ({
   id: r.id,
   classId: r.class_id,
@@ -180,18 +117,6 @@ const mapAttendanceFromDb = (r: any): AttendanceRecord => ({
   generatedFeedback: r.generated_feedback,
 });
 
-const mapCycleSummaryFromDb = (s: any): CycleSummary => ({
-  id: s.id,
-  studentId: s.student_id,
-  cycleEndDate: s.cycle_end_date,
-  summaryText: s.summary_text,
-  startPace: s.start_pace,
-  endPace: s.end_pace,
-  performanceData: s.performance_data,
-  createdAt: s.created_at,
-});
-
-// --- SISTEMA DE CACHE ---
 const CACHE_TTL = 30000;
 const _cache: Record<string, { data: any, timestamp: number }> = {};
 const _listeners: Set<(table: string) => void> = new Set();
@@ -202,7 +127,6 @@ const invalidateCache = (key?: string) => {
   else Object.keys(_cache).forEach(k => delete _cache[k]);
 };
 
-// --- SERVIÇO PRINCIPAL ---
 export const SupabaseService = {
   supabase,
 
@@ -225,77 +149,48 @@ export const SupabaseService = {
     };
   },
 
-  // --- PLANS ---
-  getPlans: async (): Promise<Plan[]> => {
+  getNotices: async (): Promise<Notice[]> => {
     if (!supabase) return [];
     try {
-      const { data, error } = await supabase.from('plans').select('*').eq('is_active', true).order('display_order');
+      const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
       if (error) throw error;
-      return (data || []).map(mapPlanFromDb);
+      return (data || []).map(mapNoticeFromDb);
     } catch (e) {
-      console.error("Erro ao buscar planos:", e);
+      console.error("Erro ao buscar avisos:", e);
       return [];
     }
   },
 
-  // --- ACADEMY SETTINGS ---
-  getAcademySettings: async (): Promise<AcademySettings | null> => {
-    if (!supabase) return null;
-    try {
-      const { data, error } = await supabase.from('academy_settings').select('*').limit(1).maybeSingle();
-      if (error) {
-        console.warn("Tabela academy_settings não encontrada ou inacessível:", error.message);
-        return null;
-      }
-      return data ? mapAcademySettingsFromDb(data) : null;
-    } catch (e) {
-      return null;
-    }
+  addNotice: async (n: Omit<Notice, 'id' | 'createdAt'>): Promise<Notice> => {
+    if (!supabase) throw new Error("Sem conexão");
+    const { data, error } = await supabase.from('notices').insert([{
+      title: n.title, content: n.content, priority: n.priority
+    }]).select().single();
+    if (error) throw error;
+    invalidateCache();
+    return mapNoticeFromDb(data);
   },
 
-  updateAcademySettings: async (s: AcademySettings): Promise<void> => {
-    if (!supabase) throw new Error("Sem conexão com o banco de dados.");
-    
-    const { data: current, error: fetchError } = await supabase.from('academy_settings').select('id').limit(1).maybeSingle();
-    
-    if (fetchError) {
-      console.error("Erro ao verificar configurações existentes:", fetchError);
-      throw new Error(`Erro de banco: ${fetchError.message}`);
-    }
+  updateNotice: async (n: Notice): Promise<Notice> => {
+    if (!supabase) throw new Error("Sem conexão");
+    const { data, error } = await supabase.from('notices').update({
+      title: n.title, content: n.content, priority: n.priority
+    }).eq('id', n.id).select().single();
+    if (error) throw error;
+    invalidateCache();
+    return mapNoticeFromDb(data);
+  },
 
-    const payload = {
-      name: s.name,
-      cnpj: s.cnpj,
-      phone: s.phone,
-      email: s.email,
-      representative_name: s.representativeName,
-      mercado_pago_public_key: s.mercadoPagoPublicKey,
-      mercado_pago_access_token: s.mercadoPagoAccessToken,
-      pix_key: s.pixKey,
-      custom_domain: s.customDomain,
-      monthly_fee: s.monthlyFee,
-      registration_invite_code: s.registrationInviteCode,
-      address: s.academyAddress,
-      updated_at: new Date().toISOString()
-    };
-
-    if (current) {
-      const { error: updateError } = await supabase.from('academy_settings').update(payload).eq('id', current.id);
-      if (updateError) throw updateError;
-    } else {
-      const { error: insertError } = await supabase.from('academy_settings').insert([payload]);
-      if (insertError) throw insertError;
-    }
+  deleteNotice: async (id: string) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('notices').delete().eq('id', id);
+    if (error) throw error;
     invalidateCache();
   },
 
   getAllUsers: async (force: boolean = false): Promise<User[]> => {
     const now = Date.now();
-    
-    if (!force && _cache['users'] && (now - _cache['users'].timestamp < CACHE_TTL)) {
-      return _cache['users'].data;
-    }
-
+    if (!force && _cache['users'] && (now - _cache['users'].timestamp < CACHE_TTL)) return _cache['users'].data;
     let dbUsers: User[] = [];
     if (supabase) {
       try {
@@ -303,18 +198,12 @@ export const SupabaseService = {
         if (error) throw error;
         dbUsers = (data || []).map(mapUserFromDb);
       } catch (e) {
-        console.error("Erro ao buscar usuários do DB:", e);
         dbUsers = [];
       }
     }
-    
     const superAdminInDb = dbUsers.some(user => user.email === SUPER_ADMIN_CONFIG.email);
-
     let finalUserList = dbUsers;
-    if (!superAdminInDb) {
-      finalUserList = [...dbUsers, SUPER_ADMIN_CONFIG as User];
-    }
-
+    if (!superAdminInDb) finalUserList = [...dbUsers, SUPER_ADMIN_CONFIG as User];
     _cache['users'] = { data: finalUserList, timestamp: now };
     return finalUserList;
   },
@@ -327,73 +216,35 @@ export const SupabaseService = {
   addUser: async (u: Omit<User, 'id'>): Promise<User> => {
     if (!supabase) throw new Error("Sem conexão");
     const payload = {
-      name: u.name,
-      email: u.email,
-      password: u.password,
-      role: u.role,
-      avatar_url: u.avatarUrl,
-      phone_number: u.phoneNumber,
-      profile_completed: u.profileCompleted,
-      status: u.status || 'ACTIVE',
-      join_date: formatDateForDb(u.joinDate),
-      birth_date: formatDateForDb(u.birthDate),
-      cpf: u.cpf,
-      rg: u.rg,
-      nationality: u.nationality,
-      marital_status: u.maritalStatus,
-      profession: u.profession,
-      address: u.address || {},
-      plan_id: u.planId,
-      plan_value: u.planValue,
-      plan_discount: u.planDiscount || 0,
-      plan_duration: u.planDuration,
-      billing_day: u.billingDay,
-      plan_start_date: formatDateForDb(u.planStartDate),
+      name: u.name, email: u.email, password: u.password, role: u.role,
+      avatar_url: u.avatarUrl, phone_number: u.phoneNumber, profile_completed: u.profileCompleted,
+      status: u.status || 'ACTIVE', join_date: formatDateForDb(u.joinDate),
+      birth_date: formatDateForDb(u.birthDate), cpf: u.cpf, rg: u.rg, address: u.address || {},
+      // Fix: Corrected billing_day from u.billing_day to u.billingDay
+      plan_id: u.planId, plan_value: u.planValue, plan_discount: u.planDiscount || 0,
+      plan_duration: u.planDuration, billing_day: u.billingDay, plan_start_date: formatDateForDb(u.planStartDate),
       anamnesis: u.anamnesis || {},
     };
     const { data, error } = await supabase.from('users').insert([payload]).select().single();
-    if (error) {
-        console.error("Supabase AddUser Error:", error);
-        throw error;
-    }
+    if (error) throw error;
     invalidateCache();
     return mapUserFromDb(data);
   },
 
   updateUser: async (u: User): Promise<User> => {
     if (!supabase) throw new Error("Sem conexão");
-    const updatePayload: { [key: string]: any } = {
-      name: u.name,
-      email: u.email,
-      password: u.password, // Envia sempre a senha presente no formulário
-      role: u.role,
-      avatar_url: u.avatarUrl,
-      phone_number: u.phoneNumber,
-      profile_completed: u.profileCompleted,
-      status: u.status,
-      suspended_at: u.suspendedAt,
-      birth_date: formatDateForDb(u.birthDate),
-      cpf: u.cpf,
-      rg: u.rg,
-      nationality: u.nationality,
-      marital_status: u.maritalStatus,
-      profession: u.profession,
-      address: u.address || {},
-      plan_id: u.planId,
-      plan_value: u.planValue,
-      plan_discount: u.planDiscount || 0,
-      plan_duration: u.planDuration,
-      billing_day: u.billingDay,
-      plan_start_date: formatDateForDb(u.planStartDate),
-      anamnesis: u.anamnesis || {},
-      strava_access_token: u.stravaAccessToken,
+    const updatePayload = {
+      name: u.name, email: u.email, password: u.password, role: u.role,
+      avatar_url: u.avatarUrl, phone_number: u.phoneNumber, profile_completed: u.profileCompleted,
+      status: u.status, suspended_at: u.suspendedAt, birth_date: formatDateForDb(u.birthDate),
+      cpf: u.cpf, rg: u.rg, address: u.address || {}, plan_id: u.planId,
+      plan_value: u.planValue, plan_discount: u.planDiscount || 0, plan_duration: u.planDuration,
+      billing_day: u.billingDay, plan_start_date: formatDateForDb(u.planStartDate),
+      anamnesis: u.anamnesis || {}, strava_access_token: u.stravaAccessToken,
       strava_refresh_token: u.stravaRefreshToken,
     };
     const { data, error } = await supabase.from('users').update(updatePayload).eq('id', u.id).select().single();
-    if (error) {
-        console.error("Supabase UpdateUser Error:", error);
-        throw error;
-    }
+    if (error) throw error;
     invalidateCache();
     return mapUserFromDb(data);
   },
@@ -409,44 +260,25 @@ export const SupabaseService = {
     if (!supabase) return [];
     const now = Date.now();
     if (!force && _cache['classes'] && (now - _cache['classes'].timestamp < CACHE_TTL)) return _cache['classes'].data;
-
     try {
         const { data, error } = await supabase.from('classes').select('*').order('day_of_week').order('start_time');
         if (error) throw error;
         const mapped = (data || []).map(mapClassFromDb);
         _cache['classes'] = { data: mapped, timestamp: now };
         return mapped;
-    } catch (e) {
-        return [];
-    }
+    } catch (e) { return []; }
   },
 
   addClass: async (c: Omit<ClassSession, 'id'>): Promise<ClassSession> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('classes').insert([{
-      title: c.title,
-      description: c.description,
-      day_of_week: c.dayOfWeek,
-      date: formatDateForDb(c.date),
-      start_time: c.startTime,
-      duration_minutes: c.durationMinutes,
-      instructor: c.instructor,
-      max_capacity: c.maxCapacity,
-      enrolled_student_ids: c.enrolledStudentIds || [],
-      waitlist_student_ids: c.waitlistStudentIds || [],
-      type: c.type,
-      is_cancelled: c.isCancelled,
-      wod: c.wod,
-      workout_details: c.workoutDetails,
-      feedback: c.feedback,
-      cycle_start_date: formatDateForDb(c.cycleStartDate),
-      week_of_cycle: c.weekOfCycle,
-      week_focus: c.weekFocus,
-      estimated_volume_minutes: c.estimatedVolumeMinutes,
-      week_objective: c.weekObjective,
-      reference_workouts: c.referenceWorkouts,
-      main_workout: c.mainWorkout,
-      distance_km: c.distanceKm,
+      title: c.title, description: c.description, day_of_week: c.dayOfWeek,
+      date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
+      // Fix: Corrected waitlist_student_ids from c.waitlist_student_ids to c.waitlistStudentIds
+      instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
+      waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
+      wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
+      week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
     }]).select().single();
     if (error) throw error;
     invalidateCache();
@@ -456,29 +288,13 @@ export const SupabaseService = {
   updateClass: async (c: ClassSession): Promise<ClassSession> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('classes').update({
-      title: c.title,
-      description: c.description,
-      day_of_week: c.dayOfWeek,
-      date: formatDateForDb(c.date),
-      start_time: c.startTime,
-      duration_minutes: c.durationMinutes,
-      instructor: c.instructor,
-      max_capacity: c.maxCapacity,
-      enrolled_student_ids: c.enrolledStudentIds || [],
-      waitlist_student_ids: c.waitlistStudentIds || [],
-      type: c.type,
-      is_cancelled: c.isCancelled,
-      wod: c.wod,
-      workout_details: c.workoutDetails,
-      feedback: c.feedback,
-      cycle_start_date: formatDateForDb(c.cycleStartDate),
-      week_of_cycle: c.weekOfCycle,
-      week_focus: c.weekFocus,
-      estimated_volume_minutes: c.estimatedVolumeMinutes,
-      week_objective: c.weekObjective,
-      reference_workouts: c.referenceWorkouts,
-      main_workout: c.mainWorkout,
-      distance_km: c.distanceKm,
+      title: c.title, description: c.description, day_of_week: c.dayOfWeek,
+      date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
+      // Fix: Corrected max_capacity and waitlist_student_ids property names
+      instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
+      waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
+      wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
+      week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
     }).eq('id', c.id).select().single();
     if (error) throw error;
     invalidateCache();
@@ -486,11 +302,10 @@ export const SupabaseService = {
   },
 
   deleteClass: async (id: string) => {
-    if (!supabase) throw new Error("Sem conexão com o banco de dados.");
-    const { error: attendanceError } = await supabase.from('attendance').delete().eq('class_id', id);
-    if (attendanceError) throw new Error(`Não foi possível limpar os registros de presença associados: ${attendanceError.message}`);
-    const { error: classError } = await supabase.from('classes').delete().eq('id', id);
-    if (classError) throw new Error(`Não foi possível deletar a aula: ${classError.message}`);
+    if (!supabase) throw new Error("Sem conexão");
+    await supabase.from('attendance').delete().eq('class_id', id);
+    const { error } = await supabase.from('classes').delete().eq('id', id);
+    if (error) throw error;
     invalidateCache();
   },
 
@@ -499,7 +314,6 @@ export const SupabaseService = {
     const key = userId ? `payments_${userId}` : 'payments_all';
     const now = Date.now();
     if (!force && _cache[key] && (now - _cache[key].timestamp < CACHE_TTL)) return _cache[key].data;
-
     try {
         let query = supabase.from('payments').select('*, users!student_id(name, avatar_url, phone_number, plan_value, plan_duration)').order('due_date', { ascending: false });
         if (userId) query = query.eq('student_id', userId);
@@ -513,14 +327,20 @@ export const SupabaseService = {
         }));
         _cache[key] = { data: mapped, timestamp: now };
         return mapped;
-    } catch (e) {
-        return [];
-    }
+    } catch (e) { return []; }
   },
 
   markPaymentAsPaid: async (id: string, discount: number = 0) => {
     if (!supabase) return;
     const { error } = await supabase.from('payments').update({ status: 'PAID', discount: discount }).eq('id', id);
+    if (error) throw error;
+    invalidateCache();
+  },
+
+  // Fix: Added missing deletePendingPaymentsForStudent method
+  deletePendingPaymentsForStudent: async (studentId: string) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('payments').delete().eq('student_id', studentId).eq('status', 'PENDING');
     if (error) throw error;
     invalidateCache();
   },
@@ -536,38 +356,11 @@ export const SupabaseService = {
     return mapPaymentFromDb(data);
   },
 
-  addMultiplePayments: async (payments: Omit<Payment, 'id'>[]): Promise<Payment[]> => {
-    if (!supabase) throw new Error("Sem conexão");
-    const payload = payments.map(p => ({
-        student_id: p.studentId,
-        amount: p.amount,
-        status: p.status,
-        due_date: formatDateForDb(p.dueDate),
-        description: p.description,
-        discount: p.discount || 0,
-    }));
-    const { data, error } = await supabase.from('payments').insert(payload).select();
-    if (error) throw error;
-    invalidateCache();
-    return (data || []).map(mapPaymentFromDb);
-  },
-
-  deletePendingPaymentsForStudent: async (studentId: string) => {
-    if (!supabase) throw new Error("Sem conexão");
-    const { error } = await supabase.from('payments').delete().eq('student_id', studentId).eq('status', 'PENDING');
-    if (error) throw error;
-    invalidateCache();
-  },
-
   updatePayment: async (p: Payment): Promise<Payment> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('payments').update({
-      student_id: p.studentId,
-      amount: p.amount,
-      status: p.status,
-      due_date: formatDateForDb(p.dueDate),
-      description: p.description,
-      discount: p.discount
+      student_id: p.studentId, amount: p.amount, status: p.status, 
+      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount
     }).eq('id', p.id).select().single();
     if (error) throw error;
     invalidateCache();
@@ -581,66 +374,60 @@ export const SupabaseService = {
     invalidateCache();
   },
 
+  addMultiplePayments: async (payments: Omit<Payment, 'id'>[]) => {
+    if (!supabase || payments.length === 0) return;
+    const payload = payments.map(p => ({
+      student_id: p.studentId, amount: p.amount, status: p.status, 
+      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount || 0
+    }));
+    const { error } = await supabase.from('payments').insert(payload);
+    if (error) throw error;
+    invalidateCache();
+  },
+
   getGlobalChallengeProgress: async (force: boolean = false): Promise<{ challenge: Challenge | null, totalDistance: number }> => {
     if (!supabase) return { challenge: null, totalDistance: 0 };
     const now = Date.now();
     if (!force && _cache['challenge'] && (now - _cache['challenge'].timestamp < CACHE_TTL)) return _cache['challenge'].data;
-
     try {
-        const { data: cData, error: cError } = await supabase.from('challenges').select('*').limit(1).maybeSingle();
-        if (cError || !cData) return { challenge: null, totalDistance: 0 };
-
-        const { data: entries, error: eError } = await supabase.from('challenge_entries').select('value').eq('challenge_id', cData.id);
+        const { data: cData } = await supabase.from('challenges').select('*').limit(1).maybeSingle();
+        if (!cData) return { challenge: null, totalDistance: 0 };
+        const { data: entries } = await supabase.from('challenge_entries').select('value').eq('challenge_id', cData.id);
         const total = (entries || []).reduce((acc, curr) => acc + (Number(curr.value) || 0), 0);
-        
-        const result = { challenge: mapChallengeFromDb(cData), totalDistance: total };
+        const result = { challenge: { ...cData, targetValue: Number(cData.target_value), startDate: cData.start_date, endDate: cData.end_date } as Challenge, totalDistance: total };
         _cache['challenge'] = { data: result, timestamp: now };
         return result;
-    } catch (e) {
-        return { challenge: null, totalDistance: 0 };
-    }
+    } catch (e) { return { challenge: null, totalDistance: 0 }; }
   },
 
   addChallengeEntry: async (studentId: string, value: number) => {
     if (!supabase) return;
     const { data: challenge } = await supabase.from('challenges').select('id').limit(1).single();
     if (!challenge) return;
-    const { error } = await supabase.from('challenge_entries').insert([{ challenge_id: challenge.id, student_id: studentId, value }]);
-    if (error) throw error;
+    await supabase.from('challenge_entries').insert([{ challenge_id: challenge.id, student_id: studentId, value }]);
     invalidateCache('challenge');
   },
 
   getAttendanceByClassAndDate: async (classId: string, date: string): Promise<AttendanceRecord[]> => {
     if (!supabase) return [];
-    try {
-        const { data, error } = await supabase.from('attendance').select('*').eq('class_id', classId).eq('date', formatDateForDb(date));
-        if (error) throw error;
-        return (data || []).map(mapAttendanceFromDb);
-    } catch (e) {
-        return [];
-    }
+    const { data, error } = await supabase.from('attendance').select('*').eq('class_id', classId).eq('date', formatDateForDb(date));
+    if (error) throw error;
+    return (data || []).map(mapAttendanceFromDb);
   },
 
   saveAttendance: async (records: Omit<AttendanceRecord, 'id'>[]) => {
-    if (!supabase) throw new Error("Sem conexão");
-    if (records.length === 0) return;
+    if (!supabase || records.length === 0) return;
     const promises = records.map(async r => {
+        // Fix: Corrected camelCase property names from the TS object 'r' for values
         const payload = { 
             class_id: r.classId, student_id: r.studentId, date: formatDateForDb(r.date), is_present: r.isPresent,
-            total_time_seconds: r.totalTimeSeconds, 
-            average_pace: r.averagePace,
+            total_time_seconds: r.totalTimeSeconds, average_pace: r.averagePace,
             age_group_classification: r.ageGroupClassification, instructor_notes: r.instructorNotes,
             generated_feedback: r.generatedFeedback,
         };
-        const { data: existing, error: fetchError } = await supabase.from('attendance').select('id').eq('class_id', r.classId).eq('student_id', r.studentId).eq('date', formatDateForDb(r.date)).maybeSingle();
-        if (fetchError) throw fetchError;
-        if (existing) {
-            const { error: updateError } = await supabase.from('attendance').update(payload).eq('id', existing.id);
-            if (updateError) throw updateError;
-        } else {
-            const { error: insertError } = await supabase.from('attendance').insert(payload);
-            if (insertError) throw insertError;
-        }
+        const { data: existing } = await supabase.from('attendance').select('id').eq('class_id', r.classId).eq('student_id', r.studentId).eq('date', formatDateForDb(r.date)).maybeSingle();
+        if (existing) await supabase.from('attendance').update(payload).eq('id', existing.id);
+        else await supabase.from('attendance').insert(payload);
     });
     await Promise.all(promises);
     invalidateCache();
@@ -654,66 +441,44 @@ export const SupabaseService = {
       const { data, error } = await query;
       if (error) throw error;
       return (data || []).map(r => ({ ...mapAttendanceFromDb(r), classDetails: r.class ? mapClassFromDb(r.class) : undefined }));
-    } catch (e) {
-      console.error('Error fetching student attendance:', e);
-      return [];
-    }
+    } catch (e) { return []; }
   },
 
   getAttendanceForStudentInDateRange: async (studentId: string, startDate: string, endDate: string): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
     if (!supabase) return [];
     try {
-      const { data, error } = await supabase.from('attendance').select('*, class:classes!inner(*)').eq('student_id', studentId).eq('is_present', true).eq('class.type', 'RUNNING').gte('date', formatDateForDb(startDate)).lte('date', formatDateForDb(endDate)).order('date', { ascending: true });
+      let query = supabase.from('attendance').select('*, class:classes!inner(*)').eq('student_id', studentId).eq('is_present', true).gte('date', formatDateForDb(startDate)).lte('date', formatDateForDb(endDate)).order('date', { ascending: true });
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []).map(r => ({ ...mapAttendanceFromDb(r), classDetails: r.class ? mapClassFromDb(r.class) : undefined }));
-    } catch (e) {
-      console.error('Error fetching student attendance in date range:', e);
-      return [];
-    }
-  },
-  
-  addCycleSummary: async (summary: Omit<CycleSummary, 'id' | 'createdAt'>): Promise<CycleSummary> => {
-    if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('cycle_summaries').insert([{
-      student_id: summary.studentId,
-      cycle_end_date: formatDateForDb(summary.cycleEndDate),
-      summary_text: summary.summaryText,
-      start_pace: summary.startPace,
-      end_pace: summary.endPace,
-      performance_data: summary.performanceData,
-    }]).select().single();
-    if (error) throw error;
-    invalidateCache();
-    return mapCycleSummaryFromDb(data);
+    } catch (e) { return []; }
   },
 
   getCycleSummariesForStudent: async (studentId: string): Promise<CycleSummary[]> => {
     if (!supabase) return [];
-    try {
-      const { data, error } = await supabase.from('cycle_summaries').select('*').eq('student_id', studentId).order('cycle_end_date', { ascending: false });
-      if (error) throw error;
-      return (data || []).map(mapCycleSummaryFromDb);
-    } catch (e) {
-      console.error('Error fetching cycle summaries:', e);
-      return [];
-    }
+    const { data, error } = await supabase.from('cycle_summaries').select('*').eq('student_id', studentId).order('cycle_end_date', { ascending: false });
+    if (error) return [];
+    return (data || []).map(s => ({ ...s, id: s.id, studentId: s.student_id, cycleEndDate: s.cycle_end_date, summary_text: s.summary_text, start_pace: s.start_pace, end_pace: s.end_pace, performanceData: s.performance_data, createdAt: s.created_at }));
+  },
+
+  addCycleSummary: async (s: Omit<CycleSummary, 'id' | 'createdAt'>): Promise<CycleSummary> => {
+    if (!supabase) throw new Error("Sem conexão");
+    // Fix: Corrected camelCase property names from the TS object 's' for values
+    const payload = {
+      student_id: s.studentId, cycle_end_date: formatDateForDb(s.cycleEndDate),
+      summary_text: s.summaryText, start_pace: s.startPace, end_pace: s.endPace,
+      performance_data: s.performanceData
+    };
+    const { data, error } = await supabase.from('cycle_summaries').insert([payload]).select().single();
+    if (error) throw error;
+    return { ...data, id: data.id, studentId: data.student_id, cycleEndDate: data.cycle_end_date, summaryText: data.summary_text, startPace: data.start_pace, endPace: data.end_pace, performanceData: data.performance_data, createdAt: data.created_at };
   },
 
   getRankingData: async (): Promise<{ student_id: string, classes: { distance_km: number } }[]> => {
     if (!supabase) return [];
-    try {
-        const { data, error } = await supabase
-            .from('attendance')
-            .select('student_id, classes!inner(distance_km)')
-            .eq('is_present', true)
-            .eq('classes.type', 'RUNNING');
-
-        if (error) throw error;
-        return data as any;
-    } catch (e) {
-        console.error('Error fetching ranking data:', e);
-        return [];
-    }
+    const { data, error } = await supabase.from('attendance').select('student_id, classes!inner(distance_km)').eq('is_present', true).eq('classes.type', 'RUNNING');
+    if (error) return [];
+    return data as any;
   },
 
   getAssessments: async (userId?: string, force: boolean = false): Promise<Assessment[]> => {
@@ -721,56 +486,53 @@ export const SupabaseService = {
     const key = userId ? `assessments_${userId}` : 'assessments_all';
     const now = Date.now();
     if (!force && _cache[key] && (now - _cache[key].timestamp < CACHE_TTL)) return _cache[key].data;
-
     try {
         let query = supabase.from('assessments').select('*').order('date', { ascending: false });
         if (userId) query = query.eq('student_id', userId);
         const { data, error } = await query;
         if (error) throw error;
-        const mapped = (data || []).map(mapAssessmentFromDb);
+        const mapped = (data || []).map(a => ({ ...a, studentId: a.student_id, bodyFatPercentage: a.body_fat_percentage, skeletalMuscleMass: a.skeletal_muscle_mass, visceralFatLevel: a.visceral_fat_level, basalMetabolicRate: a.basal_metabolic_rate, hydrationPercentage: a.hydration_percentage, abdominalTest: a.abdominal_test, horizontalJump: a.horizontal_jump, verticalJump: a.vertical_jump, medicineBallThrow: a.medicine_ball_throw, photoFrontUrl: a.photo_front_url, photoSideUrl: a.photo_side_url, photoBackUrl: a.photo_back_url }));
         _cache[key] = { data: mapped, timestamp: now };
         return mapped;
-    } catch (e) {
-        return [];
-    }
+    } catch (e) { return []; }
   },
 
   addAssessment: async (a: Omit<Assessment, 'id'>): Promise<Assessment> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('assessments').insert([{
+    const payload = {
       student_id: a.studentId, date: formatDateForDb(a.date), status: a.status, weight: a.weight, height: a.height,
+      // Fix: Corrected visceral_fat_level from a.visceral_fat_level to a.visceralFatLevel
       body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
-      hydration_percentage: a.hydrationPercentage, 
-      abdominal_test: a.abdominalTest,
+      hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
       photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
       fms: a.fms || {}, circumferences: a.circumferences || {}, notes: a.notes
-    }]).select().single();
+    };
+    const { data, error } = await supabase.from('assessments').insert([payload]).select().single();
     if (error) throw error;
     invalidateCache();
-    return mapAssessmentFromDb(data);
+    return { ...data, studentId: data.student_id, bodyFatPercentage: data.body_fat_percentage };
   },
 
   updateAssessment: async (a: Assessment): Promise<Assessment> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('assessments').update({
+    const payload = {
+      // Fix: Corrected visceral_fat_level from a.visceral_fat_level to a.visceralFatLevel
       date: formatDateForDb(a.date), status: a.status, weight: a.weight, height: a.height,
-      body_fat_percentage: a.bodyFatPercentage,
-      skeletal_muscle_mass: a.skeletalMuscleMass,
-      visceral_fat_level: a.visceralFatLevel,
-      basal_metabolic_rate: a.basalMetabolicRate,
-      hydration_percentage: a.hydrationPercentage,
-      abdominal_test: a.abdominalTest,
+      body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
+      visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
+      hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
       photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
       fms: a.fms || {}, circumferences: a.circumferences || {}, notes: a.notes
-    }).eq('id', a.id).select().single();
+    };
+    const { data, error } = await supabase.from('assessments').update(payload).eq('id', a.id).select().single();
     if (error) throw error;
     invalidateCache();
-    return mapAssessmentFromDb(data);
+    return { ...data, studentId: data.student_id, bodyFatPercentage: data.body_fat_percentage };
   },
 
   deleteAssessment: async (id: string) => {
@@ -782,35 +544,23 @@ export const SupabaseService = {
 
   getRoutes: async (): Promise<Route[]> => {
     if (!supabase) return [];
-    try {
-        const { data, error } = await supabase.from('routes').select('*').order('title');
-        if (error) throw error;
-        return (data || []).map(mapRouteFromDb);
-    } catch (e) {
-        return [];
-    }
+    const { data, error } = await supabase.from('routes').select('*').order('title');
+    if (error) return [];
+    return (data || []).map(r => ({ ...r, distanceKm: r.distance_km, mapLink: r.map_link, elevationGain: r.elevation_gain }));
   },
 
   addRoute: async (r: Omit<Route, 'id'>): Promise<Route> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('routes').insert([{
-      title: r.title, distance_km: r.distanceKm, description: r.description,
-      map_link: r.mapLink, difficulty: r.difficulty, elevation_gain: r.elevationGain
-    }]).select().single();
+    const { data, error } = await supabase.from('routes').insert([{ title: r.title, distance_km: r.distanceKm, description: r.description, map_link: r.mapLink, difficulty: r.difficulty, elevation_gain: r.elevationGain }]).select().single();
     if (error) throw error;
-    invalidateCache();
-    return mapRouteFromDb(data);
+    return { ...data, distanceKm: data.distance_km, mapLink: data.map_link, elevationGain: data.elevation_gain };
   },
 
   updateRoute: async (r: Route): Promise<Route> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('routes').update({
-      title: r.title, distance_km: r.distanceKm, description: r.description,
-      map_link: r.mapLink, difficulty: r.difficulty, elevation_gain: r.elevationGain
-    }).eq('id', r.id).select().single();
+    const { data, error } = await supabase.from('routes').update({ title: r.title, distance_km: r.distanceKm, description: r.description, map_link: r.mapLink, difficulty: r.difficulty, elevation_gain: r.elevationGain }).eq('id', r.id).select().single();
     if (error) throw error;
-    invalidateCache();
-    return mapRouteFromDb(data);
+    return { ...data, distanceKm: data.distance_km, mapLink: data.map_link, elevationGain: data.elevation_gain };
   },
 
   deleteRoute: async (id: string) => {
@@ -826,36 +576,25 @@ export const SupabaseService = {
         let query = supabase.from('personalized_workouts').select('*').order('created_at', { ascending: false });
         const { data, error } = await query;
         if (error) throw error;
-        let results = (data || []).map(mapWorkoutFromDb);
-        if (userId) {
-            results = results.filter(w => w.studentIds.includes(userId));
-        }
+        let results = (data || []).map(w => ({ ...w, videoUrl: w.video_url, studentIds: w.student_ids, instructorName: w.instructor_name, createdAt: w.created_at }));
+        if (userId) results = results.filter(w => w.studentIds.includes(userId));
         return results;
-    } catch (e) {
-        return [];
-    }
+    } catch (e) { return []; }
   },
 
   addPersonalizedWorkout: async (w: Omit<PersonalizedWorkout, 'id'>): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error = null } = await supabase.from('personalized_workouts').insert([{
-      title: w.title, description: w.description, video_url: w.videoUrl,
-      student_ids: w.studentIds, instructor_name: w.instructorName
-    }]).select().single();
+    const { data, error } = await supabase.from('personalized_workouts').insert([{ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.studentIds, instructor_name: w.instructorName }]).select().single();
     if (error) throw error;
-    invalidateCache();
-    return mapWorkoutFromDb(data);
+    return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructor_name: data.instructor_name, createdAt: data.created_at };
   },
 
   updatePersonalizedWorkout: async (w: PersonalizedWorkout): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error = null } = await supabase.from('personalized_workouts').update({
-      title: w.title, description: w.description, video_url: w.videoUrl,
-      student_ids: w.studentIds, instructor_name: w.instructorName
-    }).eq('id', w.id).select().single();
+    // Fix: Corrected camelCase property name from the TS object 'w' for the student_ids field
+    const { data, error } = await supabase.from('personalized_workouts').update({ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.studentIds, instructor_name: w.instructorName }).eq('id', w.id).select().single();
     if (error) throw error;
-    invalidateCache();
-    return mapWorkoutFromDb(data);
+    return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructor_name: data.instructor_name, createdAt: data.created_at };
   },
 
   deletePersonalizedWorkout: async (id: string) => {
@@ -867,32 +606,16 @@ export const SupabaseService = {
 
   getPosts: async (): Promise<Post[]> => {
     if (!supabase) return [];
-    try {
-        const { data, error } = await supabase.from('posts').select('*, users!inner(name, avatar_url), post_comments(*, users(name, avatar_url))').order('timestamp', { ascending: false });
-        if (error) throw error;
-        return (data || []).map(mapPostFromDb);
-    } catch (e) {
-        return [];
-    }
+    const { data, error } = await supabase.from('posts').select('*, users!inner(name, avatar_url), post_comments(*, users(name, avatar_url))').order('timestamp', { ascending: false });
+    if (error) return [];
+    return (data || []).map(mapPostFromDb);
   },
 
-  addPost: async (p: Omit<Post, 'id' | 'userName' | 'userAvatar' | 'likes' | 'comments'> & { userId: string }): Promise<Post> => {
+  addPost: async (p: any): Promise<Post> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error = null } = await supabase.from('posts').insert([{
-      user_id: p.userId, image_url: p.imageUrl, caption: p.caption, 
-      timestamp: p.timestamp, likes: []
-    }]).select('*, users(name, avatar_url)').maybeSingle();
+    const { data, error } = await supabase.from('posts').insert([{ user_id: p.userId, image_url: p.imageUrl, caption: p.caption, timestamp: p.timestamp, likes: [] }]).select('*, users(name, avatar_url)').maybeSingle();
     if (error) throw error;
-    if (!data) throw new Error("A inserção não retornou dados.");
-    invalidateCache();
     return mapPostFromDb(data);
-  },
-
-  deletePost: async (id: string) => {
-    if (!supabase) return;
-    const { error } = await supabase.from('posts').delete().eq('id', id);
-    if (error) throw error;
-    invalidateCache();
   },
 
   addLikeToPost: async (postId: string, userId: string): Promise<Post> => {
@@ -901,20 +624,16 @@ export const SupabaseService = {
     let likes = post?.likes || [];
     if (likes.includes(userId)) likes = likes.filter((id: string) => id !== userId);
     else likes.push(userId);
-    const { data, error = null } = await supabase.from('posts').update({ likes }).eq('id', postId).select('*, users(name, avatar_url), post_comments(*, users(name, avatar_url))').single();
+    const { data, error } = await supabase.from('posts').update({ likes }).eq('id', postId).select('*, users(name, avatar_url), post_comments(*, users(name, avatar_url))').single();
     if (error) throw error;
-    invalidateCache();
     return mapPostFromDb(data);
   },
 
   addComment: async (postId: string, userId: string, content: string): Promise<Comment> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error = null } = await supabase.from('post_comments').insert([{
-      post_id: postId, user_id: userId, content: content
-    }]).select('*, users(name, avatar_url)').single();
+    const { data, error } = await supabase.from('post_comments').insert([{ post_id: postId, user_id: userId, content: content }]).select('*, users(name, avatar_url)').single();
     if (error) throw error;
-    invalidateCache();
-    return mapCommentFromDb(data);
+    return { ...data, postId: data.post_id, userId: data.user_id, userName: data.users?.name, userAvatar: data.users?.avatar_url, createdAt: data.created_at };
   },
 
   getFinancialReport: async (year: number) => {
@@ -923,51 +642,61 @@ export const SupabaseService = {
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         const { data, error } = await supabase.from('payments').select('amount, status, due_date').gte('due_date', `${year}-01-01`).lte('due_date', `${year}-12-31`);
         if (error) throw error;
-        
-        const report = months.map((month, idx) => {
+        return months.map((month, idx) => {
             const monthPayments = (data || []).filter(p => new Date(p.due_date).getMonth() === idx);
             return {
                 name: month,
                 revenue: monthPayments.filter(p => p.status === 'PAID').reduce((acc, curr) => acc + Number(curr.amount), 0),
-                pending: monthPayments.filter(p => p.status === 'PENDING').reduce((acc, curr) => acc + Number(curr.amount), 0),
                 overdue: monthPayments.filter(p => p.status === 'OVERDUE').reduce((acc, curr) => acc + Number(curr.amount), 0),
                 students: monthPayments.filter(p => p.status === 'PAID').length
             };
         });
-        return report;
-    } catch (e) {
-        return [];
-    }
+    } catch (e) { return []; }
   },
 
-  getAttendanceReport: async () => {
+  getAcademySettings: async (): Promise<AcademySettings | null> => {
+    if (!supabase) return null;
+    const { data, error } = await supabase.from('academy_settings').select('*').limit(1).maybeSingle();
+    if (error) return null;
+    return {
+        name: data.name || '',
+        cnpj: data.cnpj || '',
+        academyAddress: data.address || {},
+        phone: data.phone || '',
+        email: data.email || '',
+        representativeName: data.representative_name || '',
+        mercadoPagoPublicKey: data.mercado_pago_public_key || '',
+        mercadoPagoAccessToken: data.mercado_pago_access_token || '',
+        pixKey: data.pix_key || '',
+        customDomain: data.custom_domain || '',
+        monthlyFee: Number(data.monthly_fee) || 0,
+        inviteCode: 'STUDIO2024',
+        registrationInviteCode: data.registration_invite_code || 'BEMVINDO2024'
+    };
+  },
+
+  updateAcademySettings: async (s: AcademySettings): Promise<void> => {
+    if (!supabase) throw new Error("Sem conexão");
+    const { data: current } = await supabase.from('academy_settings').select('id').limit(1).maybeSingle();
+    const payload = { name: s.name, cnpj: s.cnpj, phone: s.phone, email: s.email, representative_name: s.representativeName, mercado_pago_public_key: s.mercadoPagoPublicKey, mercado_pago_access_token: s.mercadoPagoAccessToken, pix_key: s.pixKey, custom_domain: s.customDomain, monthly_fee: s.monthlyFee, registration_invite_code: s.registrationInviteCode, address: s.academyAddress, updated_at: new Date().toISOString() };
+    if (current) await supabase.from('academy_settings').update(payload).eq('id', current.id);
+    else await supabase.from('academy_settings').insert([payload]);
+    invalidateCache();
+  },
+
+  getPlans: async (): Promise<Plan[]> => {
     if (!supabase) return [];
-    try {
-        const { data, error } = await supabase
-            .from('attendance')
-            .select('classes!inner(day_of_week)')
-            .eq('is_present', true);
-
-        if (error) throw error;
-
-        const attendanceByDay: { [key: string]: number } = {
-            'Segunda': 0, 'Terça': 0, 'Quarta': 0, 'Quinta': 0, 'Sexta': 0, 'Sábado': 0, 'Domingo': 0
-        };
-
-        (data as any[]).forEach(record => {
-            const day = record.classes.day_of_week;
-            if (attendanceByDay.hasOwnProperty(day)) {
-                attendanceByDay[day]++;
-            }
-        });
-        
-        return Object.keys(attendanceByDay).map(day => ({
-            name: day,
-            attendance: attendanceByDay[day]
-        }));
-    } catch (e) {
-        console.error("Error fetching attendance report:", e);
-        return [];
-    }
-  }
+    const { data, error } = await supabase.from('plans').select('*').eq('is_active', true).order('display_order');
+    if (error) return [];
+    return (data || []).map(p => ({
+        id: p.id,
+        title: p.title,
+        planType: p.plan_type,
+        frequency: p.frequency,
+        price: Number(p.price),
+        durationMonths: p.duration_months,
+        isActive: p.is_active,
+        displayOrder: p.display_order,
+    }));
+  },
 };

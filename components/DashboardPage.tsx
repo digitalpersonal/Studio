@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord, ViewState } from '../types';
+import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord, ViewState, Notice } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
   CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag, Dumbbell,
-  User as UserIcon, Download, List, CheckCheck, Award
+  User as UserIcon, Download, List, CheckCheck, Award, Plus, Edit, Trash2, X, Info, Megaphone
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
@@ -22,35 +22,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [classes, setClasses] = useState<ClassSession[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [challengeData, setChallengeData] = useState<{ challenge: Challenge | null, totalDistance: number }>({ challenge: null, totalDistance: 0 });
   const [isLive, setIsLive] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  const [showNoticeForm, setShowNoticeForm] = useState(false);
+  const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
+
   const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.TRAINER;
+  const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
   const isStudent = currentUser.role === UserRole.STUDENT;
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000); 
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000); 
     return () => clearInterval(timer);
   }, []);
 
   const loadData = useCallback(async (force: boolean = false) => {
     if (force) setLoading(true);
     try {
-      const [uData, cData, pData, chalData, aData] = await Promise.all([
+      const [uData, cData, pData, chalData, aData, nData] = await Promise.all([
         SupabaseService.getAllUsers(force),
         SupabaseService.getClasses(force),
         (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN) ? SupabaseService.getPayments(undefined, force) : SupabaseService.getPayments(currentUser.id, force),
         SupabaseService.getGlobalChallengeProgress(force),
-        isStudent ? SupabaseService.getAttendanceForStudent(currentUser.id) : Promise.resolve([])
+        isStudent ? SupabaseService.getAttendanceForStudent(currentUser.id) : Promise.resolve([]),
+        SupabaseService.getNotices()
       ]);
       setAllUsers(uData || []);
       setClasses(cData || []);
       setPayments(pData || []);
       setChallengeData(chalData || { challenge: null, totalDistance: 0 });
       setAttendance(aData || []);
+      setNotices(nData || []);
       setIsLive(true);
       setTimeout(() => setIsLive(false), 2000); 
     } catch (error: any) {
@@ -62,71 +67,69 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
 
   useEffect(() => {
     loadData(true);
-    const unsubscribe = SupabaseService.subscribe(() => {
-      loadData(false); 
-    });
+    const unsubscribe = SupabaseService.subscribe(() => loadData(false));
     return () => unsubscribe();
   }, [loadData]);
+
+  const handleSaveNotice = async (noticeData: any) => {
+    try {
+      if (editingNotice) {
+        await SupabaseService.updateNotice({ ...noticeData, id: editingNotice.id });
+        addToast("Aviso atualizado!", "success");
+      } else {
+        await SupabaseService.addNotice(noticeData);
+        addToast("Aviso publicado!", "success");
+      }
+      setShowNoticeForm(false);
+      setEditingNotice(null);
+      loadData(false);
+    } catch (e) {
+      addToast("Erro ao salvar aviso.", "error");
+    }
+  };
+
+  const handleDeleteNotice = async (id: string) => {
+    if (!confirm("Excluir este aviso para todos?")) return;
+    try {
+      await SupabaseService.deleteNotice(id);
+      addToast("Aviso removido.", "success");
+      loadData(false);
+    } catch (e) {
+      addToast("Erro ao excluir aviso.", "error");
+    }
+  };
 
   const todayName = DAYS_OF_WEEK[(new Date().getDay() + 6) % 7];
   const currentMonth = new Date().getMonth();
 
-  const isClassInProgress = (cls: ClassSession, now: Date): boolean => {
-    const [startHour, startMinute] = cls.startTime.split(':').map(Number);
-    const classStartDate = new Date(now);
-    classStartDate.setHours(startHour, startMinute, 0, 0);
-    const classEndDate = new Date(classStartDate.getTime() + cls.durationMinutes * 60000);
-    return now >= classStartDate && now < classEndDate;
-  };
-
   const stats = useMemo(() => {
     const students = allUsers.filter(u => u.role === UserRole.STUDENT);
     const activeStudents = students.filter(u => u.status !== 'SUSPENDED');
-    const suspendedCount = students.filter(u => u.status === 'SUSPENDED').length;
     const todayClasses = classes.filter(c => c.dayOfWeek === todayName).sort((a,b) => a.startTime.localeCompare(b.startTime));
     const overdue = payments.filter(p => p.status === 'OVERDUE');
     
-    // Performance do aluno
     const runningAttendance = attendance.filter(a => a.classDetails?.type === 'RUNNING');
-    const lastRunPerformance = runningAttendance
-      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+    const lastRunPerformance = runningAttendance.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
-    const allBirthdays = allUsers
-      .filter(u => {
-        if (!u.birthDate) return false;
-        const bDate = new Date(u.birthDate);
-        return bDate.getMonth() === currentMonth;
-      })
-      .sort((a, b) => {
-        const dayA = new Date(a.birthDate!).getDate();
-        const dayB = new Date(b.birthDate!).getDate();
-        return dayA - dayB;
-      });
+    const visibleBirthdays = allUsers
+      .filter(u => u.birthDate && new Date(u.birthDate).getMonth() === currentMonth)
+      .sort((a, b) => new Date(a.birthDate!).getDate() - new Date(b.birthDate!).getDate());
     
-    const visibleBirthdays = isManagement ? allBirthdays : allBirthdays.slice(0, 3);
-    
-    const recentPaid = payments
-      .filter(p => p.status === 'PAID')
-      .sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()) 
-      .slice(0, 5);
-
     const challengeProgressPercent = challengeData.challenge?.targetValue 
       ? Math.min(100, (challengeData.totalDistance / challengeData.challenge.targetValue) * 100)
       : 0;
 
     return {
       activeCount: activeStudents.length,
-      suspendedCount,
       todayClassesCount: todayClasses.length,
       overdueCount: new Set(overdue.map(p => p.studentId)).size,
       todayClasses,
       visibleBirthdays,
       lastRunPerformance,
-      recentPaid,
       totalAttendance: attendance.length,
       challengeProgressPercent
     };
-  }, [allUsers, classes, payments, todayName, currentMonth, attendance, isManagement, challengeData]);
+  }, [allUsers, classes, payments, todayName, currentMonth, attendance, challengeData]);
 
   if (loading && allUsers.length === 0) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
@@ -137,13 +140,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Visão Geral</h2>
+            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Dashboard</h2>
             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full no-print">
               <div className={`w-1.5 h-1.5 rounded-full bg-emerald-500 ${isLive ? 'animate-ping' : ''}`} />
-              <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Realtime</span>
+              <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Live</span>
             </div>
           </div>
-          <p className="text-slate-400 text-sm font-medium flex items-center gap-2">
+          <p className="text-slate-400 text-sm font-medium">
             {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
@@ -154,36 +157,84 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         </div>
       </header>
 
+      {/* QUADRO DE AVISOS */}
+      <section className="space-y-5">
+        <div className="flex justify-between items-center px-1">
+          <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
+            <Megaphone className="text-brand-500" size={24}/> Comunicados
+          </h3>
+          {isAdmin && (
+            <button 
+              onClick={() => { setEditingNotice(null); setShowNoticeForm(true); }}
+              className="bg-brand-600 text-white p-2 rounded-xl hover:bg-brand-500 transition-all shadow-lg shadow-brand-600/20 no-print flex items-center gap-2 px-4"
+            >
+              <Plus size={16} /> <span className="text-[10px] font-black uppercase tracking-widest">Criar</span>
+            </button>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {notices.length > 0 ? notices.map(notice => (
+            <div key={notice.id} className={`p-6 rounded-[2.5rem] border relative group transition-all duration-300 transform hover:-translate-y-1 ${
+              notice.priority === 'URGENT' ? 'bg-red-500/10 border-red-500/30 shadow-red-500/5' :
+              notice.priority === 'WARNING' ? 'bg-amber-500/10 border-amber-500/30 shadow-amber-500/5' :
+              'bg-blue-500/10 border-blue-500/30 shadow-blue-500/5'
+            }`}>
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-2.5 rounded-xl ${
+                  notice.priority === 'URGENT' ? 'bg-red-500 text-white animate-pulse' :
+                  notice.priority === 'WARNING' ? 'bg-amber-500 text-white' :
+                  'bg-blue-500 text-white'
+                }`}>
+                  {notice.priority === 'URGENT' ? <AlertTriangle size={18}/> : 
+                   notice.priority === 'WARNING' ? <Bell size={18}/> : <Info size={18}/>}
+                </div>
+                {isAdmin && (
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                    <button onClick={() => { setEditingNotice(notice); setShowNoticeForm(true); }} className="p-2 bg-dark-800/80 text-slate-400 rounded-lg hover:text-white backdrop-blur-md"><Edit size={14}/></button>
+                    <button onClick={() => handleDeleteNotice(notice.id)} className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-500 shadow-lg"><Trash2 size={14}/></button>
+                  </div>
+                )}
+              </div>
+              <h4 className="text-white font-black text-base uppercase mb-2 tracking-tight line-clamp-1">{notice.title}</h4>
+              <p className="text-slate-400 text-sm leading-relaxed mb-6 line-clamp-3 min-h-[3rem]">{notice.content}</p>
+              <div className="pt-4 border-t border-dark-800/50 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <Calendar size={12} className="text-slate-600" />
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{new Date(notice.createdAt).toLocaleDateString('pt-BR')}</span>
+                </div>
+                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                  notice.priority === 'URGENT' ? 'text-red-500 bg-red-500/10' :
+                  notice.priority === 'WARNING' ? 'text-amber-500 bg-amber-500/10' :
+                  'text-blue-500 bg-blue-500/10'
+                }`}>{notice.priority === 'URGENT' ? 'Urgente' : notice.priority === 'WARNING' ? 'Importante' : 'Informativo'}</span>
+              </div>
+            </div>
+          )) : (
+            <div className="col-span-full py-16 text-center bg-dark-950/30 rounded-[3rem] border-2 border-dashed border-dark-800 group hover:border-brand-500/30 transition-all">
+               <div className="p-4 bg-dark-900 rounded-full w-fit mx-auto mb-4 border border-dark-800 group-hover:scale-110 transition-transform">
+                   <Megaphone className="text-dark-800" size={32} />
+               </div>
+               <p className="text-slate-600 font-bold uppercase text-[11px] tracking-widest">O mural de avisos está limpo hoje.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {isManagement ? (
           <>
             <MetricCard icon={Users} label="Alunos Ativos" value={stats.activeCount} color="blue" />
             <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
-            <MetricCard icon={AlertTriangle} label="Alunos Devedores" value={stats.overdueCount} color="red" />
-            <MetricCard icon={ZapOff} label="Alunos Suspensos" value={stats.suspendedCount} color="purple" />
+            <MetricCard icon={AlertTriangle} label="Pendências" value={stats.overdueCount} color="red" />
+            <MetricCard icon={TrendingUp} label="Eficiência" value={`${stats.challengeProgressPercent.toFixed(0)}%`} color="purple" />
           </>
         ) : (
           <>
-            <MetricCard icon={CheckCircle2} label="Treinos Realizados" value={stats.totalAttendance} color="blue" />
-            <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
-            {stats.lastRunPerformance ? (
-               <MetricCard 
-                 icon={Flag} 
-                 label="Última Corrida" 
-                 value={stats.lastRunPerformance.averagePace || 'N/A'} 
-                 subValue={new Date(stats.lastRunPerformance.date).toLocaleDateString('pt-BR')}
-                 color="emerald"
-               />
-            ) : (
-               <MetricCard icon={Award} label="Sua Melhor Marca" value="--" subValue="Aguardando treinos" color="emerald" />
-            )}
-            <MetricCard 
-              icon={Trophy} 
-              label="Meta Coletiva" 
-              value={`${stats.challengeProgressPercent.toFixed(0)}%`} 
-              subValue="Progresso do Desafio" 
-              color="purple" 
-            />
+            <MetricCard icon={CheckCircle2} label="Treinos" value={stats.totalAttendance} color="blue" />
+            <MetricCard icon={Calendar} label="Próxima Aula" value={stats.todayClasses.length > 0 ? stats.todayClasses[0].startTime : '--:--'} color="brand" />
+            <MetricCard icon={Flag} label="Último Pace" value={stats.lastRunPerformance?.averagePace || '--:--'} color="emerald" />
+            <MetricCard icon={Trophy} label="Desafio" value={`${stats.challengeProgressPercent.toFixed(0)}%`} color="purple" />
           </>
         )}
       </div>
@@ -194,130 +245,151 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
               <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
                 <Clock className="text-brand-500" size={24}/> Agenda de Hoje
               </h3>
-              <button onClick={() => onNavigate('SCHEDULE')} className="text-brand-500 text-[10px] font-black uppercase tracking-widest hover:underline no-print">Ver Agenda Completa</button>
+              <button onClick={() => onNavigate('SCHEDULE')} className="text-brand-500 text-[10px] font-black uppercase tracking-widest hover:underline no-print">Ver Completa</button>
             </div>
             <div className="space-y-4">
                 {stats.todayClasses.length > 0 ? (
-                  stats.todayClasses.map(c => {
-                    const inProgress = isClassInProgress(c, currentTime);
-                    return (
-                      <div 
-                        key={c.id} 
-                        className={`p-5 rounded-[2rem] border flex justify-between items-center group transition-all duration-300 relative ${
-                            c.type === 'RUNNING' ? 'bg-emerald-500/10' : 'bg-blue-500/10'
-                        } ${
-                          inProgress 
-                            ? (c.type === 'RUNNING' ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : 'border-blue-500 shadow-xl shadow-blue-500/20')
-                            : (c.type === 'RUNNING' ? 'border-emerald-500/30 hover:border-emerald-500' : 'border-blue-500/30 hover:border-blue-500')
-                        }`}
-                      >
-                        {inProgress && (
-                          <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2 py-0.5 bg-red-500/10 border border-red-500/20 rounded-full animate-fade-in no-print">
-                            <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
-                            <span className="text-[8px] font-black text-red-500 uppercase tracking-widest">AO VIVO</span>
-                          </div>
-                        )}
+                  stats.todayClasses.map(c => (
+                      <div key={c.id} className={`p-5 rounded-[2rem] border flex justify-between items-center group transition-all ${c.type === 'RUNNING' ? 'bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500' : 'bg-blue-500/5 border-blue-500/20 hover:border-blue-500'}`}>
                         <div className="flex items-center gap-5">
-                            <div className={`px-5 py-3 rounded-2xl border text-center min-w-[80px] transition-colors ${
-                                inProgress ? 'bg-brand-600/10 border-brand-500/20' : 'bg-dark-900 border-dark-800 group-hover:bg-brand-600/10'
-                            }`}>
+                            <div className="px-5 py-3 rounded-2xl bg-dark-900 border border-dark-800 text-center min-w-[80px]">
                                 <p className="text-brand-500 font-black text-lg">{c.startTime}</p>
                             </div>
                             <div>
-                                <p className={`font-bold text-base flex items-center gap-2 ${c.type === 'RUNNING' ? 'text-emerald-400' : 'text-blue-400'}`}>
-                                  {c.type === 'RUNNING' ? <Flag size={16} /> : <Dumbbell size={16} />}
-                                  <span>{c.title}</span>
-                                </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[9px] text-slate-500 uppercase font-black tracking-widest bg-dark-900 px-2 py-0.5 rounded border border-dark-800">Prof. {c.instructor?.split(' ')[0]}</span>
-                                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${c.type === 'RUNNING' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-blue-500/20 text-blue-500'}`}>
-                                    {c.type === 'RUNNING' ? 'Corrida' : 'Funcional'}
-                                  </span>
-                                </div>
+                                <p className={`font-bold text-base ${c.type === 'RUNNING' ? 'text-emerald-400' : 'text-blue-400'}`}>{c.title}</p>
+                                <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">Prof. {c.instructor?.split(' ')[0]}</p>
                             </div>
                         </div>
-                        <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 group-hover:bg-brand-500/10 transition-all no-print"><ArrowRight size={20}/></button>
+                        <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 transition-all no-print"><ArrowRight size={20}/></button>
                       </div>
-                    )
-                  })
+                  ))
                 ) : (
-                  <div className="py-20 text-center bg-dark-950 rounded-[3rem] border border-dashed border-dark-800">
+                  <div className="py-20 text-center bg-dark-950/20 rounded-[3rem] border border-dashed border-dark-800">
                       <Calendar className="mx-auto text-dark-800 mb-4" size={48} />
-                      <p className="text-slate-600 font-bold uppercase text-[11px] tracking-widest">Nenhuma aula programada para hoje.</p>
+                      <p className="text-slate-600 font-bold uppercase text-[11px]">Nenhuma aula programada para hoje.</p>
                   </div>
                 )}
             </div>
         </div>
 
         <div className="space-y-8">
-            {isManagement && <RecentActivityCard payments={stats.recentPaid} />}
-            <div className="bg-dark-950 border border-dark-800 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 blur-3xl -z-10" />
-                <div className="flex justify-between items-center">
-                  <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
+            <div className="bg-dark-950 border border-dark-800 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 blur-3xl" />
+                <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 relative z-10">
                     <Gift size={16} className="text-brand-500"/> Aniversariantes
-                  </h3>
-                </div>
-                
-                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                </h3>
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
                   {stats.visibleBirthdays.length > 0 ? stats.visibleBirthdays.map(u => (
-                    <div key={u.id} className="flex items-center justify-between group/item">
+                    <div key={u.id} className="flex items-center justify-between group">
                         <div className="flex items-center gap-3">
-                            <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-xl border-2 border-dark-800 group-hover/item:border-brand-500 transition-all object-cover" />
+                            <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-xl border-2 border-dark-800 object-cover" />
                             <div>
                                 <p className="text-white font-bold text-xs">{u.name.split(' ')[0]} {u.name.split(' ')[1] || ''}</p>
                                 <p className="text-[9px] text-brand-500 font-black uppercase">Dia {new Date(u.birthDate!).getDate()}</p>
                             </div>
                         </div>
-                        <button 
-                          onClick={() => WhatsAppAutomation.sendGenericMessage(u, "Parabéns pelo seu dia! 🎉 O Studio te deseja muita saúde, força e conquistas! Vamos com tudo! 💪🔥")}
-                          className="p-2 bg-brand-500/10 text-brand-500 rounded-xl hover:bg-brand-500 hover:text-white transition-all shadow-lg no-print"
-                        >
+                        <button onClick={() => WhatsAppAutomation.sendGenericMessage(u, "Parabéns pelo seu dia! 🎉")} className="p-2 bg-brand-500/10 text-brand-500 rounded-xl hover:bg-brand-500 hover:text-white transition-all no-print">
                           <MessageCircle size={14} />
                         </button>
                     </div>
                   )) : (
-                    <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Nenhum aniversário este mês.</p>
+                    <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Sem aniversários no mês.</p>
                   )}
                 </div>
             </div>
         </div>
       </div>
+
+      {showNoticeForm && (
+        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/90 backdrop-blur-md p-4 pt-4 md:pt-16 animate-fade-in no-print overflow-y-auto">
+          {/* Foco na correção: items-start e pt-4 garantem que o modal nasça no topo da tela */}
+          <div className="bg-dark-900 border border-dark-700 rounded-[2rem] sm:rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden h-auto mb-10">
+            <div className="p-6 md:p-8 pb-4 flex justify-between items-center border-b border-dark-800 shrink-0">
+              <div className="flex items-center gap-3">
+                 <div className="p-2 bg-brand-500/20 rounded-xl text-brand-500">
+                    <Megaphone size={20} />
+                 </div>
+                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">{editingNotice ? 'Editar Aviso' : 'Novo Aviso'}</h3>
+              </div>
+              <button onClick={() => setShowNoticeForm(false)} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full transition-colors"><X size={20}/></button>
+            </div>
+            
+            <div className="p-6 md:p-8">
+              <NoticeForm initialData={editingNotice} onSave={handleSaveNotice} onCancel={() => setShowNoticeForm(false)} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const RecentActivityCard = ({ payments }: { payments: any[] }) => (
-    <div className="bg-dark-950 border border-dark-800 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden group">
-        <div className="flex justify-between items-center">
-            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                <List size={16} className="text-emerald-500" /> Atividade Recente
-            </h3>
+const NoticeForm = ({ initialData, onSave, onCancel }: any) => {
+  const [formData, setFormData] = useState(initialData || { title: '', content: '', priority: 'INFO' });
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }} className="space-y-6">
+      <div>
+        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Título do Comunicado</label>
+        <input 
+          required 
+          className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white focus:border-brand-500 outline-none font-bold placeholder:text-slate-800 transition-all" 
+          value={formData.title} 
+          onChange={e => setFormData({ ...formData, title: e.target.value })} 
+          placeholder="Ex: Manutenção do Studio" 
+        />
+      </div>
+      
+      <div>
+        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Nível de Prioridade</label>
+        <div className="grid grid-cols-3 gap-2">
+          {['INFO', 'WARNING', 'URGENT'].map(p => (
+            <button 
+              key={p} 
+              type="button" 
+              onClick={() => setFormData({ ...formData, priority: p })} 
+              className={`py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[8px] sm:text-[9px] font-black uppercase transition-all border ${
+                formData.priority === p 
+                ? (p === 'URGENT' ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : p === 'WARNING' ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-600/20' : 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20') 
+                : 'bg-dark-950 border-dark-800 text-slate-500 hover:text-white'
+              }`}
+            >
+              {p === 'URGENT' ? 'Urgente' : p === 'WARNING' ? 'Importante' : 'Info'}
+            </button>
+          ))}
         </div>
-        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-            {payments.length > 0 ? payments.map((p) => (
-                <div key={p.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl border-2 flex items-center justify-center ${p.discount > 0 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-dark-800 border-dark-700 text-slate-400'}`}>
-                            <CheckCheck size={18} />
-                        </div>
-                        <div>
-                            <p className="text-white font-bold text-xs">{p.studentName}</p>
-                            <p className="text-[9px] text-slate-500 font-black uppercase">{p.description}</p>
-                        </div>
-                    </div>
-                    <span className="text-emerald-500 font-black text-sm">
-                        + R$ {(p.amount - (p.discount || 0)).toFixed(2)}
-                    </span>
-                </div>
-            )) : (
-                <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Nenhuma atividade financeira recente.</p>
-            )}
-        </div>
-    </div>
-);
+      </div>
+      
+      <div>
+        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Conteúdo da Mensagem</label>
+        <textarea 
+          required 
+          className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white focus:border-brand-500 outline-none h-24 sm:h-32 resize-none placeholder:text-slate-800 transition-all text-sm leading-relaxed" 
+          value={formData.content} 
+          onChange={e => setFormData({ ...formData, content: e.target.value })} 
+          placeholder="Descreva os detalhes aqui..." 
+        />
+      </div>
+      
+      <div className="flex gap-3 sm:gap-4 pt-2">
+        <button 
+          type="button" 
+          onClick={onCancel} 
+          className="flex-1 py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700 transition-all"
+        >
+          Descartar
+        </button>
+        <button 
+          type="submit" 
+          className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all"
+        >
+          Publicar
+        </button>
+      </div>
+    </form>
+  );
+};
 
-const MetricCard = ({ icon: Icon, label, value, color, subValue }: { icon: any, label: string, value: string | number, color: string, subValue?: string }) => {
+const MetricCard = ({ icon: Icon, label, value, color }: { icon: any, label: string, value: string | number, color: string }) => {
     const colors: any = {
         blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
         brand: "bg-brand-500/10 text-brand-500 border-brand-500/20",
@@ -326,14 +398,13 @@ const MetricCard = ({ icon: Icon, label, value, color, subValue }: { icon: any, 
         emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
     };
     return (
-        <div className="bg-dark-950 p-6 rounded-[2rem] border border-dark-800 shadow-xl hover:translate-y-[-4px] transition-all">
-            <div className="flex justify-between items-start mb-4">
-                <div className={`p-3 rounded-2xl ${colors[color]} border`}><Icon size={24}/></div>
+        <div className="bg-dark-950 p-6 rounded-[2.5rem] border border-dark-800 shadow-xl group hover:border-brand-500/30 transition-all overflow-hidden relative">
+            <div className="flex justify-between items-start mb-4 relative z-10">
+                <div className={`p-3 rounded-2xl ${colors[color]} border transition-transform group-hover:scale-110`}><Icon size={24}/></div>
                 <div className="w-2 h-2 rounded-full bg-dark-800" />
             </div>
-            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{label}</p>
-            <p className="text-2xl font-black text-white tracking-tighter">{value}</p>
-            {subValue && <p className="text-slate-600 text-[10px] font-bold mt-1">{subValue}</p>}
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1 relative z-10">{label}</p>
+            <p className="text-2xl font-black text-white tracking-tighter relative z-10">{value}</p>
         </div>
     );
 };

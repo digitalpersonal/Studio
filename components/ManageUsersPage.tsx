@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { User, UserRole, Anamnesis, Address, Payment, ViewState, AppNavParams, ClassSession } from '../types';
 import {
@@ -283,7 +284,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                 const hasDebt = sPayments.some(p => p.status === 'OVERDUE');
                                 const paidCount = sPayments.filter(p => p.status === 'PAID').length;
                                 const nextDue = sPayments.filter(p => p.status === 'PENDING').sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
-                                const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime())[0];
+                                const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
                                 const enrolledCount = classes.filter(c => c.enrolledStudentIds.includes(s.id)).length;
                                 const isSuspended = s.status === 'SUSPENDED';
                                 const canEdit = canManageUser(s);
@@ -456,8 +457,8 @@ const ManualPaymentModal = ({ student, payment, onConfirm, onCancel, isLoading }
     const finalAmount = Math.max(0, payment.amount - discount);
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
-            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden">
+        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-12 animate-fade-in overflow-y-auto">
+            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden h-auto mb-10">
                 <div className="flex justify-between items-center">
                     <div>
                         <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -536,8 +537,8 @@ const ActionButton = ({ icon: Icon, color, onClick, disabled, title }: { icon: a
 
 const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, classes: ClassSession[], onClose: () => void }) => {
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
-            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-lg w-full space-y-6 relative overflow-hidden">
+        <div className="fixed inset-0 z-[110] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-12 animate-fade-in overflow-y-auto">
+            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-lg w-full space-y-6 relative overflow-hidden h-auto mb-10">
                 <div className="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
                 <div className="flex justify-between items-center">
                     <div>
@@ -586,8 +587,8 @@ const EnrolledClassesModal = ({ student, classes, onClose }: { student: User, cl
 const WhatsAppMessageModal = ({ student, onSend, onCancel }: { student: User, onSend: (s: User, m: string) => void, onCancel: () => void }) => {
     const [message, setMessage] = useState('');
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-6 animate-fade-in">
-            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full space-y-5">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/90 backdrop-blur-sm p-6 pt-16 animate-fade-in overflow-y-auto">
+            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-md w-full space-y-5 h-auto mb-10">
                 <div className="flex justify-between items-center">
                     <h3 className="text-white font-bold flex items-center gap-2"><MessageCircle className="text-brand-500" size={20}/> Mensagem p/ {String(student.name).split(' ')[0]}</h3>
                     <button onClick={onCancel} className="text-slate-500 hover:text-white"><X size={20}/></button>

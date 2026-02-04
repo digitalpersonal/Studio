@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Payment, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
@@ -311,8 +312,8 @@ const ManualPaymentModal = ({ payment, onConfirm, onCancel, isProcessing }: { pa
     const finalAmount = Math.max(0, payment.amount - discount);
 
     return (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
-            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden">
+        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-10 animate-fade-in overflow-y-auto">
+            <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden h-auto mb-10">
                 <div className="flex justify-between items-center">
                     <div>
                         <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -350,8 +351,8 @@ const ManualPaymentModal = ({ payment, onConfirm, onCancel, isProcessing }: { pa
 
 // MODAIS
 const CheckoutModal = ({ payment, pixData, copied, onCopyPix, onClose }: any) => (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
-       <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center space-y-6 relative overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-12 animate-fade-in overflow-y-auto">
+       <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center space-y-6 relative overflow-hidden h-auto mb-10">
           <button onClick={onClose} className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white bg-dark-800 rounded-full"><X size={20}/></button>
           {!pixData ? ( <> <div className="bg-brand-600 w-24 h-24 rounded-full flex items-center justify-center mx-auto shadow-2xl shadow-brand-500/30"><Loader2 className="text-white animate-spin" size={48}/></div><div><h3 className="text-white font-black text-xl mb-2 uppercase tracking-tighter">Processando...</h3><p className="text-slate-400 text-sm">Conectando ao Mercado Pago para gerar seu checkout de <b>R$ {payment.amount.toFixed(2)}</b></p></div></> ) : (
               <div className="space-y-6 animate-fade-in">
@@ -371,8 +372,8 @@ const PaymentFormModal = ({ payment, students, onSave, onCancel, isProcessing }:
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/95 backdrop-blur-md p-6 animate-fade-in">
-        <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden">
+    <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-10 animate-fade-in overflow-y-auto">
+        <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden h-auto mb-10">
             <div className="flex justify-between items-center"><h3 className="text-xl font-bold text-white flex items-center gap-2"><Receipt size={22} className="text-brand-500" /> {payment.id ? 'Editar Fatura' : 'Nova Fatura'}</h3><button onClick={onCancel} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full"><X size={20} /></button></div>
             <form onSubmit={handleSubmit} className="space-y-4">
                 {!formData.id && !formData.studentId && (
