@@ -29,7 +29,6 @@ const mapNoticeFromDb = (n: any): Notice => ({
   createdAt: n.created_at
 });
 
-// Fix: Added missing mapPostFromDb helper function
 const mapPostFromDb = (p: any): Post => ({
   id: p.id,
   userId: p.user_id,
@@ -162,23 +161,45 @@ export const SupabaseService = {
   },
 
   addNotice: async (n: Omit<Notice, 'id' | 'createdAt'>): Promise<Notice> => {
-    if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('notices').insert([{
-      title: n.title, content: n.content, priority: n.priority
-    }]).select().single();
-    if (error) throw error;
-    invalidateCache();
-    return mapNoticeFromDb(data);
+    if (!supabase) throw new Error("Sem conexão com o banco");
+    try {
+      const { data, error } = await supabase.from('notices').insert([{
+        title: n.title, 
+        content: n.content, 
+        priority: n.priority
+      }]).select().single();
+      
+      if (error) {
+        console.error("Supabase Insert Notice Error:", error);
+        throw new Error(error.message || "Erro interno ao inserir aviso");
+      }
+      invalidateCache();
+      return mapNoticeFromDb(data);
+    } catch (e: any) {
+      console.error("Supabase addNotice Catch:", e);
+      throw e;
+    }
   },
 
   updateNotice: async (n: Notice): Promise<Notice> => {
-    if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('notices').update({
-      title: n.title, content: n.content, priority: n.priority
-    }).eq('id', n.id).select().single();
-    if (error) throw error;
-    invalidateCache();
-    return mapNoticeFromDb(data);
+    if (!supabase) throw new Error("Sem conexão com o banco");
+    try {
+      const { data, error } = await supabase.from('notices').update({
+        title: n.title, 
+        content: n.content, 
+        priority: n.priority
+      }).eq('id', n.id).select().single();
+      
+      if (error) {
+        console.error("Supabase Update Notice Error:", error);
+        throw new Error(error.message || "Erro interno ao atualizar aviso");
+      }
+      invalidateCache();
+      return mapNoticeFromDb(data);
+    } catch (e: any) {
+      console.error("Supabase updateNotice Catch:", e);
+      throw e;
+    }
   },
 
   deleteNotice: async (id: string) => {
@@ -220,7 +241,6 @@ export const SupabaseService = {
       avatar_url: u.avatarUrl, phone_number: u.phoneNumber, profile_completed: u.profileCompleted,
       status: u.status || 'ACTIVE', join_date: formatDateForDb(u.joinDate),
       birth_date: formatDateForDb(u.birthDate), cpf: u.cpf, rg: u.rg, address: u.address || {},
-      // Fix: Corrected billing_day from u.billing_day to u.billingDay
       plan_id: u.planId, plan_value: u.planValue, plan_discount: u.planDiscount || 0,
       plan_duration: u.planDuration, billing_day: u.billingDay, plan_start_date: formatDateForDb(u.planStartDate),
       anamnesis: u.anamnesis || {},
@@ -274,7 +294,6 @@ export const SupabaseService = {
     const { data, error } = await supabase.from('classes').insert([{
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
-      // Fix: Corrected waitlist_student_ids from c.waitlist_student_ids to c.waitlistStudentIds
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
       waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
@@ -290,7 +309,6 @@ export const SupabaseService = {
     const { data, error } = await supabase.from('classes').update({
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
-      // Fix: Corrected max_capacity and waitlist_student_ids property names
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
       waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
@@ -337,7 +355,6 @@ export const SupabaseService = {
     invalidateCache();
   },
 
-  // Fix: Added missing deletePendingPaymentsForStudent method
   deletePendingPaymentsForStudent: async (studentId: string) => {
     if (!supabase) return;
     const { error } = await supabase.from('payments').delete().eq('student_id', studentId).eq('status', 'PENDING');
@@ -418,7 +435,6 @@ export const SupabaseService = {
   saveAttendance: async (records: Omit<AttendanceRecord, 'id'>[]) => {
     if (!supabase || records.length === 0) return;
     const promises = records.map(async r => {
-        // Fix: Corrected camelCase property names from the TS object 'r' for values
         const payload = { 
             class_id: r.classId, student_id: r.studentId, date: formatDateForDb(r.date), is_present: r.isPresent,
             total_time_seconds: r.totalTimeSeconds, average_pace: r.averagePace,
@@ -463,7 +479,6 @@ export const SupabaseService = {
 
   addCycleSummary: async (s: Omit<CycleSummary, 'id' | 'createdAt'>): Promise<CycleSummary> => {
     if (!supabase) throw new Error("Sem conexão");
-    // Fix: Corrected camelCase property names from the TS object 's' for values
     const payload = {
       student_id: s.studentId, cycle_end_date: formatDateForDb(s.cycleEndDate),
       summary_text: s.summaryText, start_pace: s.startPace, end_pace: s.endPace,
@@ -471,7 +486,7 @@ export const SupabaseService = {
     };
     const { data, error } = await supabase.from('cycle_summaries').insert([payload]).select().single();
     if (error) throw error;
-    return { ...data, id: data.id, studentId: data.student_id, cycleEndDate: data.cycle_end_date, summaryText: data.summary_text, startPace: data.start_pace, endPace: data.end_pace, performanceData: data.performance_data, createdAt: data.created_at };
+    return { ...data, id: data.id, studentId: data.student_id, cycleEndDate: data.cycle_end_date, summaryText: data.summary_text, startPace: data.start_pace, end_pace: data.end_pace, performanceData: data.performance_data, createdAt: data.created_at };
   },
 
   getRankingData: async (): Promise<{ student_id: string, classes: { distance_km: number } }[]> => {
@@ -501,7 +516,6 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const payload = {
       student_id: a.studentId, date: formatDateForDb(a.date), status: a.status, weight: a.weight, height: a.height,
-      // Fix: Corrected visceral_fat_level from a.visceral_fat_level to a.visceralFatLevel
       body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
       hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
@@ -519,7 +533,6 @@ export const SupabaseService = {
   updateAssessment: async (a: Assessment): Promise<Assessment> => {
     if (!supabase) throw new Error("Sem conexão");
     const payload = {
-      // Fix: Corrected visceral_fat_level from a.visceral_fat_level to a.visceralFatLevel
       date: formatDateForDb(a.date), status: a.status, weight: a.weight, height: a.height,
       body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
@@ -591,7 +604,6 @@ export const SupabaseService = {
 
   updatePersonalizedWorkout: async (w: PersonalizedWorkout): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
-    // Fix: Corrected camelCase property name from the TS object 'w' for the student_ids field
     const { data, error } = await supabase.from('personalized_workouts').update({ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.studentIds, instructor_name: w.instructorName }).eq('id', w.id).select().single();
     if (error) throw error;
     return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructor_name: data.instructor_name, createdAt: data.created_at };

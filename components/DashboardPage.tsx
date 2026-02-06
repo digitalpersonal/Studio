@@ -30,8 +30,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [showNoticeForm, setShowNoticeForm] = useState(false);
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
 
-  const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.TRAINER;
+  // Permissões
   const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
+  const isManagement = isAdmin || currentUser.role === UserRole.TRAINER;
   const isStudent = currentUser.role === UserRole.STUDENT;
 
   useEffect(() => {
@@ -83,12 +84,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       setShowNoticeForm(false);
       setEditingNotice(null);
       loadData(false);
-    } catch (e) {
-      addToast("Erro ao salvar aviso.", "error");
+    } catch (e: any) {
+      console.error("Erro ao salvar aviso:", e);
+      addToast(`Erro: ${e.message || 'Verifique se a tabela de avisos foi criada no Supabase.'}`, "error");
     }
   };
 
   const handleDeleteNotice = async (id: string) => {
+    if (!isAdmin) return;
     if (!confirm("Excluir este aviso para todos?")) return;
     try {
       await SupabaseService.deleteNotice(id);
@@ -157,7 +160,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         </div>
       </header>
 
-      {/* QUADRO DE AVISOS */}
+      {/* QUADRO DE AVISOS - TODOS VÊEM, SÓ ADMIN CRIA */}
       <section className="space-y-5">
         <div className="flex justify-between items-center px-1">
           <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
@@ -301,7 +304,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       </div>
 
       {showNoticeForm && (
-        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/90 backdrop-blur-md p-4 pt-4 md:pt-16 animate-fade-in no-print overflow-y-auto">
+        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-4 md:pt-16 animate-fade-in no-print overflow-y-auto">
           {/* Foco na correção: items-start e pt-4 garantem que o modal nasça no topo da tela */}
           <div className="bg-dark-900 border border-dark-700 rounded-[2rem] sm:rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden h-auto mb-10">
             <div className="p-6 md:p-8 pb-4 flex justify-between items-center border-b border-dark-800 shrink-0">
