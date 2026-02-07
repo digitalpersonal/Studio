@@ -66,7 +66,7 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
   }, [currentUser, onUpdateUser, addToast]);
 
   const handleConnect = () => {
-    if (!academySettings?.stravaClientId || academySettings.stravaClientId === '') {
+    if (!academySettings?.stravaClientId || academySettings.stravaClientId.trim() === '') {
         addToast("Atenção: A Academia ainda não configurou o Client ID do Strava nas Configurações.", "error");
         return;
     }
