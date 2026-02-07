@@ -28,7 +28,6 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
 
   const isStaff = currentUser.role !== UserRole.STUDENT;
 
-  // Fix: Added missing useCallback import and properly wrapped loadInitialData
   const loadInitialData = useCallback(async () => {
     setLoading(true);
     try {
@@ -456,8 +455,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
         img.src = event.target?.result as string;
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 1000; 
-          const MAX_HEIGHT = 1000;
+          const MAX_WIDTH = 720; 
+          const MAX_HEIGHT = 720;
           let width = img.width;
           let height = img.height;
           if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
@@ -466,7 +465,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
           const ctx = canvas.getContext('2d');
           if (!ctx) return reject("Erro no Canvas");
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.65));
+          resolve(canvas.toDataURL('image/jpeg', 0.4));
         };
       };
     });

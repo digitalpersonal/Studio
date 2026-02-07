@@ -70,7 +70,7 @@ const mapUserFromDb = (u: any): User => ({
   anamnesis: u.anamnesis || {},
   status: u.status || 'ACTIVE',
   stravaAccessToken: u.strava_access_token,
-  stravaRefreshToken: u.strava_refresh_token,
+  strava_refresh_token: u.strava_refresh_token,
 });
 
 const mapClassFromDb = (c: any): ClassSession => ({
@@ -114,6 +114,30 @@ const mapAttendanceFromDb = (r: any): AttendanceRecord => ({
   ageGroupClassification: r.age_group_classification,
   instructorNotes: r.instructor_notes,
   generatedFeedback: r.generated_feedback,
+});
+
+const mapAssessmentFromDb = (a: any): Assessment => ({
+  id: a.id,
+  studentId: a.student_id,
+  date: a.date,
+  status: a.status as 'DONE' | 'SCHEDULED',
+  notes: a.notes || '',
+  weight: Number(a.weight) || 0,
+  height: Number(a.height) || 0,
+  bodyFatPercentage: Number(a.body_fat_percentage) || 0,
+  skeletalMuscleMass: Number(a.skeletal_muscle_mass) || 0,
+  visceralFatLevel: Number(a.visceral_fat_level) || 0,
+  basalMetabolicRate: Number(a.basal_metabolic_rate) || 0,
+  hydrationPercentage: Number(a.hydration_percentage) || 0,
+  abdominalTest: Number(a.abdominal_test) || 0,
+  horizontalJump: Number(a.horizontal_jump) || 0,
+  verticalJump: Number(a.vertical_jump) || 0,
+  medicineBallThrow: Number(a.medicine_ball_throw) || 0,
+  photoFrontUrl: a.photo_front_url || '',
+  photoSideUrl: a.photo_side_url || '',
+  photoBackUrl: a.photo_back_url || '',
+  fms: a.fms || {},
+  circumferences: a.circumferences || {}
 });
 
 const CACHE_TTL = 30000;
@@ -169,14 +193,10 @@ export const SupabaseService = {
         priority: n.priority
       }]).select().single();
       
-      if (error) {
-        console.error("Supabase Insert Notice Error:", error);
-        throw new Error(error.message || "Erro interno ao inserir aviso");
-      }
+      if (error) throw error;
       invalidateCache();
       return mapNoticeFromDb(data);
     } catch (e: any) {
-      console.error("Supabase addNotice Catch:", e);
       throw e;
     }
   },
@@ -190,14 +210,10 @@ export const SupabaseService = {
         priority: n.priority
       }).eq('id', n.id).select().single();
       
-      if (error) {
-        console.error("Supabase Update Notice Error:", error);
-        throw new Error(error.message || "Erro interno ao atualizar aviso");
-      }
+      if (error) throw error;
       invalidateCache();
       return mapNoticeFromDb(data);
     } catch (e: any) {
-      console.error("Supabase updateNotice Catch:", e);
       throw e;
     }
   },
@@ -295,6 +311,7 @@ export const SupabaseService = {
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
+      // Fix: Changed from c.waitlist_student_ids to c.waitlistStudentIds
       waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
       week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
@@ -310,6 +327,7 @@ export const SupabaseService = {
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
+      // Fix: Changed from c.waitlist_student_ids to c.waitlistStudentIds
       waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
       week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
@@ -435,6 +453,7 @@ export const SupabaseService = {
   saveAttendance: async (records: Omit<AttendanceRecord, 'id'>[]) => {
     if (!supabase || records.length === 0) return;
     const promises = records.map(async r => {
+        // Fix: Use correct camelCase property names from the records object (Omit<AttendanceRecord, 'id'>)
         const payload = { 
             class_id: r.classId, student_id: r.studentId, date: formatDateForDb(r.date), is_present: r.isPresent,
             total_time_seconds: r.totalTimeSeconds, average_pace: r.averagePace,
@@ -481,7 +500,7 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const payload = {
       student_id: s.studentId, cycle_end_date: formatDateForDb(s.cycleEndDate),
-      summary_text: s.summaryText, start_pace: s.startPace, end_pace: s.endPace,
+      summary_text: s.summaryText, start_pace: s.startPace, end_pace: s.end_pace,
       performance_data: s.performanceData
     };
     const { data, error } = await supabase.from('cycle_summaries').insert([payload]).select().single();
@@ -506,7 +525,7 @@ export const SupabaseService = {
         if (userId) query = query.eq('student_id', userId);
         const { data, error } = await query;
         if (error) throw error;
-        const mapped = (data || []).map(a => ({ ...a, studentId: a.student_id, bodyFatPercentage: a.body_fat_percentage, skeletalMuscleMass: a.skeletal_muscle_mass, visceralFatLevel: a.visceral_fat_level, basalMetabolicRate: a.basal_metabolic_rate, hydrationPercentage: a.hydration_percentage, abdominalTest: a.abdominal_test, horizontalJump: a.horizontal_jump, verticalJump: a.vertical_jump, medicineBallThrow: a.medicine_ball_throw, photoFrontUrl: a.photo_front_url, photoSideUrl: a.photo_side_url, photoBackUrl: a.photo_back_url }));
+        const mapped = (data || []).map(mapAssessmentFromDb);
         _cache[key] = { data: mapped, timestamp: now };
         return mapped;
     } catch (e) { return []; }
@@ -527,7 +546,7 @@ export const SupabaseService = {
     const { data, error } = await supabase.from('assessments').insert([payload]).select().single();
     if (error) throw error;
     invalidateCache();
-    return { ...data, studentId: data.student_id, bodyFatPercentage: data.body_fat_percentage };
+    return mapAssessmentFromDb(data);
   },
 
   updateAssessment: async (a: Assessment): Promise<Assessment> => {
@@ -545,7 +564,7 @@ export const SupabaseService = {
     const { data, error } = await supabase.from('assessments').update(payload).eq('id', a.id).select().single();
     if (error) throw error;
     invalidateCache();
-    return { ...data, studentId: data.student_id, bodyFatPercentage: data.body_fat_percentage };
+    return mapAssessmentFromDb(data);
   },
 
   deleteAssessment: async (id: string) => {
@@ -679,7 +698,7 @@ export const SupabaseService = {
         representativeName: data.representative_name || '',
         mercadoPagoPublicKey: data.mercado_pago_public_key || '',
         mercadoPagoAccessToken: data.mercado_pago_access_token || '',
-        pixKey: data.pix_key || '',
+        pix_key: data.pix_key || '',
         customDomain: data.custom_domain || '',
         monthlyFee: Number(data.monthly_fee) || 0,
         inviteCode: 'STUDIO2024',
@@ -690,7 +709,7 @@ export const SupabaseService = {
   updateAcademySettings: async (s: AcademySettings): Promise<void> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data: current } = await supabase.from('academy_settings').select('id').limit(1).maybeSingle();
-    const payload = { name: s.name, cnpj: s.cnpj, phone: s.phone, email: s.email, representative_name: s.representativeName, mercado_pago_public_key: s.mercadoPagoPublicKey, mercado_pago_access_token: s.mercadoPagoAccessToken, pix_key: s.pixKey, custom_domain: s.customDomain, monthly_fee: s.monthlyFee, registration_invite_code: s.registrationInviteCode, address: s.academyAddress, updated_at: new Date().toISOString() };
+    const payload = { name: s.name, cnpj: s.cnpj, phone: s.phone, email: s.email, representative_name: s.representativeName, mercado_pago_public_key: s.mercadoPagoPublicKey, mercado_pago_access_token: s.mercadoPagoAccessToken, pix_key: s.pixKey, custom_domain: s.customDomain, monthly_fee: s.monthlyFee, registration_invite_code: s.registration_invite_code, address: s.academyAddress, updated_at: new Date().toISOString() };
     if (current) await supabase.from('academy_settings').update(payload).eq('id', current.id);
     else await supabase.from('academy_settings').insert([payload]);
     invalidateCache();

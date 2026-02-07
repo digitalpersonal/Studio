@@ -58,8 +58,8 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
         img.src = event.target?.result as string;
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800; 
-          const MAX_HEIGHT = 800;
+          const MAX_WIDTH = 720; 
+          const MAX_HEIGHT = 720;
           let width = img.width;
           let height = img.height;
           if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
@@ -68,7 +68,7 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
           const ctx = canvas.getContext('2d');
           if (!ctx) return reject("Erro no Canvas");
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.5));
+          resolve(canvas.toDataURL('image/jpeg', 0.4));
         };
       };
     });
