@@ -96,8 +96,8 @@ export interface User {
   profession?: string; 
   address?: Address;
   planId?: string;
-  planValue?: number; // Armazena o preço ORIGINAL do plano
-  planDiscount?: number; // Armazena o desconto fixo
+  planValue?: number; 
+  planDiscount?: number; 
   planDuration?: number; 
   billingDay?: number;
   planStartDate?: string;
@@ -107,7 +107,6 @@ export interface User {
   profileCompleted?: boolean;
   status?: 'ACTIVE' | 'SUSPENDED';
   suspendedAt?: string;
-  // Campos para Integração Strava
   stravaAccessToken?: string;
   stravaRefreshToken?: string;
 }
@@ -141,8 +140,7 @@ export interface ClassSession {
   feedback?: { studentId: string, rating: number }[];
   date?: string;
   isCancelled?: boolean;
-  // Campos específicos para Corrida
-  cycleStartDate?: string; // NOVO CAMPO
+  cycleStartDate?: string; 
   weekOfCycle?: number;
   weekFocus?: string;
   estimatedVolumeMinutes?: number;
@@ -158,7 +156,6 @@ export interface AttendanceRecord {
   studentId: string;
   date: string;
   isPresent: boolean;
-  // Campos de desempenho para Corrida
   totalTimeSeconds?: number;
   averagePace?: string;
   ageGroupClassification?: string;
@@ -273,6 +270,8 @@ export interface AcademySettings {
   monthlyFee: number;
   inviteCode: string;
   registrationInviteCode: string;
+  stravaClientId?: string;
+  stravaClientSecret?: string;
 }
 
 export interface Payment {

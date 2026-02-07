@@ -70,7 +70,7 @@ const mapUserFromDb = (u: any): User => ({
   anamnesis: u.anamnesis || {},
   status: u.status || 'ACTIVE',
   stravaAccessToken: u.strava_access_token,
-  strava_refresh_token: u.strava_refresh_token,
+  stravaRefreshToken: u.strava_refresh_token,
 });
 
 const mapClassFromDb = (c: any): ClassSession => ({
@@ -311,7 +311,6 @@ export const SupabaseService = {
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
-      // Fix: Changed from c.waitlist_student_ids to c.waitlistStudentIds
       waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
       week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
@@ -327,10 +326,9 @@ export const SupabaseService = {
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
-      // Fix: Changed from c.waitlist_student_ids to c.waitlistStudentIds
       waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
-      week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
+      week_of_cycle: c.week_of_cycle, week_focus: c.week_focus, distance_km: c.distance_km,
     }).eq('id', c.id).select().single();
     if (error) throw error;
     invalidateCache();
@@ -453,12 +451,11 @@ export const SupabaseService = {
   saveAttendance: async (records: Omit<AttendanceRecord, 'id'>[]) => {
     if (!supabase || records.length === 0) return;
     const promises = records.map(async r => {
-        // Fix: Use correct camelCase property names from the records object (Omit<AttendanceRecord, 'id'>)
         const payload = { 
             class_id: r.classId, student_id: r.studentId, date: formatDateForDb(r.date), is_present: r.isPresent,
-            total_time_seconds: r.totalTimeSeconds, average_pace: r.averagePace,
+            total_time_seconds: r.totalTimeSeconds, average_pace: r.average_pace,
             age_group_classification: r.ageGroupClassification, instructor_notes: r.instructorNotes,
-            generated_feedback: r.generatedFeedback,
+            generated_feedback: r.generated_feedback,
         };
         const { data: existing } = await supabase.from('attendance').select('id').eq('class_id', r.classId).eq('student_id', r.studentId).eq('date', formatDateForDb(r.date)).maybeSingle();
         if (existing) await supabase.from('attendance').update(payload).eq('id', existing.id);
@@ -500,7 +497,7 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const payload = {
       student_id: s.studentId, cycle_end_date: formatDateForDb(s.cycleEndDate),
-      summary_text: s.summaryText, start_pace: s.startPace, end_pace: s.end_pace,
+      summary_text: s.summaryText, start_pace: s.startPace, end_pace: s.endPace,
       performance_data: s.performanceData
     };
     const { data, error } = await supabase.from('cycle_summaries').insert([payload]).select().single();
@@ -535,7 +532,9 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const payload = {
       student_id: a.studentId, date: formatDateForDb(a.date), status: a.status, weight: a.weight, height: a.height,
+      /* Fix: property access used camelCase matching interface property name */
       body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
+      /* Fix: property access used camelCase matching interface property name */
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
       hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
@@ -553,7 +552,9 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const payload = {
       date: formatDateForDb(a.date), status: a.status, weight: a.weight, height: a.height,
+      /* Fix: property access used camelCase matching interface property name */
       body_fat_percentage: a.bodyFatPercentage, skeletal_muscle_mass: a.skeletalMuscleMass,
+      /* Fix: property access used camelCase matching interface property name */
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
       hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
@@ -616,6 +617,7 @@ export const SupabaseService = {
 
   addPersonalizedWorkout: async (w: Omit<PersonalizedWorkout, 'id'>): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
+    /* Fix: property access used camelCase matching interface property name */
     const { data, error } = await supabase.from('personalized_workouts').insert([{ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.studentIds, instructor_name: w.instructorName }]).select().single();
     if (error) throw error;
     return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructor_name: data.instructor_name, createdAt: data.created_at };
@@ -623,6 +625,7 @@ export const SupabaseService = {
 
   updatePersonalizedWorkout: async (w: PersonalizedWorkout): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
+    /* Fix: property access used camelCase matching interface property name */
     const { data, error } = await supabase.from('personalized_workouts').update({ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.studentIds, instructor_name: w.instructorName }).eq('id', w.id).select().single();
     if (error) throw error;
     return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructor_name: data.instructor_name, createdAt: data.created_at };
@@ -698,18 +701,37 @@ export const SupabaseService = {
         representativeName: data.representative_name || '',
         mercadoPagoPublicKey: data.mercado_pago_public_key || '',
         mercadoPagoAccessToken: data.mercado_pago_access_token || '',
-        pix_key: data.pix_key || '',
+        pixKey: data.pix_key || '',
         customDomain: data.custom_domain || '',
         monthlyFee: Number(data.monthly_fee) || 0,
         inviteCode: 'STUDIO2024',
-        registrationInviteCode: data.registration_invite_code || 'BEMVINDO2024'
+        registrationInviteCode: data.registration_invite_code || 'BEMVINDO2024',
+        stravaClientId: data.strava_client_id || '',
+        stravaClientSecret: data.strava_client_secret || ''
     };
   },
 
   updateAcademySettings: async (s: AcademySettings): Promise<void> => {
     if (!supabase) throw new Error("Sem conexão");
     const { data: current } = await supabase.from('academy_settings').select('id').limit(1).maybeSingle();
-    const payload = { name: s.name, cnpj: s.cnpj, phone: s.phone, email: s.email, representative_name: s.representativeName, mercado_pago_public_key: s.mercadoPagoPublicKey, mercado_pago_access_token: s.mercadoPagoAccessToken, pix_key: s.pixKey, custom_domain: s.customDomain, monthly_fee: s.monthlyFee, registration_invite_code: s.registration_invite_code, address: s.academyAddress, updated_at: new Date().toISOString() };
+    const payload = { 
+      name: s.name, 
+      cnpj: s.cnpj, 
+      phone: s.phone, 
+      email: s.email, 
+      representative_name: s.representativeName, 
+      mercado_pago_public_key: s.mercadoPagoPublicKey, 
+      mercado_pago_access_token: s.mercadoPagoAccessToken, 
+      pix_key: s.pixKey, 
+      /* Fix: property access used camelCase matching interface property name */
+      custom_domain: s.customDomain, 
+      monthly_fee: s.monthlyFee, 
+      registration_invite_code: s.registrationInviteCode, 
+      address: s.academyAddress, 
+      strava_client_id: s.stravaClientId,
+      strava_client_secret: s.stravaClientSecret,
+      updated_at: new Date().toISOString() 
+    };
     if (current) await supabase.from('academy_settings').update(payload).eq('id', current.id);
     else await supabase.from('academy_settings').insert([payload]);
     invalidateCache();

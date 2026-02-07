@@ -1,27 +1,35 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
+import { User, UserRole, AcademySettings } from '../types';
 import { SupabaseService } from '../services/supabaseService';
+import { SettingsService } from '../services/settingsService';
 import { 
   Share2, Zap, CheckCircle2, XCircle, BarChart, Trophy, Power, 
   Loader2, Info, BookOpen, ChevronDown, User as UserIcon, 
   GraduationCap, Shield, Settings, ExternalLink, StepForward
 } from 'lucide-react';
 
-// --- CONFIGURAÇÃO CRÍTICA ---
-// IMPORTANTE: A academia precisa criar um app em https://www.strava.com/settings/api
-// e substituir o '12345' pelo Client ID gerado lá.
-const STRAVA_CLIENT_ID = '12345'; 
-const STRAVA_AUTH_URL = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${window.location.origin}&approval_prompt=force&scope=read,activity:read_all`;
-
 export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUser, addToast }) => {
   const [isConnected, setIsConnected] = useState(!!currentUser.stravaAccessToken);
   const [isLoading, setIsLoading] = useState(false);
+  const [academySettings, setAcademySettings] = useState<AcademySettings | null>(null);
   const [activeFaqTab, setActiveFaqTab] = useState<'student' | 'staff' | 'setup'>(
     currentUser.role === UserRole.STUDENT ? 'student' : 'setup'
   );
 
   const isStaff = currentUser.role !== UserRole.STUDENT;
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+        try {
+            const settings = await SettingsService.getSettings();
+            setAcademySettings(settings);
+        } catch (e) {
+            console.error("Erro ao carregar configurações do Strava:", e);
+        }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     const handleStravaRedirect = async () => {
@@ -58,10 +66,12 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
   }, [currentUser, onUpdateUser, addToast]);
 
   const handleConnect = () => {
-    if (STRAVA_CLIENT_ID === '12345') {
-        addToast("Atenção: A Academia ainda não configurou o Client ID do Strava.", "error");
+    if (!academySettings?.stravaClientId || academySettings.stravaClientId === '') {
+        addToast("Atenção: A Academia ainda não configurou o Client ID do Strava nas Configurações.", "error");
         return;
     }
+    
+    const STRAVA_AUTH_URL = `https://www.strava.com/oauth/authorize?client_id=${academySettings.stravaClientId}&response_type=code&redirect_uri=${window.location.origin}&approval_prompt=force&scope=read,activity:read_all`;
     window.location.href = STRAVA_AUTH_URL;
   };
 
@@ -148,9 +158,9 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
                     </h4>
                     <div className="space-y-6">
                         <Step item="1" title="Crie uma conta de Desenvolvedor" desc="Acesse o site strava.com/settings/api usando o computador e logue na conta do Strava da academia." />
-                        <Step item="2" title="Preencha o Formulário" desc="No campo 'Application Name' coloque Studio. No campo 'Authorization Callback Domain' coloque exatamente studiosemovimento.com.br (ou o domínio que estiver usando)." />
-                        <Step item="3" title="Pegue seu Client ID" desc="O Strava vai te dar um número chamado 'Client ID'. É esse número que deve ser colocado no código do sistema para o botão de login funcionar." />
-                        <Step item="4" title="Avise os Alunos" desc="Com o ID configurado, os alunos já podem vir nesta página e clicar no botão de conectar." />
+                        <Step item="2" title="Preencha o Formulário" desc="No campo 'Application Name' coloque Studio. No campo 'Authorization Callback Domain' coloque o domínio que estiver usando (ex: studiosemovimento.com.br)." />
+                        <Step item="3" title="Pegue seu Client ID e Secret" desc="O Strava vai te dar dois códigos. Vá no menu 'Configurações' do Studio e salve-os lá." />
+                        <Step item="4" title="Avise os Alunos" desc="Com os dados configurados, os alunos já podem vir nesta página e clicar no botão de conectar." />
                     </div>
                     <a href="https://www.strava.com/settings/api" target="_blank" className="mt-8 w-full flex items-center justify-center gap-2 py-4 bg-dark-900 border border-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-800 transition-all">
                         Ir para o Portal do Strava <ExternalLink size={14}/>

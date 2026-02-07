@@ -170,6 +170,7 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
   const supabaseWebhookUrl = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mercadopago-webhook`;
   
   const isMPConfigured = !!(settings?.mercadoPagoPublicKey && settings?.mercadoPagoAccessToken);
+  const isStravaConfigured = !!(settings?.stravaClientId && settings?.stravaClientSecret);
   const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN; 
 
   const handleSave = async (e: React.FormEvent) => {
@@ -341,6 +342,27 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
             </div>
           </section>
 
+          <section className="space-y-6">
+            <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4 uppercase text-xs tracking-widest">
+               <Share2 className="text-[#FC4C02]" size={16}/> Integração Strava (Clube de Corrida)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+               <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Strava Client ID</label>
+                <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-[#FC4C02] outline-none font-mono text-xs" placeholder="Ex: 123456" value={settings.stravaClientId} onChange={e => setSettings({...settings, stravaClientId: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Strava Client Secret</label>
+                <input type="password" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-[#FC4C02] outline-none font-mono text-xs" placeholder="Segredo da API" value={settings.stravaClientSecret} onChange={e => setSettings({...settings, stravaClientSecret: e.target.value})} />
+              </div>
+              <div className="md:col-span-2">
+                <div className={`p-4 rounded-xl border text-[10px] font-bold uppercase flex items-center gap-3 ${isStravaConfigured ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}>
+                   <Info size={16}/> {isStravaConfigured ? 'Strava configurado! Os alunos já podem conectar suas contas.' : 'Configuração pendente. Sem o Client ID, o botão de conexão com o Strava não funcionará.'}
+                </div>
+              </div>
+            </div>
+          </section>
+
           {isSuperAdmin && ( 
             <section className="space-y-6">
                 <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4 uppercase text-xs tracking-widest">
@@ -400,11 +422,9 @@ export function App() {
   };
 
   const handleLogin = (user: User) => {
-    // Persiste o usuário antes de mudar a view
     localStorage.setItem('studioCurrentUser', JSON.stringify(user));
     setCurrentUser(user);
     
-    // Define a view destino
     const nextView = (user.role === UserRole.STUDENT && !user.profileCompleted)
       ? 'COMPLETE_PROFILE'
       : 'DASHBOARD';
