@@ -8,7 +8,7 @@ import {
   Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, 
   ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, 
   X, Gauge, TrendingUp, Users, AlertCircle, Camera, Image as ImageIcon,
-  Upload, CheckCircle2, RotateCcw, Sparkles, Save
+  Upload, CheckCircle2, RotateCcw, Sparkles, Save, RefreshCw
 } from 'lucide-react';
 
 interface AssessmentsPageProps {
@@ -27,6 +27,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
   const [expandedAssessment, setExpandedAssessment] = useState<string | null>(null);
   const [analyzingIA, setAnalyzingIA] = useState<string | null>(null);
   const [iaFeedback, setIaFeedback] = useState<Record<string, string>>({});
+  const [updatingPhoto, setUpdatingPhoto] = useState<string | null>(null); // ID_PhotoType
 
   const isStaff = currentUser.role !== UserRole.STUDENT;
 
@@ -95,6 +96,23 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
       addToast(`Erro ao salvar: ${error.message || 'Erro de conexão com o banco.'}`, "error");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQuickPhotoUpdate = async (assessment: Assessment, type: 'photoFrontUrl' | 'photoSideUrl' | 'photoBackUrl', file: File) => {
+    const loaderId = `${assessment.id}_${type}`;
+    setUpdatingPhoto(loaderId);
+    try {
+      const base64 = await ImageService.compressImage(file, 1200, 0.6);
+      const updatedAssessment = { ...assessment, [type]: base64 };
+      await SupabaseService.updateAssessment(updatedAssessment);
+      
+      setAssessments(prev => prev.map(a => a.id === assessment.id ? updatedAssessment : a));
+      addToast("Foto atualizada com sucesso!", "success");
+    } catch (e) {
+      addToast("Erro ao processar imagem.", "error");
+    } finally {
+      setUpdatingPhoto(null);
     }
   };
 
@@ -252,9 +270,27 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                                 <Camera size={16} className="text-brand-500" /> Evolução Visual
                             </h5>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <PhotoDisplay label="Frontal" url={assessment.photoFrontUrl} />
-                                <PhotoDisplay label="Lateral" url={assessment.photoSideUrl} />
-                                <PhotoDisplay label="Costas" url={assessment.photoBackUrl} />
+                                <PhotoDisplay 
+                                    label="Frontal" 
+                                    url={assessment.photoFrontUrl} 
+                                    isStaff={isStaff} 
+                                    isUploading={updatingPhoto === `${assessment.id}_photoFrontUrl`}
+                                    onUpdate={(file) => handleQuickPhotoUpdate(assessment, 'photoFrontUrl', file)} 
+                                />
+                                <PhotoDisplay 
+                                    label="Lateral" 
+                                    url={assessment.photoSideUrl} 
+                                    isStaff={isStaff} 
+                                    isUploading={updatingPhoto === `${assessment.id}_photoSideUrl`}
+                                    onUpdate={(file) => handleQuickPhotoUpdate(assessment, 'photoSideUrl', file)} 
+                                />
+                                <PhotoDisplay 
+                                    label="Costas" 
+                                    url={assessment.photoBackUrl} 
+                                    isStaff={isStaff} 
+                                    isUploading={updatingPhoto === `${assessment.id}_photoBackUrl`}
+                                    onUpdate={(file) => handleQuickPhotoUpdate(assessment, 'photoBackUrl', file)} 
+                                />
                             </div>
                         </div>
 
@@ -370,18 +406,63 @@ const MetricDetail = ({ label, value, unit }: { label: string, value?: number | 
     </div>
 );
 
-const PhotoDisplay = ({ label, url }: { label: string, url?: string }) => (
-    <div className="bg-dark-900/50 p-4 rounded-[2rem] border border-dark-800 space-y-3">
-        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{label}</p>
-        <div className="h-64 bg-dark-950 rounded-2xl overflow-hidden flex items-center justify-center border border-dark-800">
-            {url ? (
-                <img src={url} alt={`Foto ${label}`} className="w-full h-full object-cover transition-transform hover:scale-110 cursor-zoom-in" />
-            ) : (
-                <ImageIcon size={32} className="text-dark-900" />
+const PhotoDisplay = ({ label, url, isStaff, isUploading, onUpdate }: { label: string, url?: string, isStaff: boolean, isUploading: boolean, onUpdate: (f: File) => void }) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    return (
+        <div className="bg-dark-900/50 p-4 rounded-[2rem] border border-dark-800 space-y-3 group/photo">
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest text-center">{label}</p>
+            <div className="h-64 bg-dark-950 rounded-2xl overflow-hidden flex items-center justify-center border border-dark-800 relative">
+                {isUploading ? (
+                    <div className="flex flex-col items-center gap-3 animate-pulse">
+                        <Loader2 className="animate-spin text-brand-500" size={32} />
+                        <p className="text-[8px] font-black text-slate-600 uppercase">Processando...</p>
+                    </div>
+                ) : url ? (
+                    <>
+                        <img src={url} alt={`Foto ${label}`} className="w-full h-full object-cover transition-transform hover:scale-110 cursor-zoom-in" />
+                        {isStaff && (
+                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center no-print">
+                                <button 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="p-3 bg-brand-600 text-white rounded-xl shadow-2xl hover:bg-brand-500 transition-all flex items-center gap-2"
+                                >
+                                    <RefreshCw size={18} />
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Trocar Foto</span>
+                                </button>
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="flex flex-col items-center gap-3">
+                        <ImageIcon size={32} className="text-dark-900" />
+                        {isStaff && (
+                            <button 
+                                onClick={() => fileInputRef.current?.click()}
+                                className="bg-dark-800 hover:bg-brand-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all no-print"
+                            >
+                                Adicionar
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+            {isStaff && (
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    className="hidden" 
+                    accept="image/*" 
+                    capture="environment" 
+                    onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onUpdate(file);
+                    }}
+                />
             )}
         </div>
-    </div>
-);
+    );
+};
 
 const FMSScore = ({ label, score }: { label: string, score?: number }) => (
     <div className="space-y-2">
@@ -679,7 +760,6 @@ const ImageUploadButton = ({ label, value, onFileSelect, onClear, inputRef, comp
                     </div>
                 )}
             </div>
-            {/* Adicionado capture="environment" para abrir a câmera traseira em celulares */}
             <input 
               type="file" 
               ref={inputRef} 

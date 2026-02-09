@@ -259,6 +259,7 @@ export const SupabaseService = {
       status: u.status || 'ACTIVE', join_date: formatDateForDb(u.joinDate),
       birth_date: formatDateForDb(u.birthDate), cpf: u.cpf, rg: u.rg, address: u.address || {},
       plan_id: u.planId, plan_value: u.planValue, plan_discount: u.planDiscount || 0,
+      // Fix: Changed u.billing_day to u.billingDay as defined in the User interface
       plan_duration: u.planDuration, billing_day: u.billingDay, plan_start_date: formatDateForDb(u.planStartDate),
       anamnesis: u.anamnesis || {},
     };
@@ -276,7 +277,8 @@ export const SupabaseService = {
       status: u.status, suspended_at: u.suspendedAt, birth_date: formatDateForDb(u.birthDate),
       cpf: u.cpf, rg: u.rg, address: u.address || {}, plan_id: u.planId,
       plan_value: u.planValue, plan_discount: u.planDiscount || 0, plan_duration: u.planDuration,
-      billing_day: u.billing_day, plan_start_date: formatDateForDb(u.planStartDate),
+      // Fix: Changed u.billing_day to u.billingDay as defined in the User interface
+      billing_day: u.billingDay, plan_start_date: formatDateForDb(u.planStartDate),
       anamnesis: u.anamnesis || {}, strava_access_token: u.stravaAccessToken,
       strava_refresh_token: u.stravaRefreshToken,
     };
@@ -312,6 +314,7 @@ export const SupabaseService = {
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
+      // Fix: Corrected property name from waitlist_student_ids to waitlistStudentIds
       waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
       week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
@@ -327,6 +330,7 @@ export const SupabaseService = {
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
+      // Fix: Corrected property name from waitlist_student_ids to waitlistStudentIds
       waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
       week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
@@ -454,7 +458,8 @@ export const SupabaseService = {
     const promises = records.map(async r => {
         const payload = { 
             class_id: r.classId, student_id: r.studentId, date: formatDateForDb(r.date), is_present: r.isPresent,
-            total_time_seconds: r.totalTimeSeconds, average_pace: r.average_pace,
+            // Fix: Changed r.average_pace to r.averagePace as defined in the AttendanceRecord interface
+            total_time_seconds: r.totalTimeSeconds, average_pace: r.averagePace,
             age_group_classification: r.ageGroupClassification, instructor_notes: r.instructorNotes,
             generated_feedback: r.generatedFeedback,
         };
