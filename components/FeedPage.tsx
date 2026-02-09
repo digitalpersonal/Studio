@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Post, User, UserRole, Comment } from '../types';
 import { SupabaseService } from '../services/supabaseService';
+import { ImageService } from '../services/imageService';
 import { 
   Camera, Send, Heart, Loader2, MessageCircle, X, 
   Image as ImageIcon, Sparkles, Mic, MicOff, Info, 
@@ -49,38 +51,17 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
     }
   };
 
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 720; 
-          const MAX_HEIGHT = 720;
-          let width = img.width;
-          let height = img.height;
-          if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
-          else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
-          canvas.width = width; canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return reject("Erro no Canvas");
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.4));
-        };
-      };
-    });
-  };
-
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPostCaption && !selectedImage) return;
     setPostSubmitting(true);
     try {
       let compressedBase64 = '';
-      if (selectedImage) compressedBase64 = await compressImage(selectedImage);
+      if (selectedImage) {
+          // Uso do ImageService para compressão de alta qualidade
+          compressedBase64 = await ImageService.compressImage(selectedImage, 1080, 0.6);
+      }
+      
       const addedPost = await SupabaseService.addPost({
         userId: currentUser.id,
         imageUrl: compressedBase64,

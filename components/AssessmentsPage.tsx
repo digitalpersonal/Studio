@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Assessment, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
 import { GeminiService } from '../services/geminiService';
+import { ImageService } from '../services/imageService';
 import { 
   Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, 
   ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, 
   X, Gauge, TrendingUp, Users, AlertCircle, Camera, Image as ImageIcon,
-  Upload, CheckCircle2, RotateCcw, Sparkles
+  Upload, CheckCircle2, RotateCcw, Sparkles, Save
 } from 'lucide-react';
 
 interface AssessmentsPageProps {
@@ -90,7 +92,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
       }
     } catch (error: any) {
       console.error("Erro ao salvar avaliação:", error);
-      addToast(`Erro ao salvar: ${error.message || 'Verifique se as tabelas foram criadas no Supabase.'}`, "error");
+      addToast(`Erro ao salvar: ${error.message || 'Erro de conexão com o banco.'}`, "error");
     } finally {
       setLoading(false);
     }
@@ -317,12 +319,14 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                                         <div className="flex justify-between">Braço D: <span className="text-white font-bold">{assessment.circumferences.rightArm || 0}</span></div>
                                         <div className="flex justify-between">Braço E: <span className="text-white font-bold">{assessment.circumferences.leftArm || 0}</span></div>
                                         <div className="flex justify-between">Ant.Braço D: <span className="text-white font-bold">{assessment.circumferences.rightForearm || 0}</span></div>
+                                        <div className="flex justify-between">Ant.Braço E: <span className="text-white font-bold">{assessment.circumferences.leftForearm || 0}</span></div>
                                     </div>
                                     <div className="space-y-3">
                                         <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Inferiores</p>
                                         <div className="flex justify-between">Coxa D: <span className="text-white font-bold">{assessment.circumferences.rightThigh || 0}</span></div>
                                         <div className="flex justify-between">Coxa E: <span className="text-white font-bold">{assessment.circumferences.leftThigh || 0}</span></div>
                                         <div className="flex justify-between">Pant. D: <span className="text-white font-bold">{assessment.circumferences.rightCalf || 0}</span></div>
+                                        <div className="flex justify-between">Pant. E: <span className="text-white font-bold">{assessment.circumferences.leftCalf || 0}</span></div>
                                     </div>
                                     <div className="space-y-3">
                                         <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Observações</p>
@@ -446,38 +450,14 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
     back: useRef<HTMLInputElement>(null)
   };
 
-  const compressImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 720; 
-          const MAX_HEIGHT = 720;
-          let width = img.width;
-          let height = img.height;
-          if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
-          else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
-          canvas.width = width; canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return reject("Erro no Canvas");
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.4));
-        };
-      };
-    });
-  };
-
   const handleFileUpload = async (type: 'photoFrontUrl' | 'photoSideUrl' | 'photoBackUrl', file: File) => {
     setCompressing(true);
     try {
-      const base64 = await compressImage(file);
+      // Uso do novo ImageService para compressão profissional
+      const base64 = await ImageService.compressImage(file, 1200, 0.6);
       setFormData(prev => ({ ...prev, [type]: base64 }));
     } catch (e) {
-      console.error("Erro ao comprimir imagem:", e);
+      console.error("Erro ao otimizar imagem:", e);
     } finally {
       setCompressing(false);
     }
@@ -699,7 +679,15 @@ const ImageUploadButton = ({ label, value, onFileSelect, onClear, inputRef, comp
                     </div>
                 )}
             </div>
-            <input type="file" ref={inputRef} className="hidden" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) onFileSelect(file); }} />
+            {/* Adicionado capture="environment" para abrir a câmera traseira em celulares */}
+            <input 
+              type="file" 
+              ref={inputRef} 
+              className="hidden" 
+              accept="image/*" 
+              capture="environment"
+              onChange={(e) => { const file = e.target.files?.[0]; if (file) onFileSelect(file); }} 
+            />
         </div>
     );
 };

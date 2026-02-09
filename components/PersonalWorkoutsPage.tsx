@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { PersonalizedWorkout, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { Dumbbell, Plus, Edit, Trash2, Loader2, Video, User as UserIcon, Search, Check, X } from 'lucide-react';
+import { Dumbbell, Plus, Edit, Trash2, Loader2, Video, User as UserIcon, Search, Check, X, Save } from 'lucide-react';
 
 interface PersonalWorkoutsPageProps {
   currentUser: User;
@@ -18,37 +18,40 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
   const [editingWorkout, setEditingWorkout] = useState<PersonalizedWorkout | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isStaff = currentUser.role !== UserRole.STUDENT;
+  // Verificação de cargo: Apenas Admins e Trainers são considerados "Management"
+  const isManagement = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN || currentUser.role === UserRole.TRAINER;
+  const isStudent = currentUser.role === UserRole.STUDENT;
 
   useEffect(() => {
     const fetchWorkouts = async () => {
       setLoading(true);
       try {
-        const userData = isStaff ? await SupabaseService.getAllUsers() : []; 
-        setUsers(userData);
+        // Se for aluno, busca APENAS o seu ID, ignorando qualquer tentativa de filtro externo
+        const targetUserId = isStudent ? currentUser.id : (selectedUserId || undefined);
+        
+        const [userData, workoutData] = await Promise.all([
+          isManagement ? SupabaseService.getAllUsers() : Promise.resolve([]),
+          SupabaseService.getPersonalizedWorkouts(targetUserId)
+        ]);
 
-        let workoutData: PersonalizedWorkout[] = [];
-        if (currentUser.role === UserRole.STUDENT) {
-          workoutData = await SupabaseService.getPersonalizedWorkouts(currentUser.id);
-        } else {
-          workoutData = await SupabaseService.getPersonalizedWorkouts(selectedUserId || undefined);
-        }
+        setUsers(userData);
         setWorkouts(workoutData);
       } catch (error: any) {
-        console.error("Erro ao carregar treinos personalizados:", error.message || JSON.stringify(error));
-        addToast(`Erro ao carregar treinos personalizados: ${error.message || JSON.stringify(error)}`, "error");
+        console.error("Erro ao carregar treinos:", error);
+        addToast(`Erro ao carregar treinos.`, "error");
       } finally {
         setLoading(false);
       }
     };
     fetchWorkouts();
-  }, [currentUser, selectedUserId, addToast, isStaff]);
+  }, [currentUser, selectedUserId, isManagement, isStudent, addToast]);
 
   useEffect(() => {
-    if (initialStudentId !== undefined) {
+    // Sincroniza o ID inicial vindo da navegação, mas APENAS se for administrador/professor
+    if (initialStudentId !== undefined && isManagement) {
       setSelectedUserId(initialStudentId);
     }
-  }, [initialStudentId]);
+  }, [initialStudentId, isManagement]);
 
   const handleSaveWorkout = async (workoutData: Omit<PersonalizedWorkout, 'id'>) => {
     setLoading(true);
@@ -62,11 +65,12 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
       }
       setShowForm(false);
       setEditingWorkout(null);
-      const updatedWorkouts = await SupabaseService.getPersonalizedWorkouts(isStaff ? selectedUserId || undefined : currentUser.id);
+      // Recarrega a lista baseada no filtro atual
+      const updatedWorkouts = await SupabaseService.getPersonalizedWorkouts(isManagement ? (selectedUserId || undefined) : currentUser.id);
       setWorkouts(updatedWorkouts);
     } catch (error: any) {
-      console.error("Erro ao salvar treino personalizado:", error.message || JSON.stringify(error));
-      addToast(`Erro ao salvar treino: ${error.message || 'Desconhecido'}`, "error");
+      console.error("Erro ao salvar treino:", error);
+      addToast(`Erro ao salvar treino: ${error.message}`, "error");
     } finally {
       setLoading(false);
     }
@@ -78,11 +82,10 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
     try {
       await SupabaseService.deletePersonalizedWorkout(id);
       addToast("Treino excluído com sucesso!", "success");
-      const updatedWorkouts = await SupabaseService.getPersonalizedWorkouts(isStaff ? selectedUserId || undefined : currentUser.id);
+      const updatedWorkouts = await SupabaseService.getPersonalizedWorkouts(isManagement ? (selectedUserId || undefined) : currentUser.id);
       setWorkouts(updatedWorkouts);
     } catch (error: any) {
-      console.error("Erro ao excluir treino personalizado:", error.message || JSON.stringify(error));
-      addToast(`Erro ao excluir treino: ${error.message || 'Desconhecido'}`, "error");
+      addToast(`Erro ao excluir treino.`, "error");
     } finally {
       setLoading(false);
     }
@@ -95,10 +98,11 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
       .join(', ');
   };
 
-  if (loading) {
+  if (loading && workouts.length === 0) {
     return (
-      <div className="flex justify-center items-center h-full min-h-[500px]">
+      <div className="flex flex-col justify-center items-center h-full min-h-[500px] gap-4">
         <Loader2 className="animate-spin text-brand-500" size={48} />
+        <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest">Sincronizando seus Treinos...</p>
       </div>
     );
   }
@@ -120,9 +124,11 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
       <header className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-white uppercase tracking-tighter">Treinos Personalizados</h2>
-          <p className="text-slate-400 text-sm font-medium">Acesse e gerencie treinos específicos para cada aluno.</p>
+          <p className="text-slate-400 text-sm font-medium">
+            {isStudent ? 'Acesse os treinos exclusivos que o seu coach preparou para você.' : 'Gerencie os treinos individuais dos alunos.'}
+          </p>
         </div>
-        {isStaff && (
+        {isManagement && (
           <button
             onClick={() => { setEditingWorkout(null); setShowForm(true); }}
             className="bg-brand-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all"
@@ -132,7 +138,8 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
         )}
       </header>
 
-      {isStaff && (
+      {/* Apenas Admins/Professores vêem a barra de filtro */}
+      {isManagement && (
         <div className="bg-dark-950 p-6 rounded-3xl border border-dark-800 shadow-xl flex flex-col md:flex-row items-center gap-4">
           <label className="text-slate-500 text-[10px] font-black uppercase tracking-widest shrink-0">Filtrar por Aluno:</label> 
           <select
@@ -157,9 +164,9 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
                   <h4 className="text-white font-bold text-lg flex items-center gap-2 group-hover:text-brand-500 transition-colors">
                     <Dumbbell size={20} className="text-brand-500" /> {String(workout.title)}
                   </h4>
-                  <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Criado em: {String(workout.createdAt)}</p>
+                  <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Criado em: {new Date(workout.createdAt).toLocaleDateString('pt-BR')}</p>
                 </div>
-                {isStaff && (
+                {isManagement && (
                   <div className="flex gap-2">
                     <button onClick={() => { setEditingWorkout(workout); setShowForm(true); }} className="p-2 bg-dark-800 text-slate-400 rounded-xl hover:text-white transition-colors" title="Editar Treino">
                       <Edit size={16} />
@@ -172,9 +179,9 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
               </div>
               <p className="text-slate-400 text-sm whitespace-pre-line leading-relaxed">{String(workout.description)}</p>
               
-              {workout.studentIds && workout.studentIds.length > 0 && isStaff && (
+              {workout.studentIds && workout.studentIds.length > 0 && isManagement && (
                   <p className="text-slate-500 text-[10px] font-bold uppercase tracking-tighter flex items-center gap-2 bg-dark-900/50 p-2 rounded-lg border border-dark-800">
-                      <UserIcon size={12} className="text-brand-500" /> <span className="truncate">Atribuído a: {getUserNamesForWorkout(workout.studentIds)}</span>
+                      <UserIcon size={12} className="text-brand-500" /> <span className="truncate">Para: {getUserNamesForWorkout(workout.studentIds)}</span>
                   </p>
               )}
 
@@ -189,9 +196,14 @@ export const PersonalWorkoutsPage: React.FC<PersonalWorkoutsPageProps> = ({ curr
             </div>
           ))
         ) : (
-          <div className="col-span-full py-20 text-center bg-dark-950 rounded-[3rem] border border-dashed border-dark-800">
-             <Dumbbell className="mx-auto text-dark-800 mb-4" size={48} />
-             <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Nenhum treino personalizado encontrado.</p>
+          <div className="col-span-full py-24 text-center bg-dark-950 rounded-[3rem] border border-dashed border-dark-800">
+             <div className="w-20 h-20 bg-dark-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-dark-800 shadow-xl">
+                <Dumbbell className="text-dark-800" size={40} />
+             </div>
+             <h3 className="text-slate-500 font-black uppercase text-sm tracking-widest">Nenhum Treino Encontrado</h3>
+             <p className="text-slate-700 text-xs mt-2 max-w-xs mx-auto">
+               {isStudent ? 'Assim que seu treinador prescrever um treino individual, ele aparecerá aqui.' : 'Nenhum treino prescrito para este filtro.'}
+             </p>
           </div>
         )}
       </div>
@@ -336,8 +348,8 @@ const PersonalWorkoutForm: React.FC<PersonalWorkoutFormProps> = ({ workout, user
 
           <div className="pt-6 border-t border-dark-800 grid grid-cols-2 gap-4">
             <button type="button" onClick={onCancel} className="py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:bg-dark-700">Descartar</button>
-            <button type="submit" className="py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all flex items-center justify-center gap-2">
-              Gravar Treino
+            <button type="submit" className="py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all flex items-center justify-center gap-3">
+              <Save size={18}/> Gravar Treino
             </button>
           </div>
         </div>

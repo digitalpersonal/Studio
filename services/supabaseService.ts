@@ -113,6 +113,7 @@ const mapAttendanceFromDb = (r: any): AttendanceRecord => ({
   averagePace: r.average_pace,
   ageGroupClassification: r.age_group_classification,
   instructorNotes: r.instructor_notes,
+  // Fix: Correct mapping from snake_case database field to camelCase interface property
   generatedFeedback: r.generated_feedback,
 });
 
@@ -120,8 +121,7 @@ const mapAssessmentFromDb = (a: any): Assessment => ({
   id: a.id,
   studentId: a.student_id,
   date: a.date,
-  status: a.status as 'DONE' | 'SCHEDULED',
-  notes: a.notes || '',
+  status: a.status,
   weight: Number(a.weight) || 0,
   height: Number(a.height) || 0,
   bodyFatPercentage: Number(a.body_fat_percentage) || 0,
@@ -137,7 +137,8 @@ const mapAssessmentFromDb = (a: any): Assessment => ({
   photoSideUrl: a.photo_side_url || '',
   photoBackUrl: a.photo_back_url || '',
   fms: a.fms || {},
-  circumferences: a.circumferences || {}
+  circumferences: a.circumferences || {},
+  notes: a.notes || '',
 });
 
 const CACHE_TTL = 30000;
@@ -275,7 +276,7 @@ export const SupabaseService = {
       status: u.status, suspended_at: u.suspendedAt, birth_date: formatDateForDb(u.birthDate),
       cpf: u.cpf, rg: u.rg, address: u.address || {}, plan_id: u.planId,
       plan_value: u.planValue, plan_discount: u.planDiscount || 0, plan_duration: u.planDuration,
-      billing_day: u.billingDay, plan_start_date: formatDateForDb(u.planStartDate),
+      billing_day: u.billing_day, plan_start_date: formatDateForDb(u.planStartDate),
       anamnesis: u.anamnesis || {}, strava_access_token: u.stravaAccessToken,
       strava_refresh_token: u.stravaRefreshToken,
     };
@@ -311,7 +312,7 @@ export const SupabaseService = {
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
-      waitlist_student_ids: c.waitlist_student_ids || [], type: c.type, is_cancelled: c.isCancelled,
+      waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
       week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
     }]).select().single();
@@ -326,9 +327,9 @@ export const SupabaseService = {
       title: c.title, description: c.description, day_of_week: c.dayOfWeek,
       date: formatDateForDb(c.date), start_time: c.startTime, duration_minutes: c.durationMinutes,
       instructor: c.instructor, max_capacity: c.maxCapacity, enrolled_student_ids: c.enrolledStudentIds || [],
-      waitlist_student_ids: c.waitlist_student_ids || [], type: c.type, is_cancelled: c.isCancelled,
+      waitlist_student_ids: c.waitlistStudentIds || [], type: c.type, is_cancelled: c.isCancelled,
       wod: c.wod, workout_details: c.workoutDetails, cycle_start_date: formatDateForDb(c.cycleStartDate),
-      week_of_cycle: c.week_of_cycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
+      week_of_cycle: c.weekOfCycle, week_focus: c.weekFocus, distance_km: c.distanceKm,
     }).eq('id', c.id).select().single();
     if (error) throw error;
     invalidateCache();
@@ -453,11 +454,8 @@ export const SupabaseService = {
     const promises = records.map(async r => {
         const payload = { 
             class_id: r.classId, student_id: r.studentId, date: formatDateForDb(r.date), is_present: r.isPresent,
-            total_time_seconds: r.totalTimeSeconds, 
-            // Fix: Property 'average_pace' does not exist on type 'Omit<AttendanceRecord, "id">'. Did you mean 'averagePace'?
-            average_pace: r.averagePace,
+            total_time_seconds: r.totalTimeSeconds, average_pace: r.average_pace,
             age_group_classification: r.ageGroupClassification, instructor_notes: r.instructorNotes,
-            // Fix: Property 'generated_feedback' does not exist on type 'Omit<AttendanceRecord, "id">'. Did you mean 'generatedFeedback'?
             generated_feedback: r.generatedFeedback,
         };
         const { data: existing } = await supabase.from('attendance').select('id').eq('class_id', r.classId).eq('student_id', r.studentId).eq('date', formatDateForDb(r.date)).maybeSingle();
@@ -493,19 +491,20 @@ export const SupabaseService = {
     if (!supabase) return [];
     const { data, error } = await supabase.from('cycle_summaries').select('*').eq('student_id', studentId).order('cycle_end_date', { ascending: false });
     if (error) return [];
-    return (data || []).map(s => ({ ...s, id: s.id, studentId: s.student_id, cycleEndDate: s.cycle_end_date, summary_text: s.summary_text, start_pace: s.start_pace, end_pace: s.end_pace, performanceData: s.performance_data, createdAt: s.created_at }));
+    // Fix: Correct mapping of snake_case database fields to camelCase interface properties for CycleSummary
+    return (data || []).map(s => ({ ...s, id: s.id, studentId: s.student_id, cycleEndDate: s.cycle_end_date, summaryText: s.summary_text, startPace: s.start_pace, endPace: s.end_pace, performanceData: s.performance_data, createdAt: s.created_at }));
   },
 
   addCycleSummary: async (s: Omit<CycleSummary, 'id' | 'createdAt'>): Promise<CycleSummary> => {
     if (!supabase) throw new Error("Sem conexão");
     const payload = {
       student_id: s.studentId, cycle_end_date: formatDateForDb(s.cycleEndDate),
-      // Fix: Property 'end_pace' does not exist on type 'Omit<CycleSummary, "id" | "createdAt">'. Did you mean 'endPace'?
       summary_text: s.summaryText, start_pace: s.startPace, end_pace: s.endPace,
       performance_data: s.performanceData
     };
-    const { data, error } = await supabase.from('cycle_summaries').insert([payload]).select().single();
+    const { data, error = null } = await supabase.from('cycle_summaries').insert([payload]).select().single();
     if (error) throw error;
+    // Fix: Correct mapping of snake_case database fields to camelCase interface properties for CycleSummary
     return { ...data, id: data.id, studentId: data.student_id, cycleEndDate: data.cycle_end_date, summaryText: data.summary_text, startPace: data.start_pace, endPace: data.end_pace, performanceData: data.performance_data, createdAt: data.created_at };
   },
 
@@ -540,8 +539,10 @@ export const SupabaseService = {
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
       hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
-      medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
-      photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
+      medicine_ball_throw: a.medicineBallThrow, 
+      photo_front_url: a.photoFrontUrl,
+      photo_side_url: a.photoSideUrl,
+      photo_back_url: a.photoBackUrl,
       fms: a.fms || {}, circumferences: a.circumferences || {}, notes: a.notes
     };
     const { data, error } = await supabase.from('assessments').insert([payload]).select().single();
@@ -558,8 +559,10 @@ export const SupabaseService = {
       visceral_fat_level: a.visceralFatLevel, basal_metabolic_rate: a.basalMetabolicRate,
       hydration_percentage: a.hydrationPercentage, abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
-      medicine_ball_throw: a.medicineBallThrow, photo_front_url: a.photoFrontUrl,
-      photo_side_url: a.photoSideUrl, photo_back_url: a.photoBackUrl,
+      medicine_ball_throw: a.medicineBallThrow, 
+      photo_front_url: a.photoFrontUrl,
+      photo_side_url: a.photoSideUrl,
+      photo_back_url: a.photoBackUrl,
       fms: a.fms || {}, circumferences: a.circumferences || {}, notes: a.notes
     };
     const { data, error } = await supabase.from('assessments').update(payload).eq('id', a.id).select().single();
@@ -606,27 +609,47 @@ export const SupabaseService = {
   getPersonalizedWorkouts: async (userId?: string): Promise<PersonalizedWorkout[]> => {
     if (!supabase) return [];
     try {
-        let query = supabase.from('personalized_workouts').select('*').order('created_at', { ascending: false });
+        let query = supabase.from('personalized_workouts').select('*');
+        
+        // FILTRAGEM NO BANCO DE DADOS (CRÍTICO PARA PRIVACIDADE)
+        // Se um userId for passado (como o id do aluno logado), 
+        // o Supabase só retornará linhas onde student_ids contém este UUID.
+        if (userId) {
+            query = query.contains('student_ids', [userId]);
+        }
+        
+        query = query.order('created_at', { ascending: false });
+        
         const { data, error } = await query;
         if (error) throw error;
-        let results = (data || []).map(w => ({ ...w, videoUrl: w.video_url, studentIds: w.student_ids, instructorName: w.instructor_name, createdAt: w.created_at }));
-        if (userId) results = results.filter(w => w.studentIds.includes(userId));
-        return results;
-    } catch (e) { return []; }
+        
+        return (data || []).map(w => ({ 
+            ...w, 
+            videoUrl: w.video_url, 
+            studentIds: w.student_ids, 
+            instructorName: w.instructor_name, 
+            createdAt: w.created_at 
+        }));
+    } catch (e) { 
+        console.error("Erro ao buscar treinos:", e);
+        return []; 
+    }
   },
 
   addPersonalizedWorkout: async (w: Omit<PersonalizedWorkout, 'id'>): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('personalized_workouts').insert([{ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.student_ids, instructor_name: w.instructorName }]).select().single();
+    const { data, error } = await supabase.from('personalized_workouts').insert([{ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.studentIds, instructor_name: w.instructorName }]).select().single();
     if (error) throw error;
-    return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructor_name: data.instructor_name, createdAt: data.created_at };
+    // Fix: Correct mapping of snake_case database fields to camelCase interface properties for PersonalizedWorkout
+    return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructorName: data.instructor_name, createdAt: data.created_at };
   },
 
   updatePersonalizedWorkout: async (w: PersonalizedWorkout): Promise<PersonalizedWorkout> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('personalized_workouts').update({ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.student_ids, instructor_name: w.instructorName }).eq('id', w.id).select().single();
+    const { data, error } = await supabase.from('personalized_workouts').update({ title: w.title, description: w.description, video_url: w.videoUrl, student_ids: w.studentIds, instructor_name: w.instructorName }).eq('id', w.id).select().single();
     if (error) throw error;
-    return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructor_name: data.instructor_name, createdAt: data.created_at };
+    // Fix: Correct mapping of snake_case database fields to camelCase interface properties for PersonalizedWorkout
+    return { ...data, videoUrl: data.video_url, studentIds: data.student_ids, instructorName: data.instructor_name, createdAt: data.created_at };
   },
 
   deletePersonalizedWorkout: async (id: string) => {
@@ -723,6 +746,7 @@ export const SupabaseService = {
       pix_key: s.pixKey, 
       custom_domain: s.customDomain, 
       monthly_fee: s.monthlyFee, 
+      // Fix: Correct property name in AcademySettings interface is camelCase
       registration_invite_code: s.registrationInviteCode, 
       address: s.academyAddress, 
       strava_client_id: s.stravaClientId,
