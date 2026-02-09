@@ -342,7 +342,7 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                                 <Ruler size={16} className="text-brand-500" /> Perímetros (cm)
                             </h5>
                             {assessment.circumferences ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 p-8 bg-dark-900/30 rounded-[2rem] border border-dark-800 text-[11px]">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 p-8 bg-dark-900/30 rounded-[2.5rem] border border-dark-800 text-[11px]">
                                     <div className="space-y-3">
                                         <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Tronco</p>
                                         <div className="flex justify-between">Tórax: <span className="text-white font-bold">{assessment.circumferences.chest || 0}</span></div>
@@ -428,7 +428,7 @@ const PhotoDisplay = ({ label, url, isStaff, isUploading, onUpdate }: { label: s
                                     className="p-3 bg-brand-600 text-white rounded-xl shadow-2xl hover:bg-brand-500 transition-all flex items-center gap-2"
                                 >
                                     <RefreshCw size={18} />
-                                    <span className="text-[9px] font-black uppercase tracking-widest">Trocar Foto</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest">Selecionar Foto</span>
                                 </button>
                             </div>
                         )}
@@ -441,7 +441,7 @@ const PhotoDisplay = ({ label, url, isStaff, isUploading, onUpdate }: { label: s
                                 onClick={() => fileInputRef.current?.click()}
                                 className="bg-dark-800 hover:bg-brand-600 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all no-print"
                             >
-                                Adicionar
+                                Selecionar
                             </button>
                         )}
                     </div>
@@ -453,7 +453,6 @@ const PhotoDisplay = ({ label, url, isStaff, isUploading, onUpdate }: { label: s
                     ref={fileInputRef} 
                     className="hidden" 
                     accept="image/*" 
-                    capture="environment" 
                     onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) onUpdate(file);
@@ -540,6 +539,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
     } catch (e) {
       console.error("Erro ao otimizar imagem:", e);
     } finally {
+      setFormData(prev => ({ ...prev })); // Force update UI
       setCompressing(false);
     }
   };
@@ -633,7 +633,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
 
         {/* FOTOS */}
         <section className="space-y-6 pt-10 border-t border-dark-800">
-            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Camera size={18}/> Avaliação Fotográfica</h4>
+            <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Camera size={18}/> Avaliação Fotográfica (Upload de Arquivos)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
                 <ImageUploadButton label="Frontal" value={formData.photoFrontUrl} onFileSelect={(f) => handleFileUpload('photoFrontUrl', f)} onClear={() => setFormData(prev => ({ ...prev, photoFrontUrl: '' }))} inputRef={fileInputRefs.front} compressing={compressing} />
                 <ImageUploadButton label="Lateral" value={formData.photoSideUrl} onFileSelect={(f) => handleFileUpload('photoSideUrl', f)} onClear={() => setFormData(prev => ({ ...prev, photoSideUrl: '' }))} inputRef={fileInputRefs.side} compressing={compressing} />
@@ -755,8 +755,8 @@ const ImageUploadButton = ({ label, value, onFileSelect, onClear, inputRef, comp
                     </>
                 ) : (
                     <div className="flex flex-col items-center gap-3">
-                        {compressing ? <Loader2 className="animate-spin text-brand-500" size={32} /> : <div className="p-5 bg-dark-950 rounded-full border border-dark-800"><Camera className="text-slate-600" size={32} /></div>}
-                        <p className="text-[10px] text-slate-600 font-black uppercase">Anexar Foto</p>
+                        {compressing ? <Loader2 className="animate-spin text-brand-500" size={32} /> : <div className="p-5 bg-dark-950 rounded-full border border-dark-800"><ImageIcon className="text-slate-600" size={32} /></div>}
+                        <p className="text-[10px] text-slate-600 font-black uppercase text-center px-4">Anexar Foto (Galeria ou Notebook)</p>
                     </div>
                 )}
             </div>
@@ -765,7 +765,6 @@ const ImageUploadButton = ({ label, value, onFileSelect, onClear, inputRef, comp
               ref={inputRef} 
               className="hidden" 
               accept="image/*" 
-              capture="environment"
               onChange={(e) => { const file = e.target.files?.[0]; if (file) onFileSelect(file); }} 
             />
         </div>

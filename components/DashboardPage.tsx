@@ -30,9 +30,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [showNoticeForm, setShowNoticeForm] = useState(false);
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
 
-  // Permissões
-  const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
-  const isManagement = isAdmin || currentUser.role === UserRole.TRAINER;
+  // Permissões refinadas
+  const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
+  const isAdmin = currentUser.role === UserRole.ADMIN || isSuperAdmin;
+  const isTrainer = currentUser.role === UserRole.TRAINER;
+  const isManagement = isAdmin || isTrainer;
   const isStudent = currentUser.role === UserRole.STUDENT;
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       const [uData, cData, pData, chalData, aData, nData] = await Promise.all([
         SupabaseService.getAllUsers(force),
         SupabaseService.getClasses(force),
-        (currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN) ? SupabaseService.getPayments(undefined, force) : SupabaseService.getPayments(currentUser.id, force),
+        (isAdmin) ? SupabaseService.getPayments(undefined, force) : SupabaseService.getPayments(currentUser.id, force),
         SupabaseService.getGlobalChallengeProgress(force),
         isStudent ? SupabaseService.getAttendanceForStudent(currentUser.id) : Promise.resolve([]),
         SupabaseService.getNotices()
@@ -64,7 +66,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     } finally {
       setLoading(false);
     }
-  }, [currentUser.id, currentUser.role, isStudent]);
+  }, [currentUser.id, isAdmin, isStudent]);
 
   useEffect(() => {
     loadData(true);
@@ -86,7 +88,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       loadData(false);
     } catch (e: any) {
       console.error("Erro ao salvar aviso:", e);
-      addToast(`Erro: ${e.message || 'Verifique se a tabela de avisos foi criada no Supabase.'}`, "error");
+      addToast(`Erro: ${e.message}`, "error");
     }
   };
 
@@ -160,7 +162,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         </div>
       </header>
 
-      {/* QUADRO DE AVISOS - TODOS VÊEM, SÓ ADMIN CRIA */}
+      {/* QUADRO DE AVISOS */}
       <section className="space-y-5">
         <div className="flex justify-between items-center px-1">
           <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
@@ -224,17 +226,24 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         </div>
       </section>
 
+      {/* METRICAS DINÂMICAS POR CARGO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {isManagement ? (
+        {isAdmin ? (
           <>
             <MetricCard icon={Users} label="Alunos Ativos" value={stats.activeCount} color="blue" />
             <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
             <MetricCard icon={AlertTriangle} label="Pendências" value={stats.overdueCount} color="red" />
             <MetricCard icon={TrendingUp} label="Eficiência" value={`${stats.challengeProgressPercent.toFixed(0)}%`} color="purple" />
           </>
+        ) : isTrainer ? (
+          <>
+            <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
+            <MetricCard icon={TrendingUp} label="Progresso Alunos" value={`${stats.challengeProgressPercent.toFixed(0)}%`} color="purple" />
+            <MetricCard icon={Clock} label="Horário Atual" value={currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} color="blue" />
+          </>
         ) : (
           <>
-            <MetricCard icon={CheckCircle2} label="Treinos" value={stats.totalAttendance} color="blue" />
+            <MetricCard icon={CheckCircle2} label="Treinos Concluídos" value={stats.totalAttendance} color="blue" />
             <MetricCard icon={Calendar} label="Próxima Aula" value={stats.todayClasses.length > 0 ? stats.todayClasses[0].startTime : '--:--'} color="brand" />
             <MetricCard icon={Flag} label="Último Pace" value={stats.lastRunPerformance?.averagePace || '--:--'} color="emerald" />
             <MetricCard icon={Trophy} label="Desafio" value={`${stats.challengeProgressPercent.toFixed(0)}%`} color="purple" />
@@ -305,7 +314,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
 
       {showNoticeForm && (
         <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-4 md:pt-16 animate-fade-in no-print overflow-y-auto">
-          {/* Foco na correção: items-start e pt-4 garantem que o modal nasça no topo da tela */}
           <div className="bg-dark-900 border border-dark-700 rounded-[2rem] sm:rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden h-auto mb-10">
             <div className="p-6 md:p-8 pb-4 flex justify-between items-center border-b border-dark-800 shrink-0">
               <div className="flex items-center gap-3">
