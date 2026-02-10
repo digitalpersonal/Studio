@@ -75,7 +75,6 @@ export const Layout: React.FC<LayoutProps> = ({
   // Efeito para rolar a tela para o topo ao trocar de página
   useEffect(() => {
     // Força o scroll para o topo tanto na janela principal quanto no container de conteúdo.
-    // Isso resolve o problema em dispositivos móveis onde a página pode não começar do topo.
     window.scrollTo(0, 0);
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = 0;
@@ -171,7 +170,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <div className="my-4 border-t border-dark-800 pt-4 px-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Gestão</div>
               <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
               <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
-              {isSuperAdmin && <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN]} />} 
+              <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} /> 
             </>
           )}
 
@@ -228,7 +227,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <>
                   <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro Geral" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
                   <NavItem view="REPORTS" icon={FileBarChart} label="Relatórios" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
-                  {isSuperAdmin && <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN]} />}
+                  <NavItem view="SETTINGS" icon={Settings} label="Configurações" roles={[UserRole.SUPER_ADMIN, UserRole.ADMIN]} />
                 </>
               )}
               {currentUser.role === UserRole.STUDENT && <NavItem view="FINANCIAL" icon={DollarSign} label="Financeiro" roles={[UserRole.STUDENT]} />}
