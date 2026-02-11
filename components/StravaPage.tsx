@@ -7,7 +7,7 @@ import {
   Share2, Zap, CheckCircle2, XCircle, BarChart, Trophy, Power, 
   Loader2, Info, BookOpen, ChevronDown, User as UserIcon, 
   GraduationCap, Shield, Settings, ExternalLink, StepForward, AlertTriangle,
-  Copy, Globe
+  Copy, Globe, Link2, AlertCircle, RefreshCw
 } from 'lucide-react';
 
 interface StravaPageProps {
@@ -25,9 +25,7 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
   );
 
   const isStaff = currentUser.role !== UserRole.STUDENT;
-  
-  // Define o URI de redirecionamento para a raiz do app atual
-  const REDIRECT_URI = window.location.origin;
+  const REDIRECT_URI = window.location.origin; 
   const CALLBACK_DOMAIN = window.location.hostname;
 
   useEffect(() => {
@@ -42,6 +40,7 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
     fetchSettings();
   }, []);
 
+  // Lógica de captura do código (executada na aba que o Strava redirecionar)
   useEffect(() => {
     const handleStravaRedirect = async () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -49,20 +48,17 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
       const error = urlParams.get('error');
 
       if (error) {
-        addToast("A conexão foi cancelada ou negada no Strava.", "error");
+        addToast("A conexão foi cancelada no Strava.", "error");
         window.history.replaceState({}, document.title, REDIRECT_URI);
         return;
       }
 
       if (code && academySettings) {
         setIsLoading(true);
-        addToast("Validando autorização...", "info");
-        
-        // Limpa a URL imediatamente para evitar reprocessamento
+        addToast("Sincronizando chaves...", "info");
         window.history.replaceState({}, document.title, REDIRECT_URI);
 
         try {
-          // Tenta realizar a troca do CODE pelo ACCESS_TOKEN
           const response = await fetch('https://www.strava.com/api/v3/oauth/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -85,15 +81,10 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
             await SupabaseService.updateUser(updatedUser);
             onUpdateUser(updatedUser);
             setIsConnected(true);
-            addToast("Conta Strava vinculada com sucesso!", "success");
-          } else {
-            console.error("Strava Response Error:", data);
-            addToast(`Erro Strava: ${data.message || 'Verifique o Secret nas configurações.'}`, "error");
+            addToast("Conectado com sucesso! Você já pode fechar esta aba.", "success");
           }
         } catch (error: any) {
-          console.error("Erro de Rede/CORS no Strava:", error);
-          // O erro de CORS acontece porque o Strava não permite troca de token via Frontend (Browser)
-          addToast("Erro de Segurança (CORS): O navegador bloqueou a troca de chaves. Verifique as configurações de domínio no painel do Strava.", "error");
+          addToast("Erro na troca de tokens.", "error");
         } finally {
           setIsLoading(false);
         }
@@ -105,21 +96,42 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
     }
   }, [academySettings, currentUser, onUpdateUser, addToast, REDIRECT_URI]);
 
+  // Função para a aba "mãe" verificar se a aba "filha" já salvou o token no banco
+  const checkConnectionStatus = async () => {
+    setIsLoading(true);
+    try {
+        const users = await SupabaseService.getAllUsers(true);
+        const freshUser = users.find(u => u.id === currentUser.id);
+        if (freshUser?.stravaAccessToken) {
+            onUpdateUser(freshUser);
+            setIsConnected(true);
+            addToast("Sincronização concluída!", "success");
+        } else {
+            addToast("A conexão ainda não foi detectada. Conclua o processo na outra janela.", "info");
+        }
+    } catch (e) {
+        addToast("Erro ao verificar status.", "error");
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
   const handleConnect = () => {
     if (!academySettings?.stravaClientId) {
-        addToast("Configure o Client ID primeiro.", "error");
+        addToast("ID do Cliente não configurado.", "error");
         return;
     }
     
-    // Escopos necessários para ler atividades
     const scope = "read,activity:read_all";
-    const authUrl = `https://www.strava.com/oauth/authorize?client_id=${academySettings.stravaClientId}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&approval_prompt=force&scope=${scope}`;
+    const authUrl = `https://www.strava.com/oauth/authorize?client_id=${academySettings.stravaClientId.trim()}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&approval_prompt=force&scope=${scope}`;
     
-    window.location.href = authUrl;
+    // ABRE EM NOVA JANELA
+    window.open(authUrl, '_blank');
+    addToast("Uma nova janela foi aberta para autorização.", "info");
   };
 
   const handleDisconnect = async () => {
-    if (!confirm("Deseja desconectar sua conta do Strava?")) return;
+    if (!confirm("Deseja desconectar sua conta?")) return;
     setIsLoading(true);
     try {
       const updatedUser = { ...currentUser, stravaAccessToken: undefined, stravaRefreshToken: undefined };
@@ -141,8 +153,8 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
             <Share2 className="text-white" size={40} />
         </div>
         <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic">Integração Strava</h2>
-        <p className="text-slate-400 mt-2 max-w-2xl mx-auto font-medium">
-          Sincronize suas corridas automaticamente e dispute o topo do ranking.
+        <p className="text-slate-400 mt-2 max-w-2xl mx-auto font-medium text-sm">
+          Sincronização automática para o ranking de corrida do Studio.
         </p>
       </header>
       
@@ -150,7 +162,7 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-4 py-16">
             <Loader2 size={48} className="animate-spin text-brand-500" />
-            <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest text-center">Processando conexão...</p>
+            <p className="text-slate-500 font-black uppercase text-[10px] tracking-widest text-center">Verificando dados...</p>
           </div>
         ) : isConnected ? (
           <div className="text-center space-y-8">
@@ -159,25 +171,36 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
                 <CheckCircle2 size={40} />
               </div>
               <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Status: Conectado</h3>
-              <p className="text-slate-400 max-w-md mx-auto text-sm italic">"Suas atividades salvas no Strava agora aparecem automaticamente no Studio."</p>
+              <p className="text-slate-400 max-w-md mx-auto text-sm italic">"Suas atividades agora são importadas automaticamente."</p>
             </div>
             <button onClick={handleDisconnect} className="bg-red-500/10 text-red-500 font-black py-4 px-8 rounded-2xl uppercase tracking-widest text-[10px] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 mx-auto border border-red-500/20">
-              <Power size={14} /> Desvincular Conta
+              <Power size={14} /> Desconectar Conta
             </button>
           </div>
         ) : (
           <div className="text-center space-y-12">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-                <BenefitCard icon={Zap} title="Sincronização" desc="Correu lá, salvou aqui. Sem tabelas manuais."/>
-                <BenefitCard icon={BarChart} title="Performance" desc="Pace e distância analisados pelo seu coach."/>
-                <BenefitCard icon={Trophy} title="Ranking" desc="Dispute metas com toda a comunidade."/>
+                <BenefitCard icon={Zap} title="Sincronização" desc="Não precisa digitar. O app busca seus KMs."/>
+                <BenefitCard icon={BarChart} title="Análise IA" desc="Feedback técnico automático após cada prova."/>
+                <BenefitCard icon={Trophy} title="Ranking" desc="Dispute com a galera em tempo real."/>
             </div>
             
-            <div className="space-y-4">
-                <button onClick={handleConnect} className="bg-[#FC4C02] text-white font-black py-5 px-12 rounded-[2rem] uppercase tracking-widest text-sm shadow-2xl shadow-orange-600/30 hover:scale-105 transition-all flex items-center justify-center gap-3 mx-auto">
-                <Share2 size={20} /> Conectar com Strava
-                </button>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Requer conta Strava ativa</p>
+            <div className="bg-brand-500/5 p-8 rounded-[2rem] border border-brand-500/10 space-y-6">
+                <div className="space-y-2">
+                    <button onClick={handleConnect} className="bg-[#FC4C02] text-white font-black py-5 px-12 rounded-[2rem] uppercase tracking-widest text-sm shadow-2xl shadow-orange-600/30 hover:scale-105 transition-all flex items-center justify-center gap-3 mx-auto">
+                        <Share2 size={20} /> Conectar em Nova Janela
+                    </button>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">Passo 1: Clique acima e autorize na nova aba</p>
+                </div>
+
+                <div className="h-px bg-dark-800 w-24 mx-auto"></div>
+
+                <div className="space-y-2">
+                    <button onClick={checkConnectionStatus} className="bg-dark-800 text-white font-black py-4 px-10 rounded-[1.5rem] uppercase tracking-widest text-[10px] border border-dark-700 hover:border-brand-500 transition-all flex items-center justify-center gap-2 mx-auto">
+                        <RefreshCw size={14} /> Já autorizei, atualizar status
+                    </button>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">Passo 2: Após autorizar, clique aqui para sincronizar</p>
+                </div>
             </div>
           </div>
         )}
@@ -187,11 +210,11 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
         <div className="flex border-b border-dark-800 bg-dark-900/50">
           {isStaff && (
             <button onClick={() => setActiveFaqTab('setup')} className={`flex-1 flex items-center justify-center gap-2 py-5 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeFaqTab === 'setup' ? 'border-brand-500 text-brand-500 bg-brand-500/5' : 'border-transparent text-slate-500 hover:text-white'}`}>
-              <Settings size={16} /> 1. Configuração Técnica
+              <Settings size={16} /> Configurar Chaves (Dashboard)
             </button>
           )}
           <button onClick={() => setActiveFaqTab('student')} className={`flex-1 flex items-center justify-center gap-2 py-5 text-[10px] font-black uppercase tracking-widest border-b-2 transition-all ${activeFaqTab === 'student' ? 'border-brand-500 text-brand-500 bg-brand-500/5' : 'border-transparent text-slate-500 hover:text-white'}`}>
-            <UserIcon size={16} /> 2. Manual do Aluno
+            <UserIcon size={16} /> Instruções p/ Alunos
           </button>
         </div>
 
@@ -200,49 +223,59 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
             <div className="space-y-8 animate-fade-in">
                 <div className="bg-brand-500/5 p-6 rounded-3xl border border-brand-500/20">
                     <h4 className="text-white font-black uppercase tracking-tighter text-xl mb-6 flex items-center gap-2">
-                        <Shield className="text-brand-500" size={24}/> Diagnóstico de Integração
+                        <Shield className="text-brand-500" size={24}/> Diagnóstico Anti-Erro
                     </h4>
                     
                     <div className="space-y-6">
+                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex gap-3 items-start mb-6">
+                            <AlertCircle className="text-red-500 shrink-0" size={20} />
+                            <div>
+                                <p className="text-xs text-red-200 font-bold leading-relaxed">
+                                    O erro <b>"redirect_uri invalid"</b> acontece quando o Strava não reconhece o endereço do seu app.
+                                </p>
+                            </div>
+                        </div>
+
                         <div className="p-5 bg-dark-900 rounded-2xl border border-dark-800">
                             <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-2 flex items-center gap-2">
-                                <Globe size={12}/> Authorization Callback Domain (Obrigatório)
+                                <Globe size={12}/> 1. Authorization Callback Domain
                             </p>
                             <div className="flex items-center justify-between gap-4">
                                 <code className="text-brand-500 font-mono text-sm bg-black/40 px-3 py-2 rounded-lg flex-1 overflow-hidden truncate">
                                     {CALLBACK_DOMAIN}
                                 </code>
                                 <button 
-                                    onClick={() => { navigator.clipboard.writeText(CALLBACK_DOMAIN); addToast("Domínio copiado!", "info"); }}
+                                    onClick={() => { navigator.clipboard.writeText(CALLBACK_DOMAIN); addToast("Copiado!", "info"); }}
                                     className="p-3 bg-dark-800 text-white rounded-xl hover:bg-brand-600 transition-all"
-                                    title="Copiar Domínio"
                                 >
                                     <Copy size={16}/>
                                 </button>
                             </div>
-                            <p className="text-[10px] text-amber-500 font-bold mt-3 leading-relaxed">
-                                Atenção: No site do Strava, cole EXATAMENTE o texto acima. Não inclua "https://" nem "/" no final.
-                            </p>
+                            <p className="text-[10px] text-slate-400 mt-2">No Strava: Cole exatamente isso no campo <b>"Authorization Callback Domain"</b>.</p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Step item="1" title="Crie a App no Strava" desc="Acesse strava.com/settings/api." />
-                            <Step item="2" title="Defina o Domínio" desc="Use o domínio de callback mostrado acima." />
-                            <Step item="3" title="Copie as Chaves" desc="Pegue o Client ID e Secret e salve no menu Configurações." />
-                            <Step item="4" title="Redirect URI" desc={`Certifique-se que o Redirect URI é: ${REDIRECT_URI}`} />
+                        <div className="p-5 bg-dark-900 rounded-2xl border border-dark-800">
+                            <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+                                <Link2 size={12}/> 2. Website URL
+                            </p>
+                            <div className="flex items-center justify-between gap-4">
+                                <code className="text-emerald-500 font-mono text-sm bg-black/40 px-3 py-2 rounded-lg flex-1 overflow-hidden truncate">
+                                    {REDIRECT_URI}
+                                </code>
+                                <button 
+                                    onClick={() => { navigator.clipboard.writeText(REDIRECT_URI); addToast("Copiado!", "info"); }}
+                                    className="p-3 bg-dark-800 text-white rounded-xl hover:bg-brand-600 transition-all"
+                                >
+                                    <Copy size={16}/>
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-2">No Strava: Cole exatamente isso no campo <b>"Website"</b>.</p>
                         </div>
                     </div>
 
                     <a href="https://www.strava.com/settings/api" target="_blank" className="mt-8 w-full flex items-center justify-center gap-2 py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-brand-500 transition-all shadow-xl shadow-brand-600/20">
-                        Abrir Painel Strava API <ExternalLink size={14}/>
+                        Ir para o Painel do Strava <ExternalLink size={14}/>
                     </a>
-                </div>
-                
-                <div className="bg-dark-900 p-6 rounded-3xl border border-dark-800">
-                    <p className="text-slate-400 text-xs leading-relaxed">
-                        <Info size={16} className="inline mr-2 text-brand-500" />
-                        <b>Nota sobre CORS:</b> Se você estiver testando localmente ou em domínios temporários, o Strava pode bloquear a troca de tokens via navegador. Em produção, este domínio deve ser fixo e validado no painel do Strava.
-                    </p>
                 </div>
             </div>
           )}
@@ -254,10 +287,9 @@ export const StravaPage: React.FC<StravaPageProps> = ({ currentUser, onUpdateUse
                         <UserIcon className="text-emerald-500" size={24}/> Passo a Passo para o Aluno
                     </h4>
                     <div className="space-y-6">
-                        <Step item="1" title="Autorize o Studio" desc="Clique em 'Conectar com Strava'. Você será levado ao site oficial do Strava." />
-                        <Step item="2" title="Dê as Permissões" desc="Marque todas as caixas, especialmente 'Visualizar atividades'. Isso é essencial para o ranking." />
-                        <Step item="3" title="Confirmação" desc="Você voltará para este app e verá o status 'Conectado'." />
-                        <Step item="4" title="Treine" desc="Suas futuras corridas serão importadas segundos após você salvá-las no Strava." />
+                        <Step item="1" title="Clique em 'Conectar'" desc="Uma nova aba do Strava será aberta no seu navegador." />
+                        <Step item="2" title="Autorize o Studio" desc="Faça login no Strava, marque 'Visualizar atividades' e confirme." />
+                        <Step item="3" title="Volte para esta aba" desc="Após ver a mensagem de sucesso na outra aba, volte para cá e clique em 'Atualizar status'." />
                     </div>
                 </div>
             </div>
