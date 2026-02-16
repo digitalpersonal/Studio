@@ -30,11 +30,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   const [showNoticeForm, setShowNoticeForm] = useState(false);
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
 
-  // Permissões refinadas
-  const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN;
-  const isAdmin = currentUser.role === UserRole.ADMIN || isSuperAdmin;
+  const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
   const isTrainer = currentUser.role === UserRole.TRAINER;
-  const isManagement = isAdmin || isTrainer;
   const isStudent = currentUser.role === UserRole.STUDENT;
 
   useEffect(() => {
@@ -87,7 +84,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       setEditingNotice(null);
       loadData(false);
     } catch (e: any) {
-      console.error("Erro ao salvar aviso:", e);
       addToast(`Erro: ${e.message}`, "error");
     }
   };
@@ -105,7 +101,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
   };
 
   const todayName = DAYS_OF_WEEK[(new Date().getDay() + 6) % 7];
-  const currentMonth = new Date().getMonth();
+  const currentMonthZeroBased = new Date().getMonth();
 
   const stats = useMemo(() => {
     const students = allUsers.filter(u => u.role === UserRole.STUDENT);
@@ -116,9 +112,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     const runningAttendance = attendance.filter(a => a.classDetails?.type === 'RUNNING');
     const lastRunPerformance = runningAttendance.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
+    // CORREÇÃO TIMEZONE: Filtra aniversários por manipulação de string para evitar erro de fuso
     const visibleBirthdays = allUsers
-      .filter(u => u.birthDate && new Date(u.birthDate).getMonth() === currentMonth)
-      .sort((a, b) => new Date(a.birthDate!).getDate() - new Date(b.birthDate!).getDate());
+      .filter(u => {
+        if (!u.birthDate) return false;
+        // ISO format YYYY-MM-DD
+        const parts = u.birthDate.split('-');
+        if (parts.length < 3) return false;
+        const month = parseInt(parts[1], 10) - 1;
+        return month === currentMonthZeroBased;
+      })
+      .sort((a, b) => {
+        const dayA = parseInt(a.birthDate!.split('-')[2], 10);
+        const dayB = parseInt(b.birthDate!.split('-')[2], 10);
+        return dayA - dayB;
+      });
     
     const challengeProgressPercent = challengeData.challenge?.targetValue 
       ? Math.min(100, (challengeData.totalDistance / challengeData.challenge.targetValue) * 100)
@@ -127,14 +135,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     return {
       activeCount: activeStudents.length,
       todayClassesCount: todayClasses.length,
-      overdueCount: new Set(overdue.map(p => p.studentId)).size,
+      overdueCount: overdue.length,
       todayClasses,
       visibleBirthdays,
       lastRunPerformance,
       totalAttendance: attendance.length,
       challengeProgressPercent
     };
-  }, [allUsers, classes, payments, todayName, currentMonth, attendance, challengeData]);
+  }, [allUsers, classes, payments, todayName, currentMonthZeroBased, attendance, challengeData]);
 
   if (loading && allUsers.length === 0) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="animate-spin text-brand-500" size={40} /></div>;
@@ -145,7 +153,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Dashboard</h2>
+            <h2 className="text-3xl font-black text-white uppercase tracking-tighter">Início</h2>
             <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full no-print">
               <div className={`w-1.5 h-1.5 rounded-full bg-emerald-500 ${isLive ? 'animate-ping' : ''}`} />
               <span className="text-[8px] font-black text-emerald-500 uppercase tracking-widest">Live</span>
@@ -162,7 +170,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         </div>
       </header>
 
-      {/* QUADRO DE AVISOS */}
+      {/* AVISOS */}
       <section className="space-y-5">
         <div className="flex justify-between items-center px-1">
           <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
@@ -181,13 +189,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {notices.length > 0 ? notices.map(notice => (
             <div key={notice.id} className={`p-6 rounded-[2.5rem] border relative group transition-all duration-300 transform hover:-translate-y-1 ${
-              notice.priority === 'URGENT' ? 'bg-red-500/10 border-red-500/30 shadow-red-500/5' :
-              notice.priority === 'WARNING' ? 'bg-amber-500/10 border-amber-500/30 shadow-amber-500/5' :
-              'bg-blue-500/10 border-blue-500/30 shadow-blue-500/5'
+              notice.priority === 'URGENT' ? 'bg-red-500/10 border-red-500/30' :
+              notice.priority === 'WARNING' ? 'bg-amber-500/10 border-amber-500/30' :
+              'bg-blue-500/10 border-blue-500/30'
             }`}>
               <div className="flex justify-between items-start mb-4">
                 <div className={`p-2.5 rounded-xl ${
-                  notice.priority === 'URGENT' ? 'bg-red-500 text-white animate-pulse' :
+                  notice.priority === 'URGENT' ? 'bg-red-500 text-white' :
                   notice.priority === 'WARNING' ? 'bg-amber-500 text-white' :
                   'bg-blue-500 text-white'
                 }`}>
@@ -196,8 +204,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                 </div>
                 {isAdmin && (
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                    <button onClick={() => { setEditingNotice(notice); setShowNoticeForm(true); }} className="p-2 bg-dark-800/80 text-slate-400 rounded-lg hover:text-white backdrop-blur-md"><Edit size={14}/></button>
-                    <button onClick={() => handleDeleteNotice(notice.id)} className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-500 shadow-lg"><Trash2 size={14}/></button>
+                    <button onClick={() => { setEditingNotice(notice); setShowNoticeForm(true); }} className="p-2 bg-dark-800/80 text-slate-400 rounded-lg hover:text-white"><Edit size={14}/></button>
+                    <button onClick={() => handleDeleteNotice(notice.id)} className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-500"><Trash2 size={14}/></button>
                   </div>
                 )}
               </div>
@@ -208,25 +216,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                     <Calendar size={12} className="text-slate-600" />
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{new Date(notice.createdAt).toLocaleDateString('pt-BR')}</span>
                 </div>
-                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
-                  notice.priority === 'URGENT' ? 'text-red-500 bg-red-500/10' :
-                  notice.priority === 'WARNING' ? 'text-amber-500 bg-amber-500/10' :
-                  'text-blue-500 bg-blue-500/10'
-                }`}>{notice.priority === 'URGENT' ? 'Urgente' : notice.priority === 'WARNING' ? 'Importante' : 'Informativo'}</span>
+                <span className="text-[9px] font-black uppercase text-slate-500">{notice.priority}</span>
               </div>
             </div>
           )) : (
-            <div className="col-span-full py-16 text-center bg-dark-950/30 rounded-[3rem] border-2 border-dashed border-dark-800 group hover:border-brand-500/30 transition-all">
-               <div className="p-4 bg-dark-900 rounded-full w-fit mx-auto mb-4 border border-dark-800 group-hover:scale-110 transition-transform">
-                   <Megaphone className="text-dark-800" size={32} />
-               </div>
-               <p className="text-slate-600 font-bold uppercase text-[11px] tracking-widest">O mural de avisos está limpo hoje.</p>
+            <div className="col-span-full py-12 text-center bg-dark-950/30 rounded-[3rem] border-2 border-dashed border-dark-800">
+               <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Nenhum aviso importante hoje.</p>
             </div>
           )}
         </div>
       </section>
 
-      {/* METRICAS DINÂMICAS POR CARGO */}
+      {/* METRICAS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {isAdmin ? (
           <>
@@ -235,16 +236,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
             <MetricCard icon={AlertTriangle} label="Pendências" value={stats.overdueCount} color="red" />
             <MetricCard icon={TrendingUp} label="Eficiência" value={`${stats.challengeProgressPercent.toFixed(0)}%`} color="purple" />
           </>
-        ) : isTrainer ? (
-          <>
-            <MetricCard icon={Calendar} label="Aulas Hoje" value={stats.todayClassesCount} color="brand" />
-            <MetricCard icon={TrendingUp} label="Progresso Alunos" value={`${stats.challengeProgressPercent.toFixed(0)}%`} color="purple" />
-            <MetricCard icon={Clock} label="Horário Atual" value={currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} color="blue" />
-          </>
         ) : (
           <>
-            <MetricCard icon={CheckCircle2} label="Treinos Concluídos" value={stats.totalAttendance} color="blue" />
-            <MetricCard icon={Calendar} label="Próxima Aula" value={stats.todayClasses.length > 0 ? stats.todayClasses[0].startTime : '--:--'} color="brand" />
+            <MetricCard icon={CheckCircle2} label="Meus Treinos" value={stats.totalAttendance} color="blue" />
+            <MetricCard icon={Calendar} label="Hoje" value={stats.todayClasses.length > 0 ? stats.todayClasses[0].startTime : '--:--'} color="brand" />
             <MetricCard icon={Flag} label="Último Pace" value={stats.lastRunPerformance?.averagePace || '--:--'} color="emerald" />
             <MetricCard icon={Trophy} label="Desafio" value={`${stats.challengeProgressPercent.toFixed(0)}%`} color="purple" />
           </>
@@ -253,16 +248,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
-                <Clock className="text-brand-500" size={24}/> Agenda de Hoje
-              </h3>
-              <button onClick={() => onNavigate('SCHEDULE')} className="text-brand-500 text-[10px] font-black uppercase tracking-widest hover:underline no-print">Ver Completa</button>
-            </div>
+            <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
+              <Clock className="text-brand-500" size={24}/> Agenda de Hoje
+            </h3>
             <div className="space-y-4">
                 {stats.todayClasses.length > 0 ? (
                   stats.todayClasses.map(c => (
-                      <div key={c.id} className={`p-5 rounded-[2rem] border flex justify-between items-center group transition-all ${c.type === 'RUNNING' ? 'bg-emerald-500/5 border-emerald-500/20 hover:border-emerald-500' : 'bg-blue-500/5 border-blue-500/20 hover:border-blue-500'}`}>
+                      <div key={c.id} className={`p-5 rounded-[2rem] border flex justify-between items-center transition-all ${c.type === 'RUNNING' ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-blue-500/5 border-blue-500/20'}`}>
                         <div className="flex items-center gap-5">
                             <div className="px-5 py-3 rounded-2xl bg-dark-900 border border-dark-800 text-center min-w-[80px]">
                                 <p className="text-brand-500 font-black text-lg">{c.startTime}</p>
@@ -272,62 +264,51 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                                 <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest mt-1">Prof. {c.instructor?.split(' ')[0]}</p>
                             </div>
                         </div>
-                        <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 group-hover:text-brand-500 transition-all no-print"><ArrowRight size={20}/></button>
+                        <button onClick={() => onNavigate('SCHEDULE')} className="p-3 bg-dark-900 rounded-2xl text-slate-400 no-print"><ArrowRight size={20}/></button>
                       </div>
                   ))
                 ) : (
-                  <div className="py-20 text-center bg-dark-950/20 rounded-[3rem] border border-dashed border-dark-800">
-                      <Calendar className="mx-auto text-dark-800 mb-4" size={48} />
-                      <p className="text-slate-600 font-bold uppercase text-[11px]">Nenhuma aula programada para hoje.</p>
+                  <div className="py-16 text-center bg-dark-950/20 rounded-[3rem] border border-dashed border-dark-800">
+                      <p className="text-slate-600 font-bold uppercase text-[10px]">Sem aulas hoje.</p>
                   </div>
                 )}
             </div>
         </div>
 
-        <div className="space-y-8">
-            <div className="bg-dark-950 border border-dark-800 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 blur-3xl" />
-                <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 relative z-10">
-                    <Gift size={16} className="text-brand-500"/> Aniversariantes
-                </h3>
-                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
-                  {stats.visibleBirthdays.length > 0 ? stats.visibleBirthdays.map(u => (
-                    <div key={u.id} className="flex items-center justify-between group">
-                        <div className="flex items-center gap-3">
-                            <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-xl border-2 border-dark-800 object-cover" />
-                            <div>
-                                <p className="text-white font-bold text-xs">{u.name.split(' ')[0]} {u.name.split(' ')[1] || ''}</p>
-                                <p className="text-[9px] text-brand-500 font-black uppercase">Dia {new Date(u.birthDate!).getDate()}</p>
-                            </div>
+        <div className="bg-dark-950 border border-dark-800 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden">
+            <h3 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 relative z-10">
+                <Gift size={16} className="text-brand-500"/> Aniversariantes
+            </h3>
+            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
+              {stats.visibleBirthdays.length > 0 ? stats.visibleBirthdays.map(u => (
+                <div key={u.id} className="flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                        <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-xl border-2 border-dark-800 object-cover" />
+                        <div>
+                            <p className="text-white font-bold text-xs">{u.name.split(' ')[0]}</p>
+                            {/* CORREÇÃO VISUAL: Exibe o dia lido diretamente da string do banco */}
+                            <p className="text-[9px] text-brand-500 font-black uppercase">Dia {parseInt(u.birthDate!.split('-')[2], 10)}</p>
                         </div>
-                        <button onClick={() => WhatsAppAutomation.sendGenericMessage(u, "Parabéns pelo seu dia! 🎉")} className="p-2 bg-brand-500/10 text-brand-500 rounded-xl hover:bg-brand-500 hover:text-white transition-all no-print">
-                          <MessageCircle size={14} />
-                        </button>
                     </div>
-                  )) : (
-                    <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Sem aniversários no mês.</p>
-                  )}
+                    <button onClick={() => WhatsAppAutomation.sendGenericMessage(u, "Parabéns pelo seu aniversário! 🎉")} className="p-2 bg-brand-500/10 text-brand-500 rounded-xl hover:bg-brand-500 hover:text-white transition-all no-print">
+                      <MessageCircle size={14} />
+                    </button>
                 </div>
+              )) : (
+                <p className="text-[10px] text-slate-600 font-bold uppercase text-center py-4">Sem aniversários no mês.</p>
+              )}
             </div>
         </div>
       </div>
 
       {showNoticeForm && (
-        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-4 md:pt-16 animate-fade-in no-print overflow-y-auto">
-          <div className="bg-dark-900 border border-dark-700 rounded-[2rem] sm:rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden h-auto mb-10">
-            <div className="p-6 md:p-8 pb-4 flex justify-between items-center border-b border-dark-800 shrink-0">
-              <div className="flex items-center gap-3">
-                 <div className="p-2 bg-brand-500/20 rounded-xl text-brand-500">
-                    <Megaphone size={20} />
-                 </div>
-                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">{editingNotice ? 'Editar Aviso' : 'Novo Aviso'}</h3>
-              </div>
-              <button onClick={() => setShowNoticeForm(false)} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full transition-colors"><X size={20}/></button>
-            </div>
-            
-            <div className="p-6 md:p-8">
-              <NoticeForm initialData={editingNotice} onSave={handleSaveNotice} onCancel={() => setShowNoticeForm(false)} />
-            </div>
+        <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-16 animate-fade-in no-print overflow-y-auto">
+          <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-lg shadow-2xl p-8 mb-10">
+             <div className="flex justify-between items-center mb-8">
+                <h3 className="text-xl font-black text-white uppercase">Novo Comunicado</h3>
+                <button onClick={() => setShowNoticeForm(false)} className="text-slate-500 p-2 bg-dark-800 rounded-full"><X size={20}/></button>
+             </div>
+             <NoticeForm initialData={editingNotice} onSave={handleSaveNotice} onCancel={() => setShowNoticeForm(false)} />
           </div>
         </div>
       )}
@@ -340,61 +321,24 @@ const NoticeForm = ({ initialData, onSave, onCancel }: any) => {
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }} className="space-y-6">
       <div>
-        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Título do Comunicado</label>
-        <input 
-          required 
-          className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white focus:border-brand-500 outline-none font-bold placeholder:text-slate-800 transition-all" 
-          value={formData.title} 
-          onChange={e => setFormData({ ...formData, title: e.target.value })} 
-          placeholder="Ex: Manutenção do Studio" 
-        />
+        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Título</label>
+        <input required className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white outline-none font-bold" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
       </div>
-      
       <div>
-        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Nível de Prioridade</label>
+        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Prioridade</label>
         <div className="grid grid-cols-3 gap-2">
           {['INFO', 'WARNING', 'URGENT'].map(p => (
-            <button 
-              key={p} 
-              type="button" 
-              onClick={() => setFormData({ ...formData, priority: p })} 
-              className={`py-3 sm:py-4 rounded-xl sm:rounded-2xl text-[8px] sm:text-[9px] font-black uppercase transition-all border ${
-                formData.priority === p 
-                ? (p === 'URGENT' ? 'bg-red-600 border-red-500 text-white shadow-lg shadow-red-600/20' : p === 'WARNING' ? 'bg-amber-600 border-amber-500 text-white shadow-lg shadow-amber-600/20' : 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20') 
-                : 'bg-dark-950 border-dark-800 text-slate-500 hover:text-white'
-              }`}
-            >
-              {p === 'URGENT' ? 'Urgente' : p === 'WARNING' ? 'Importante' : 'Info'}
-            </button>
+            <button key={p} type="button" onClick={() => setFormData({ ...formData, priority: p })} className={`py-3 rounded-xl text-[9px] font-black uppercase transition-all border ${formData.priority === p ? 'bg-brand-600 border-brand-500 text-white' : 'bg-dark-950 border-dark-800 text-slate-500'}`}>{p}</button>
           ))}
         </div>
       </div>
-      
       <div>
-        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Conteúdo da Mensagem</label>
-        <textarea 
-          required 
-          className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white focus:border-brand-500 outline-none h-24 sm:h-32 resize-none placeholder:text-slate-800 transition-all text-sm leading-relaxed" 
-          value={formData.content} 
-          onChange={e => setFormData({ ...formData, content: e.target.value })} 
-          placeholder="Descreva os detalhes aqui..." 
-        />
+        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Conteúdo</label>
+        <textarea required className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white outline-none h-32 resize-none text-sm" value={formData.content} onChange={e => setFormData({ ...formData, content: e.target.value })} />
       </div>
-      
-      <div className="flex gap-3 sm:gap-4 pt-2">
-        <button 
-          type="button" 
-          onClick={onCancel} 
-          className="flex-1 py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700 transition-all"
-        >
-          Descartar
-        </button>
-        <button 
-          type="submit" 
-          className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/30 hover:bg-brand-500 transition-all"
-        >
-          Publicar
-        </button>
+      <div className="flex gap-4">
+        <button type="button" onClick={onCancel} className="flex-1 py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px]">Cancelar</button>
+        <button type="submit" className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px]">Publicar</button>
       </div>
     </form>
   );
@@ -409,13 +353,10 @@ const MetricCard = ({ icon: Icon, label, value, color }: { icon: any, label: str
         emerald: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
     };
     return (
-        <div className="bg-dark-950 p-6 rounded-[2.5rem] border border-dark-800 shadow-xl group hover:border-brand-500/30 transition-all overflow-hidden relative">
-            <div className="flex justify-between items-start mb-4 relative z-10">
-                <div className={`p-3 rounded-2xl ${colors[color]} border transition-transform group-hover:scale-110`}><Icon size={24}/></div>
-                <div className="w-2 h-2 rounded-full bg-dark-800" />
-            </div>
-            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1 relative z-10">{label}</p>
-            <p className="text-2xl font-black text-white tracking-tighter relative z-10">{value}</p>
+        <div className="bg-dark-950 p-6 rounded-[2.5rem] border border-dark-800 shadow-xl overflow-hidden relative">
+            <div className={`p-3 rounded-2xl w-fit mb-4 ${colors[color]} border`}><Icon size={24}/></div>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{label}</p>
+            <p className="text-2xl font-black text-white tracking-tighter">{value}</p>
         </div>
     );
 };
