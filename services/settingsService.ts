@@ -18,8 +18,6 @@ const DEFAULT_SETTINGS: AcademySettings = {
     phone: '(11) 99999-9999',
     email: 'contato@studio.com',
     representativeName: 'Alexandre Coach',
-    mercadoPagoPublicKey: '',
-    mercadoPagoAccessToken: '',
     pixKey: '',
     customDomain: 'studiosemovimento.com.br',
     monthlyFee: 150.00,

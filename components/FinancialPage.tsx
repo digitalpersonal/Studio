@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Payment, User, UserRole } from '../types';
 import { SupabaseService } from '../services/supabaseService';
-import { MercadoPagoService } from '../services/mercadoPagoService';
+import { SettingsService } from '../services/settingsService';
 import { 
   Loader2, DollarSign, Receipt, Check, Download, CreditCard, 
   MessageCircle, AlertTriangle, X, CheckCheck, Info, BadgePercent,
@@ -21,10 +21,10 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const [showCheckoutModal, setShowCheckoutModal] = useState<Payment | null>(null);
   const [editingPayment, setEditingPayment] = useState<Partial<Payment> | null>(null);
   const [manualPaymentModal, setManualPaymentModal] = useState<any | null>(null);
-  const [pixData, setPixData] = useState<{ qr_code: string, copy_paste: string } | null>(null);
+  const [showPixModal, setShowPixModal] = useState<boolean>(false);
+  const [academyPixKey, setAcademyPixKey] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const { addToast } = useToast();
   
@@ -50,6 +50,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
 
   useEffect(() => {
     refreshData();
+    SettingsService.getSettings().then(s => setAcademyPixKey(s.pixKey));
   }, [refreshData]);
 
   const stats = useMemo(() => {
@@ -69,37 +70,6 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
           : true
       );
   }, [payments, filter, isGlobalAdminView, searchTerm]);
-
-  const handlePayWithMP = async (p: Payment, method: 'CARD' | 'PIX' = 'CARD') => {
-    setIsProcessing(p.id);
-    if (method === 'CARD') {
-        setShowCheckoutModal(p);
-    } else {
-        setPixData(null); 
-        setShowCheckoutModal(p);
-    }
-    
-    setTimeout(async () => {
-      try {
-          const result = await MercadoPagoService.processPayment(p);
-          if (method === 'CARD' && result.init_point) {
-              window.open(result.init_point, '_blank');
-              addToast("Redirecionando para o Mercado Pago...", "info");
-              setShowCheckoutModal(null);
-          } else if (method === 'PIX' && result.pix_copy_paste) {
-              setPixData({ 
-                  qr_code: result.pix_qr_code || "", 
-                  copy_paste: result.pix_copy_paste 
-              });
-          }
-      } catch (error: any) { 
-          addToast(`Erro ao processar pagamento: ${error.message}`, "error");
-          setShowCheckoutModal(null);
-      } finally {
-          setIsProcessing(null);
-      }
-    }, 1500);
-  };
 
   const handleMarkPaidWithDiscount = async (payment: Payment, discount: number) => {
     setIsProcessing(payment.id);
@@ -153,11 +123,11 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
     }
   };
 
-  const handleCopyPix = () => {
-      if (!pixData) return;
-      navigator.clipboard.writeText(pixData.copy_paste);
+  const handleCopyAcademyPix = () => {
+      if (!academyPixKey) return;
+      navigator.clipboard.writeText(academyPixKey);
       setCopied(true);
-      addToast("Código Pix copiado!", "success");
+      addToast("Chave Pix copiada!", "success");
       setTimeout(() => setCopied(false), 3000);
   };
 
@@ -266,10 +236,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                     <td className="px-6 py-4 text-right">
                        <div className="flex justify-end gap-2">
                           {p.status !== 'PAID' && !isStaff && (
-                             <div className="flex gap-2">
-                                <button onClick={() => handlePayWithMP(p, 'PIX')} disabled={isProcessing === p.id} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-500 text-[10px] font-black uppercase shadow-lg shadow-emerald-600/20">{isProcessing === p.id ? <Loader2 className="animate-spin" size={14}/> : <QrCode size={14}/>}Pix</button>
-                                <button onClick={() => handlePayWithMP(p, 'CARD')} disabled={isProcessing === p.id} className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-xl hover:bg-brand-500 text-[10px] font-black uppercase shadow-lg shadow-brand-500/20"><CreditCard size={14}/> Cartão</button>
-                             </div>
+                             <button onClick={() => setShowPixModal(true)} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-500 text-[10px] font-black uppercase shadow-lg shadow-emerald-600/20"><QrCode size={14}/> Pagar com Pix</button>
                           )}
                           {isStaff && (
                               <>
@@ -293,7 +260,32 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         </div>
       </div>
 
-      {showCheckoutModal && ( <CheckoutModal payment={showCheckoutModal} pixData={pixData} copied={copied} onCopyPix={handleCopyPix} onClose={() => setShowCheckoutModal(null)} /> )}
+      {showPixModal && ( 
+        <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-12 animate-fade-in overflow-y-auto">
+           <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center space-y-6 relative overflow-hidden h-auto mb-10">
+              <button onClick={() => setShowPixModal(false)} className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white bg-dark-800 rounded-full"><X size={20}/></button>
+              <div className="space-y-6 animate-fade-in">
+                <div className="flex items-center justify-center gap-2 mb-2"><div className="w-8 h-8 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500"><QrCode size={18}/></div><h3 className="text-white font-black text-xl uppercase tracking-tighter">Pagamento via Pix</h3></div>
+                
+                <div className="space-y-2">
+                  <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Chave Pix da Academia:</p>
+                  <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800 relative group">
+                    <p className="text-white text-sm font-mono break-all text-center select-all">{academyPixKey || "Chave não cadastrada"}</p>
+                    <button onClick={handleCopyAcademyPix} className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-dark-800 text-slate-400 hover:text-white'}`}>{copied ? <Check size={16}/> : <Copy size={16}/>}</button>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 flex gap-3 items-start text-left">
+                  <Info size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-emerald-100 font-bold leading-relaxed">
+                    Faça a transferência usando a chave acima e envie o comprovante para a administração para que a baixa seja realizada.
+                  </p>
+                </div>
+                <button onClick={() => setShowPixModal(false)} className="w-full py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700 transition-all">Fechar Janela</button>
+              </div>
+           </div>
+        </div>
+      )}
       {editingPayment && ( <PaymentFormModal payment={editingPayment} students={students} onSave={handleSavePayment} onCancel={() => setEditingPayment(null)} isProcessing={!!isProcessing} /> )}
       {manualPaymentModal && (
           <ManualPaymentModal 
@@ -350,23 +342,6 @@ const ManualPaymentModal = ({ payment, onConfirm, onCancel, isProcessing }: { pa
 };
 
 // MODAIS
-const CheckoutModal = ({ payment, pixData, copied, onCopyPix, onClose }: any) => (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-12 animate-fade-in overflow-y-auto">
-       <div className="bg-dark-900 border border-dark-700 p-8 rounded-[2.5rem] shadow-2xl max-w-sm w-full text-center space-y-6 relative overflow-hidden h-auto mb-10">
-          <button onClick={onClose} className="absolute top-4 right-4 p-2 text-slate-500 hover:text-white bg-dark-800 rounded-full"><X size={20}/></button>
-          {!pixData ? ( <> <div className="bg-brand-600 w-24 h-24 rounded-full flex items-center justify-center mx-auto shadow-2xl shadow-brand-500/30"><Loader2 className="text-white animate-spin" size={48}/></div><div><h3 className="text-white font-black text-xl mb-2 uppercase tracking-tighter">Processando...</h3><p className="text-slate-400 text-sm">Conectando ao Mercado Pago para gerar seu checkout de <b>R$ {payment.amount.toFixed(2)}</b></p></div></> ) : (
-              <div className="space-y-6 animate-fade-in">
-                <div className="flex items-center justify-center gap-2 mb-2"><div className="w-8 h-8 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500"><QrCode size={18}/></div><h3 className="text-white font-black text-xl uppercase tracking-tighter">Pagamento via Pix</h3></div>
-                <div className="bg-white p-4 rounded-3xl shadow-inner mx-auto w-fit border-8 border-emerald-500/10"><img src={pixData.qr_code} alt="QR Code Pix" className="w-48 h-48" /></div>
-                <div className="space-y-2"><p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Código Copia e Cola:</p><div className="bg-dark-950 p-4 rounded-2xl border border-dark-800 relative group"><p className="text-slate-400 text-[10px] font-mono break-all line-clamp-2 text-left pr-8">{pixData.copy_paste}</p><button onClick={onCopyPix} className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl transition-all ${copied ? 'bg-emerald-500 text-white' : 'bg-dark-800 text-slate-400 hover:text-white'}`}>{copied ? <Check size={16}/> : <Copy size={16}/>}</button></div></div>
-                <div className="bg-emerald-500/10 p-4 rounded-2xl border border-emerald-500/20 flex gap-3 items-start text-left"><Info size={18} className="text-emerald-500 shrink-0 mt-0.5" /><p className="text-[10px] text-emerald-100 font-bold leading-relaxed">Pague no app do seu banco. A baixa no Studio é automática após a confirmação do Mercado Pago.</p></div>
-                <button onClick={onClose} className="w-full py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700 transition-all">Fechar Janela</button>
-              </div>
-          )}
-       </div>
-    </div>
-);
-
 const PaymentFormModal = ({ payment, students, onSave, onCancel, isProcessing }: { payment: Partial<Payment>, students: User[], onSave: (p: Partial<Payment>) => void, onCancel: () => void, isProcessing: boolean }) => {
   const [formData, setFormData] = useState(payment);
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };

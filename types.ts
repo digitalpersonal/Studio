@@ -263,8 +263,6 @@ export interface AcademySettings {
   phone: string;
   email: string;
   representativeName: string;
-  mercadoPagoPublicKey: string;
-  mercadoPagoAccessToken: string;
   pixKey: string;
   customDomain: string; 
   monthlyFee: number;

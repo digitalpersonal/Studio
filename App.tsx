@@ -23,7 +23,6 @@ import { SupabaseService, SUPABASE_PROJECT_ID } from './services/supabaseService
 import { GeminiService } from './services/geminiService';
 import { ContractService } from './services/contractService';
 import { SettingsService } from './services/settingsService';
-import { MercadoPagoService } from './services/mercadoPagoService';
 import { UserFormPage } from './components/UserFormPage';
 import { SchedulePage } from './components/SchedulePage';
 import { AssessmentsPage } from './components/AssessmentsPage';
@@ -167,9 +166,6 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
     fetchSettings();
   }, [addToast]);
 
-  const supabaseWebhookUrl = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/mercadopago-webhook`;
-  
-  const isMPConfigured = !!(settings?.mercadoPagoPublicKey && settings?.mercadoPagoAccessToken);
   const isStravaConfigured = !!(settings?.stravaClientId && settings?.stravaClientSecret);
   const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN; 
 
@@ -186,13 +182,6 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(supabaseWebhookUrl);
-    setCopied(true);
-    addToast("Link do Webhook copiado!", "info");
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleAddressChange = (field: keyof Address, value: string) => {
@@ -284,60 +273,6 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Cidade</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={settings.academyAddress?.city || ''} onChange={e => handleAddressChange('city', e.target.value)} /></div>
                    <div><label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Estado</label><input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={settings.academyAddress?.state || ''} onChange={e => handleAddressChange('state', e.target.value)} /></div>
                  </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="space-y-6">
-            <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4 uppercase text-xs tracking-widest">
-               <CardIcon className="text-brand-500" size={16}/> Integração Mercado Pago
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Chave Pública (Public Key)</label>
-                <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none font-mono text-xs" value={settings.mercadoPagoPublicKey} onChange={e => setSettings({...settings, mercadoPagoPublicKey: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Token de Acesso (Access Token)</label>
-                <input type="password" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-brand-500 outline-none font-mono text-xs" value={settings.mercadoPagoAccessToken} onChange={e => setSettings({...settings, mercadoPagoAccessToken: e.target.value})} />
-              </div>
-            </div>
-
-            <div className="p-8 bg-brand-500/5 rounded-[2.5rem] border border-brand-500/10 relative overflow-hidden">
-              <div className="absolute top-6 right-6">
-                {isMPConfigured ? (
-                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase rounded-full border border-emerald-500/20">
-                     <ZapIcon size={12}/> Integração Ativa
-                   </span>
-                ) : (
-                   <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black uppercase rounded-full border border-amber-500/20">
-                     <AlertCircle size={12}/> Configuração Pendente
-                   </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-4 mb-6">
-                <div className="bg-brand-600/20 p-4 rounded-2xl text-brand-500">
-                  <GlobeIcon size={28}/>
-                </div>
-                <div>
-                  <h4 className="text-white font-black text-lg uppercase tracking-tighter">Webhook Central (Supabase)</h4>
-                  <p className="text-slate-500 text-xs font-bold uppercase mt-1">Edge Functions em nuvem.</p>
-                </div>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 bg-dark-950 border border-dark-800 rounded-2xl p-5 text-brand-500 font-mono text-[11px] select-all break-all flex items-center">
-                  {supabaseWebhookUrl}
-                </div>
-                <button 
-                  type="button"
-                  onClick={copyToClipboard}
-                  className="px-8 py-5 bg-brand-600 text-white rounded-2xl hover:bg-brand-500 transition-all flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-xl shadow-brand-600/20"
-                >
-                  {copied ? <CheckCheck size={18}/> : <CopyIcon size={18}/>}
-                  {copied ? 'Link Copiado' : 'Copiar URL'}
-                </button>
               </div>
             </div>
           </section>
