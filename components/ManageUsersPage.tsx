@@ -23,6 +23,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     const [initialFormData, setInitialFormData] = useState<Partial<User>>({});
     const [initialFormTab, setInitialFormTab] = useState<'basic' | 'plan' | 'anamnesis'>('basic');
     const [isLoading, setIsLoading] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
     const [showWhatsAppModal, setShowWhatsAppModal] = useState<User | null>(null);
     const [showEnrolledClasses, setShowEnrolledClasses] = useState<User | null>(null);
     const [manualPaymentModal, setManualPaymentModal] = useState<{ student: User, payment: Payment } | null>(null);
@@ -157,6 +158,62 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         }
     };
 
+    const handleSyncAllInstallments = async () => {
+        if (!confirm("Deseja sincronizar as parcelas de TODOS os alunos? O sistema verificará cada aluno e gerará as parcelas faltantes de acordo com a duração do plano. Parcelas já pagas não serão alteradas.")) return;
+
+        setIsSyncing(true);
+        try {
+            const allStudents = users.filter(u => u.role === UserRole.STUDENT && u.planId && (u.planDuration || 0) > 0);
+            let totalCreated = 0;
+
+            for (const student of allStudents) {
+                const studentPayments = payments.filter(p => p.studentId === student.id);
+                const pendingPayments = studentPayments.filter(p => p.status === 'PENDING' || p.status === 'OVERDUE');
+                const paidPayments = studentPayments.filter(p => p.status === 'PAID');
+                
+                // Se o aluno já tem o número correto de parcelas (pagas + pendentes), pula
+                if (studentPayments.length >= (student.planDuration || 0)) continue;
+
+                // Gerar apenas as parcelas que faltam
+                const paymentsToCreate: Omit<Payment, 'id'>[] = [];
+                const startDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
+                const existingInstallmentNumbers = studentPayments.map(p => p.installmentNumber || 0);
+
+                for (let i = 0; i < (student.planDuration || 0); i++) {
+                    const installmentNum = i + 1;
+                    if (existingInstallmentNumbers.includes(installmentNum)) continue;
+
+                    const dueDate = new Date(startDate.getTime());
+                    dueDate.setMonth(dueDate.getMonth() + i);
+
+                    const finalAmount = (student.planValue || 0) - (student.planDiscount || 0);
+                    
+                    paymentsToCreate.push({
+                        studentId: student.id,
+                        amount: finalAmount,
+                        status: 'PENDING',
+                        dueDate: dueDate.toISOString().split('T')[0],
+                        description: `Mensalidade ${installmentNum}/${student.planDuration}`,
+                        installmentNumber: installmentNum,
+                        total_installments: student.planDuration
+                    });
+                }
+
+                if (paymentsToCreate.length > 0) {
+                    await SupabaseService.addMultiplePayments(paymentsToCreate);
+                    totalCreated += paymentsToCreate.length;
+                }
+            }
+
+            addToast(`Sincronização concluída! ${totalCreated} novas parcelas foram geradas para os alunos.`, "success");
+            refreshList();
+        } catch (error: any) {
+            addToast(`Erro na sincronização: ${error.message}`, "error");
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     const handleGenerateInstallments = async (student: User) => {
         if (!student.planId || !student.planDuration) {
             addToast("O aluno não possui um plano configurado.", "error");
@@ -274,9 +331,21 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                     </p>
                 </div>
                 {(isAdmin || isTrainer) && (
-                  <button onClick={() => handleOpenForm(null)} className="bg-brand-600 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all active:scale-95">
-                      <UserPlus size={18} className="mr-2" /> Novo Cadastro
-                  </button>
+                  <div className="flex gap-2">
+                    {isAdmin && (
+                        <button 
+                            onClick={handleSyncAllInstallments} 
+                            disabled={isSyncing}
+                            className="bg-dark-800 text-slate-300 px-6 py-3 rounded-2xl text-sm font-bold flex items-center border border-dark-700 hover:bg-dark-700 transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            {isSyncing ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Repeat size={18} className="mr-2" />} 
+                            Sincronizar Parcelas
+                        </button>
+                    )}
+                    <button onClick={() => handleOpenForm(null)} className="bg-brand-600 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all active:scale-95">
+                        <UserPlus size={18} className="mr-2" /> Novo Cadastro
+                    </button>
+                  </div>
                 )}
             </div>
 

@@ -6,7 +6,7 @@ import { SettingsService } from '../services/settingsService';
 import { 
   Loader2, DollarSign, Receipt, Check, Download, CreditCard, 
   MessageCircle, AlertTriangle, X, CheckCheck, Info, BadgePercent,
-  QrCode, Copy, Smartphone, ArrowRight, Edit, Plus, Save, Trash2, Search
+  QrCode, Copy, Smartphone, ArrowRight, Edit, Plus, Save, Trash2, Search, Repeat
 } from 'lucide-react';
 import { useToast, WhatsAppAutomation } from '../App'; 
 
@@ -180,6 +180,58 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                 </div>
              )}
              <div className="flex gap-2">
+               {isStaff && selectedStudentId && (
+                 <button 
+                    onClick={async () => {
+                        const student = students.find(s => s.id === selectedStudentId);
+                        if (student) {
+                            setIsProcessing('sync');
+                            try {
+                                // Reutilizar a lógica de geração de parcelas
+                                const startDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
+                                const paymentsToCreate: Omit<Payment, 'id'>[] = [];
+                                const existingInstallmentNumbers = payments.map(p => p.installmentNumber || 0);
+
+                                for (let i = 0; i < (student.planDuration || 0); i++) {
+                                    const installmentNum = i + 1;
+                                    if (existingInstallmentNumbers.includes(installmentNum)) continue;
+
+                                    const dueDate = new Date(startDate.getTime());
+                                    dueDate.setMonth(dueDate.getMonth() + i);
+                                    const finalAmount = (student.planValue || 0) - (student.planDiscount || 0);
+                                    
+                                    paymentsToCreate.push({
+                                        studentId: student.id,
+                                        amount: finalAmount,
+                                        status: 'PENDING',
+                                        dueDate: dueDate.toISOString().split('T')[0],
+                                        description: `Mensalidade ${installmentNum}/${student.planDuration}`,
+                                        installmentNumber: installmentNum,
+                                        total_installments: student.planDuration
+                                    });
+                                }
+
+                                if (paymentsToCreate.length > 0) {
+                                    await SupabaseService.addMultiplePayments(paymentsToCreate);
+                                    addToast(`${paymentsToCreate.length} novas parcelas geradas.`, "success");
+                                    refreshData();
+                                } else {
+                                    addToast("Todas as parcelas já estão geradas.", "info");
+                                }
+                            } catch (e: any) {
+                                addToast(`Erro ao sincronizar: ${e.message}`, "error");
+                            } finally {
+                                setIsProcessing(null);
+                            }
+                        }
+                    }}
+                    disabled={isProcessing === 'sync'}
+                    className="px-3 py-1.5 bg-dark-800 text-slate-400 rounded-lg text-[10px] font-black uppercase border border-dark-700 hover:text-white transition-all flex items-center gap-2"
+                 >
+                    {isProcessing === 'sync' ? <Loader2 size={12} className="animate-spin" /> : <Repeat size={12} />}
+                    Sincronizar Plano
+                 </button>
+               )}
                {['ALL', 'PENDING', 'OVERDUE', 'PAID'].map(f => (
                  <button key={f} onClick={() => setFilter(f as any)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${filter === f ? 'bg-brand-600 text-white' : 'bg-dark-800 text-slate-500 hover:text-white'}`}>
                    {f === 'ALL' ? 'Todas' : f === 'PENDING' ? 'Pendentes' : f === 'OVERDUE' ? 'Atrasadas' : 'Pagas'}
@@ -213,7 +265,17 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img src={String(p.studentAvatar || `https://ui-avatars.com/api/?name=${String(p.studentName)}`)} className="w-8 h-8 rounded-full border border-dark-800" />
-                        <div><p className="text-white font-bold">{String(p.studentName || user.name)}</p><p className="text-[10px] text-slate-500">{String(p.description)}</p></div>
+                        <div>
+                          <p className="text-white font-bold">{String(p.studentName || user.name)}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[10px] text-slate-500">{String(p.description)}</p>
+                            {p.installmentNumber && (
+                              <span className="text-[8px] bg-dark-800 text-slate-400 px-1.5 py-0.5 rounded border border-dark-700 font-black uppercase tracking-widest">
+                                Parcela {p.installmentNumber}/{p.total_installments}
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 font-mono text-xs font-bold">{String(p.dueDate)}</td>
