@@ -37,6 +37,7 @@ interface LayoutProps {
   onNavigate: (view: ViewState) => void;
   onLogout: () => void;
   children: React.ReactNode;
+  hasDebt?: boolean;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ 
@@ -44,7 +45,8 @@ export const Layout: React.FC<LayoutProps> = ({
   currentView, 
   onNavigate, 
   onLogout, 
-  children 
+  children,
+  hasDebt = false
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showInstallModal, setShowInstallModal] = useState(false);
@@ -122,7 +124,10 @@ export const Layout: React.FC<LayoutProps> = ({
         }`}
       >
         <Icon size={20} className="mr-3" />
-        <span className="font-medium">{label}</span>
+        <span className="font-medium flex-1">{label}</span>
+        {view === 'FINANCIAL' && hasDebt && currentUser.role === UserRole.STUDENT && (
+          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-lg shadow-red-500/50" />
+        )}
       </button>
     );
   };

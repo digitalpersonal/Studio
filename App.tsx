@@ -339,7 +339,22 @@ export function App() {
   const [currentView, setCurrentView] = useState<ViewState>(initialState.view);
   const [navParams, setNavParams] = useState<AppNavParams>({}); 
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [hasDebt, setHasDebt] = useState(false);
   const nextToastId = useRef(0);
+
+  useEffect(() => {
+    if (currentUser?.role === UserRole.STUDENT) {
+      SupabaseService.getPayments(currentUser.id).then(payments => {
+        const overdue = payments.some(p => p.status === 'OVERDUE');
+        setHasDebt(overdue);
+        if (overdue) {
+          addToast("Você possui mensalidades em atraso. Verifique a aba Financeiro.", "error");
+        }
+      });
+    } else {
+      setHasDebt(false);
+    }
+  }, [currentUser]);
 
   const addToast = (message: string, type: ToastType = 'info') => {
     const id = nextToastId.current++;
@@ -409,7 +424,7 @@ export function App() {
     
     return (
       <ToastContext.Provider value={{ addToast }}>
-        <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout}>
+        <Layout currentUser={currentUser} currentView={currentView} onNavigate={handleNavigate} onLogout={handleLogout} hasDebt={hasDebt}>
           {currentView === 'DASHBOARD' && <DashboardPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
           {currentView === 'SCHEDULE' && <SchedulePage currentUser={currentUser} addToast={addToast} />}
           {currentView === 'ASSESSMENTS' && <AssessmentsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}

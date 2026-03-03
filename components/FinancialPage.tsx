@@ -39,6 +39,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         SupabaseService.getPayments(studentIdToFetch),
         isStaff ? SupabaseService.getAllStudents() : Promise.resolve([]) 
       ]);
+
       setPayments(p);
       setStudents(s);
     } catch (error: any) {
@@ -68,7 +69,8 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         isGlobalAdminView 
           ? (p as any).studentName?.toLowerCase().includes(searchTerm.toLowerCase())
           : true
-      );
+      )
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
   }, [payments, filter, isGlobalAdminView, searchTerm]);
 
   const handleMarkPaidWithDiscount = async (payment: Payment, discount: number) => {

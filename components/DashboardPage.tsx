@@ -169,6 +169,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
           </button>
         </div>
       </header>
+      
+      {/* ALERTA DE DÉBITO PARA ALUNOS */}
+      {isStudent && stats.overdueCount > 0 && (
+        <div className="bg-red-500/10 border-2 border-red-500/30 rounded-[2rem] p-6 flex flex-col md:flex-row items-center gap-6 animate-pulse no-print">
+          <div className="p-4 bg-red-500 text-white rounded-2xl shadow-lg shadow-red-500/20">
+            <AlertTriangle size={32} />
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <h3 className="text-xl font-black text-white uppercase tracking-tighter mb-1">Atenção: Pendência Financeira</h3>
+            <p className="text-slate-400 text-sm font-medium">Identificamos que você possui {stats.overdueCount} {stats.overdueCount === 1 ? 'mensalidade em atraso' : 'mensalidades em atraso'}. Regularize sua situação para evitar a suspensão do acesso aos treinos.</p>
+          </div>
+          <button 
+            onClick={() => onNavigate('FINANCIAL')}
+            className="px-8 py-4 bg-red-600 text-white font-black rounded-2xl hover:bg-red-500 transition-all uppercase text-[10px] tracking-widest shadow-xl shadow-red-600/20"
+          >
+            Ver Detalhes
+          </button>
+        </div>
+      )}
 
       {/* AVISOS */}
       <section className="space-y-5">

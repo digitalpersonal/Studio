@@ -358,12 +358,26 @@ export const SupabaseService = {
         if (userId) query = query.eq('student_id', userId);
         const { data, error } = await query;
         if (error) throw error;
-        const mapped = (data || []).map(p => ({
-            ...mapPaymentFromDb(p),
-            studentName: p.users?.name,
-            studentAvatar: p.users?.avatar_url,
-            studentPhone: p.users?.phone_number
-        }));
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const mapped = (data || []).map(p => {
+            const payment = {
+                ...mapPaymentFromDb(p),
+                studentName: p.users?.name,
+                studentAvatar: p.users?.avatar_url,
+                studentPhone: p.users?.phone_number
+            };
+            
+            if (payment.status === 'PENDING') {
+                const dueDate = new Date(payment.dueDate);
+                dueDate.setHours(0, 0, 0, 0);
+                if (dueDate < today) {
+                    payment.status = 'OVERDUE';
+                }
+            }
+            return payment;
+        });
         _cache[key] = { data: mapped, timestamp: now };
         return mapped;
     } catch (e) { return []; }
@@ -387,7 +401,8 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão");
     const { data, error } = await supabase.from('payments').insert([{
       student_id: p.studentId, amount: p.amount, status: p.status, 
-      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount || 0
+      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount || 0,
+      installment_number: p.installmentNumber, total_installments: p.total_installments
     }]).select().single();
     if (error) throw error;
     invalidateCache();
@@ -416,7 +431,8 @@ export const SupabaseService = {
     if (!supabase || payments.length === 0) return;
     const payload = payments.map(p => ({
       student_id: p.studentId, amount: p.amount, status: p.status, 
-      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount || 0
+      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount || 0,
+      installment_number: p.installmentNumber, total_installments: p.total_installments
     }));
     const { error } = await supabase.from('payments').insert(payload);
     if (error) throw error;
@@ -725,8 +741,6 @@ export const SupabaseService = {
         phone: data.phone || '',
         email: data.email || '',
         representativeName: data.representative_name || '',
-        mercadoPagoPublicKey: data.mercado_pago_public_key || '',
-        mercadoPagoAccessToken: data.mercado_pago_access_token || '',
         pixKey: data.pix_key || '',
         customDomain: data.custom_domain || '',
         monthlyFee: Number(data.monthly_fee) || 0,
@@ -746,12 +760,9 @@ export const SupabaseService = {
       phone: s.phone, 
       email: s.email, 
       representative_name: s.representativeName, 
-      mercado_pago_public_key: s.mercadoPagoPublicKey, 
-      mercado_pago_access_token: s.mercadoPagoAccessToken, 
       pix_key: s.pixKey, 
       custom_domain: s.customDomain, 
       monthly_fee: s.monthlyFee, 
-      // Fix: Correct property name in AcademySettings interface is camelCase
       registration_invite_code: s.registrationInviteCode, 
       address: s.academyAddress, 
       strava_client_id: s.stravaClientId,

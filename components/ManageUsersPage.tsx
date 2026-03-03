@@ -6,7 +6,7 @@ import {
   Edit, FileText, Receipt, DollarSign, Dumbbell, Activity,
   AlertTriangle, MessageCircle, CheckCheck, UserPlus, AlertCircle, 
   CheckCircle2, Loader2, Send, Users as UsersIcon, Trash2, 
-  Calendar, ListOrdered, ClipboardList, BookOpen, Zap, ZapOff, BadgePercent,
+  Calendar, CalendarPlus, ListOrdered, ClipboardList, BookOpen, Zap, ZapOff, BadgePercent,
   TrendingUp, MousePointer2
 } from 'lucide-react';
 import { SupabaseService } from '../services/supabaseService';
@@ -157,6 +157,50 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         }
     };
 
+    const handleGenerateInstallments = async (student: User) => {
+        if (!student.planId || !student.planDuration) {
+            addToast("O aluno não possui um plano configurado.", "error");
+            return;
+        }
+
+        if (!confirm(`Deseja gerar ${student.planDuration} novas parcelas para o plano deste aluno? Isso removerá as parcelas pendentes atuais.`)) return;
+
+        setIsLoading(true);
+        try {
+            await SupabaseService.deletePendingPaymentsForStudent(student.id);
+            
+            const paymentsToCreate: Omit<Payment, 'id'>[] = [];
+            const startDate = new Date(student.planStartDate || new Date().toISOString());
+            
+            for (let i = 0; i < (student.planDuration || 0); i++) {
+                const dueDate = new Date(startDate.getTime());
+                dueDate.setMonth(dueDate.getMonth() + i);
+
+                const finalAmount = (student.planValue || 0) - (student.planDiscount || 0);
+                
+                paymentsToCreate.push({
+                    studentId: student.id,
+                    amount: finalAmount,
+                    status: 'PENDING',
+                    dueDate: dueDate.toISOString().split('T')[0],
+                    description: `Mensalidade ${i + 1}/${student.planDuration}`,
+                    installmentNumber: i + 1,
+                    total_installments: student.planDuration
+                });
+            }
+
+            if (paymentsToCreate.length > 0) {
+                await SupabaseService.addMultiplePayments(paymentsToCreate);
+                addToast(`${student.planDuration} faturas foram geradas com sucesso.`, "success");
+                refreshList();
+            }
+        } catch (error: any) {
+            addToast(`Erro ao gerar faturas: ${error.message}`, "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleSaveUser = async (payload: User, wasPlanNewlyAssigned?: boolean) => {
         setIsLoading(true);
         try {
@@ -170,30 +214,8 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
             }
 
             if (wasPlanNewlyAssigned && savedUser.planId && (savedUser.planDuration || 0) > 0) {
-                await SupabaseService.deletePendingPaymentsForStudent(savedUser.id);
-                
-                const paymentsToCreate: Omit<Payment, 'id'>[] = [];
-                const startDate = new Date(savedUser.planStartDate || new Date().toISOString());
-                
-                for (let i = 0; i < (savedUser.planDuration || 0); i++) {
-                    const dueDate = new Date(startDate.getTime());
-                    dueDate.setMonth(dueDate.getMonth() + i);
-
-                    const finalAmount = (savedUser.planValue || 0) - (savedUser.planDiscount || 0);
-                    
-                    paymentsToCreate.push({
-                        studentId: savedUser.id,
-                        amount: finalAmount,
-                        status: 'PENDING',
-                        dueDate: dueDate.toISOString().split('T')[0],
-                        description: `Mensalidade ${i + 1}/${savedUser.planDuration}`
-                    });
-                }
-
-                if (paymentsToCreate.length > 0) {
-                    await SupabaseService.addMultiplePayments(paymentsToCreate);
-                    addToast(`${savedUser.planDuration} faturas foram geradas para o plano.`, "info");
-                }
+                // Usar a nova função de geração
+                await handleGenerateInstallments(savedUser);
             }
 
             setShowUserForm(false);
@@ -373,6 +395,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                 {isAdmin && s.role === UserRole.STUDENT && (
                                                     <div className="flex bg-dark-900/80 p-1 rounded-xl gap-1 border border-dark-800">
                                                         <ActionButton icon={DollarSign} color="emerald" onClick={() => onNavigate('FINANCIAL', { studentId: s.id })} title="Fluxo Financeiro" />
+                                                        <ActionButton icon={CalendarPlus} color="cyan" onClick={() => handleGenerateInstallments(s)} title="Gerar Parcelas do Plano" />
                                                         <ActionButton icon={FileText} color="indigo" onClick={() => handleGenerateContract(s)} disabled={!isContractReady || isLoading} title={isContractReady ? "Imprimir Contrato" : "Faltam Dados p/ Contrato"} />
                                                         <ActionButton 
                                                             icon={Receipt} 
