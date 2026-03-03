@@ -187,24 +187,50 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                         if (student) {
                             setIsProcessing('sync');
                             try {
-                                // Reutilizar a lógica de geração de parcelas
+                                const isSameMonthYear = (d1: string, d2: string) => {
+                                    const date1 = new Date(d1);
+                                    const date2 = new Date(d2);
+                                    return date1.getUTCMonth() === date2.getUTCMonth() && date1.getUTCFullYear() === date2.getUTCFullYear();
+                                };
+
+                                // 1. LIMPEZA: Remover parcelas PENDING/OVERDUE em meses que já possuem uma parcela PAID
+                                const paidPayments = payments.filter(p => p.status === 'PAID');
+                                const duplicatesToRemove = payments.filter(p => 
+                                    (p.status === 'PENDING' || p.status === 'OVERDUE') && 
+                                    paidPayments.some(pp => isSameMonthYear(pp.dueDate, p.dueDate))
+                                );
+
+                                for (const dup of duplicatesToRemove) {
+                                    await SupabaseService.deletePayment(dup.id);
+                                }
+
+                                // Atualizar lista local para geração
+                                const updatedPayments = payments.filter(p => !duplicatesToRemove.find(d => d.id === p.id));
+
+                                // 2. GERAÇÃO
                                 const startDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
                                 const paymentsToCreate: Omit<Payment, 'id'>[] = [];
-                                const existingInstallmentNumbers = payments.map(p => p.installmentNumber || 0);
+                                const existingInstallmentNumbers = updatedPayments.map(p => p.installmentNumber || 0);
+                                const existingDates = updatedPayments.map(p => p.dueDate);
 
                                 for (let i = 0; i < (student.planDuration || 0); i++) {
                                     const installmentNum = i + 1;
-                                    if (existingInstallmentNumbers.includes(installmentNum)) continue;
-
                                     const dueDate = new Date(startDate.getTime());
                                     dueDate.setMonth(dueDate.getMonth() + i);
+                                    const dueDateStr = dueDate.toISOString().split('T')[0];
+
+                                    const alreadyExists = existingInstallmentNumbers.includes(installmentNum) || 
+                                                        existingDates.some(d => isSameMonthYear(d, dueDateStr));
+
+                                    if (alreadyExists) continue;
+
                                     const finalAmount = (student.planValue || 0) - (student.planDiscount || 0);
                                     
                                     paymentsToCreate.push({
                                         studentId: student.id,
                                         amount: finalAmount,
                                         status: 'PENDING',
-                                        dueDate: dueDate.toISOString().split('T')[0],
+                                        dueDate: dueDateStr,
                                         description: `Mensalidade ${installmentNum}/${student.planDuration}`,
                                         installmentNumber: installmentNum,
                                         total_installments: student.planDuration
@@ -214,10 +240,17 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                                 if (paymentsToCreate.length > 0) {
                                     await SupabaseService.addMultiplePayments(paymentsToCreate);
                                     addToast(`${paymentsToCreate.length} novas parcelas geradas.`, "success");
-                                    refreshData();
-                                } else {
-                                    addToast("Todas as parcelas já estão geradas.", "info");
                                 }
+                                
+                                if (duplicatesToRemove.length > 0) {
+                                    addToast(`${duplicatesToRemove.length} cobranças duplicadas corrigidas.`, "success");
+                                }
+
+                                if (paymentsToCreate.length === 0 && duplicatesToRemove.length === 0) {
+                                    addToast("O plano já está sincronizado e correto.", "info");
+                                }
+
+                                refreshData();
                             } catch (e: any) {
                                 addToast(`Erro ao sincronizar: ${e.message}`, "error");
                             } finally {

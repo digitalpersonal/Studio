@@ -159,32 +159,55 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     };
 
     const handleSyncAllInstallments = async () => {
-        if (!confirm("Deseja sincronizar as parcelas de TODOS os alunos? O sistema verificará cada aluno e gerará as parcelas faltantes de acordo com a duração do plano. Parcelas já pagas não serão alteradas.")) return;
+        if (!confirm("Deseja sincronizar e CORRIGIR as parcelas de TODOS os alunos? O sistema verificará cada aluno, gerará as parcelas faltantes e removerá cobranças duplicadas em meses que já foram pagos.")) return;
 
         setIsSyncing(true);
         try {
             const allStudents = users.filter(u => u.role === UserRole.STUDENT && u.planId && (u.planDuration || 0) > 0);
             let totalCreated = 0;
+            let totalCleaned = 0;
+
+            const isSameMonthYear = (d1: string, d2: string) => {
+                const date1 = new Date(d1);
+                const date2 = new Date(d2);
+                return date1.getUTCMonth() === date2.getUTCMonth() && date1.getUTCFullYear() === date2.getUTCFullYear();
+            };
 
             for (const student of allStudents) {
                 const studentPayments = payments.filter(p => p.studentId === student.id);
-                const pendingPayments = studentPayments.filter(p => p.status === 'PENDING' || p.status === 'OVERDUE');
-                const paidPayments = studentPayments.filter(p => p.status === 'PAID');
                 
-                // Se o aluno já tem o número correto de parcelas (pagas + pendentes), pula
-                if (studentPayments.length >= (student.planDuration || 0)) continue;
+                // 1. LIMPEZA: Remover parcelas PENDING/OVERDUE em meses que já possuem uma parcela PAID
+                const paidPayments = studentPayments.filter(p => p.status === 'PAID');
+                const duplicatesToRemove = studentPayments.filter(p => 
+                    (p.status === 'PENDING' || p.status === 'OVERDUE') && 
+                    paidPayments.some(pp => isSameMonthYear(pp.dueDate, p.dueDate))
+                );
 
-                // Gerar apenas as parcelas que faltam
+                for (const dup of duplicatesToRemove) {
+                    await SupabaseService.deletePayment(dup.id);
+                    totalCleaned++;
+                }
+
+                // Atualizar a lista local após limpeza para a próxima etapa
+                const updatedStudentPayments = studentPayments.filter(p => !duplicatesToRemove.find(d => d.id === p.id));
+
+                // 2. GERAÇÃO: Gerar apenas as parcelas que faltam (considerando mês/ano e número da parcela)
                 const paymentsToCreate: Omit<Payment, 'id'>[] = [];
                 const startDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
-                const existingInstallmentNumbers = studentPayments.map(p => p.installmentNumber || 0);
+                const existingInstallmentNumbers = updatedStudentPayments.map(p => p.installmentNumber || 0);
+                const existingDates = updatedStudentPayments.map(p => p.dueDate);
 
                 for (let i = 0; i < (student.planDuration || 0); i++) {
                     const installmentNum = i + 1;
-                    if (existingInstallmentNumbers.includes(installmentNum)) continue;
-
                     const dueDate = new Date(startDate.getTime());
                     dueDate.setMonth(dueDate.getMonth() + i);
+                    const dueDateStr = dueDate.toISOString().split('T')[0];
+
+                    // Verifica se já existe uma parcela para este número OU para este mês/ano
+                    const alreadyExists = existingInstallmentNumbers.includes(installmentNum) || 
+                                        existingDates.some(d => isSameMonthYear(d, dueDateStr));
+
+                    if (alreadyExists) continue;
 
                     const finalAmount = (student.planValue || 0) - (student.planDiscount || 0);
                     
@@ -192,7 +215,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                         studentId: student.id,
                         amount: finalAmount,
                         status: 'PENDING',
-                        dueDate: dueDate.toISOString().split('T')[0],
+                        dueDate: dueDateStr,
                         description: `Mensalidade ${installmentNum}/${student.planDuration}`,
                         installmentNumber: installmentNum,
                         total_installments: student.planDuration
@@ -205,7 +228,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 }
             }
 
-            addToast(`Sincronização concluída! ${totalCreated} novas parcelas foram geradas para os alunos.`, "success");
+            addToast(`Sincronização concluída! ${totalCreated} novas parcelas geradas e ${totalCleaned} cobranças duplicadas removidas.`, "success");
             refreshList();
         } catch (error: any) {
             addToast(`Erro na sincronização: ${error.message}`, "error");
