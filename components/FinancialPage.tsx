@@ -187,18 +187,25 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                         if (student) {
                             setIsProcessing('sync');
                             try {
+                                const MIN_DATE_STR = '2026-02-01';
                                 const isSameMonthYear = (d1: string, d2: string) => {
                                     const date1 = new Date(d1);
                                     const date2 = new Date(d2);
                                     return date1.getUTCMonth() === date2.getUTCMonth() && date1.getUTCFullYear() === date2.getUTCFullYear();
                                 };
 
-                                // 1. LIMPEZA: Remover parcelas PENDING/OVERDUE em meses que já possuem uma parcela PAID
+                                // 1. LIMPEZA: 
+                                // - Remover parcelas PENDING/OVERDUE de Janeiro/2026 ou anterior
+                                // - Remover parcelas PENDING/OVERDUE em meses que já possuem uma parcela PAID
                                 const paidPayments = payments.filter(p => p.status === 'PAID');
-                                const duplicatesToRemove = payments.filter(p => 
-                                    (p.status === 'PENDING' || p.status === 'OVERDUE') && 
-                                    paidPayments.some(pp => isSameMonthYear(pp.dueDate, p.dueDate))
-                                );
+                                const duplicatesToRemove = payments.filter(p => {
+                                    if (p.status === 'PAID') return false;
+                                    
+                                    const isBeforeFeb = p.dueDate < MIN_DATE_STR;
+                                    const isAlreadyPaidMonth = paidPayments.some(pp => isSameMonthYear(pp.dueDate, p.dueDate));
+                                    
+                                    return isBeforeFeb || isAlreadyPaidMonth;
+                                });
 
                                 for (const dup of duplicatesToRemove) {
                                     await SupabaseService.deletePayment(dup.id);
@@ -208,15 +215,21 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                                 const updatedPayments = payments.filter(p => !duplicatesToRemove.find(d => d.id === p.id));
 
                                 // 2. GERAÇÃO
-                                const startDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
+                                let baseDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
+                                const minDate = new Date(MIN_DATE_STR + 'T12:00:00Z');
+                                
+                                if (baseDate < minDate) {
+                                    baseDate = minDate;
+                                }
+
                                 const paymentsToCreate: Omit<Payment, 'id'>[] = [];
                                 const existingInstallmentNumbers = updatedPayments.map(p => p.installmentNumber || 0);
                                 const existingDates = updatedPayments.map(p => p.dueDate);
 
                                 for (let i = 0; i < (student.planDuration || 0); i++) {
                                     const installmentNum = i + 1;
-                                    const dueDate = new Date(startDate.getTime());
-                                    dueDate.setMonth(dueDate.getMonth() + i);
+                                    const dueDate = new Date(baseDate.getTime());
+                                    dueDate.setMonth(baseDate.getMonth() + i);
                                     const dueDateStr = dueDate.toISOString().split('T')[0];
 
                                     const alreadyExists = existingInstallmentNumbers.includes(installmentNum) || 

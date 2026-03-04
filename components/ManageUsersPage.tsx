@@ -159,13 +159,14 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     };
 
     const handleSyncAllInstallments = async () => {
-        if (!confirm("Deseja sincronizar e CORRIGIR as parcelas de TODOS os alunos? O sistema verificará cada aluno, gerará as parcelas faltantes e removerá cobranças duplicadas em meses que já foram pagos.")) return;
+        if (!confirm("Deseja sincronizar e CORRIGIR as parcelas de TODOS os alunos? O sistema removerá cobranças de Janeiro/2026 e anteriores, e garantirá que os planos comecem apenas a partir de Fevereiro/2026.")) return;
 
         setIsSyncing(true);
         try {
             const allStudents = users.filter(u => u.role === UserRole.STUDENT && u.planId && (u.planDuration || 0) > 0);
             let totalCreated = 0;
             let totalCleaned = 0;
+            const MIN_DATE_STR = '2026-02-01';
 
             const isSameMonthYear = (d1: string, d2: string) => {
                 const date1 = new Date(d1);
@@ -176,31 +177,45 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
             for (const student of allStudents) {
                 const studentPayments = payments.filter(p => p.studentId === student.id);
                 
-                // 1. LIMPEZA: Remover parcelas PENDING/OVERDUE em meses que já possuem uma parcela PAID
+                // 1. LIMPEZA: 
+                // - Remover parcelas PENDING/OVERDUE de Janeiro/2026 ou anterior
+                // - Remover parcelas PENDING/OVERDUE em meses que já possuem uma parcela PAID
                 const paidPayments = studentPayments.filter(p => p.status === 'PAID');
-                const duplicatesToRemove = studentPayments.filter(p => 
-                    (p.status === 'PENDING' || p.status === 'OVERDUE') && 
-                    paidPayments.some(pp => isSameMonthYear(pp.dueDate, p.dueDate))
-                );
+                const duplicatesToRemove = studentPayments.filter(p => {
+                    if (p.status === 'PAID') return false;
+                    
+                    const isBeforeFeb = p.dueDate < MIN_DATE_STR;
+                    const isAlreadyPaidMonth = paidPayments.some(pp => isSameMonthYear(pp.dueDate, p.dueDate));
+                    
+                    return isBeforeFeb || isAlreadyPaidMonth;
+                });
 
                 for (const dup of duplicatesToRemove) {
                     await SupabaseService.deletePayment(dup.id);
                     totalCleaned++;
                 }
 
-                // Atualizar a lista local após limpeza para a próxima etapa
+                // Atualizar a lista local após limpeza
                 const updatedStudentPayments = studentPayments.filter(p => !duplicatesToRemove.find(d => d.id === p.id));
 
-                // 2. GERAÇÃO: Gerar apenas as parcelas que faltam (considerando mês/ano e número da parcela)
+                // 2. GERAÇÃO: Começar sempre de Fevereiro/2026 ou da data de início do plano (o que for posterior)
                 const paymentsToCreate: Omit<Payment, 'id'>[] = [];
-                const startDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
+                
+                // Determinar a data base: se o plano começou antes de Fev, usamos Fev como base para a primeira parcela rastreada
+                let baseDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
+                const minDate = new Date(MIN_DATE_STR + 'T12:00:00Z'); // Usar meio-dia para evitar problemas de timezone
+                
+                if (baseDate < minDate) {
+                    baseDate = minDate;
+                }
+
                 const existingInstallmentNumbers = updatedStudentPayments.map(p => p.installmentNumber || 0);
                 const existingDates = updatedStudentPayments.map(p => p.dueDate);
 
                 for (let i = 0; i < (student.planDuration || 0); i++) {
                     const installmentNum = i + 1;
-                    const dueDate = new Date(startDate.getTime());
-                    dueDate.setMonth(dueDate.getMonth() + i);
+                    const dueDate = new Date(baseDate.getTime());
+                    dueDate.setMonth(baseDate.getMonth() + i);
                     const dueDateStr = dueDate.toISOString().split('T')[0];
 
                     // Verifica se já existe uma parcela para este número OU para este mês/ano
@@ -228,7 +243,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 }
             }
 
-            addToast(`Sincronização concluída! ${totalCreated} novas parcelas geradas e ${totalCleaned} cobranças duplicadas removidas.`, "success");
+            addToast(`Sincronização concluída! ${totalCreated} novas parcelas geradas e ${totalCleaned} cobranças antigas/duplicadas removidas.`, "success");
             refreshList();
         } catch (error: any) {
             addToast(`Erro na sincronização: ${error.message}`, "error");
