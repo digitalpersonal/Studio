@@ -20,7 +20,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
   const [payments, setPayments] = useState<any[]>([]);
   const [students, setStudents] = useState<User[]>([]); 
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE'>('ALL');
-  const [dateFilterType, setDateFilterType] = useState<'ALL' | 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' | 'CUSTOM'>('MONTH');
+  const [dateFilterType, setDateFilterType] = useState<'ALL' | 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' | 'CUSTOM'>('ALL');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [searchTerm, setSearchTerm] = useState('');

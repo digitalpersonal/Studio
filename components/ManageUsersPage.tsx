@@ -7,7 +7,7 @@ import {
   AlertTriangle, MessageCircle, CheckCheck, UserPlus, AlertCircle, 
   CheckCircle2, Loader2, Send, Users as UsersIcon, Trash2, 
   Calendar, CalendarPlus, ListOrdered, ClipboardList, BookOpen, Zap, ZapOff, BadgePercent,
-  TrendingUp, MousePointer2
+  TrendingUp, MousePointer2, Search
 } from 'lucide-react';
 import { SupabaseService } from '../services/supabaseService';
 import { ContractService } from '../services/contractService';
@@ -24,6 +24,8 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     const [initialFormTab, setInitialFormTab] = useState<'basic' | 'plan' | 'anamnesis'>('basic');
     const [isLoading, setIsLoading] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [paymentStatusFilter, setPaymentStatusFilter] = useState<'ALL' | 'PAID' | 'PENDING' | 'OVERDUE'>('ALL');
     const [showWhatsAppModal, setShowWhatsAppModal] = useState<User | null>(null);
     const [showEnrolledClasses, setShowEnrolledClasses] = useState<User | null>(null);
     const [manualPaymentModal, setManualPaymentModal] = useState<{ student: User, payment: Payment } | null>(null);
@@ -352,7 +354,30 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
         }
     };
 
-    const filteredUsers = users.filter(u => u.role !== UserRole.SUPER_ADMIN || isSuperAdmin);
+    const filteredUsers = React.useMemo(() => {
+        return users
+            .filter(u => u.role !== UserRole.SUPER_ADMIN || isSuperAdmin)
+            .filter(u => {
+                if (!searchTerm) return true;
+                return u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                       u.email.toLowerCase().includes(searchTerm.toLowerCase());
+            })
+            .filter(u => {
+                if (paymentStatusFilter === 'ALL') return true;
+                if (u.role !== UserRole.STUDENT) return paymentStatusFilter === 'ALL';
+
+                const sPayments = payments.filter(p => p.studentId === u.id);
+                const hasOverdue = sPayments.some(p => p.status === 'OVERDUE');
+                const hasPending = sPayments.some(p => p.status === 'PENDING');
+                const allPaid = sPayments.length > 0 && sPayments.every(p => p.status === 'PAID');
+
+                if (paymentStatusFilter === 'OVERDUE') return hasOverdue;
+                if (paymentStatusFilter === 'PENDING') return hasPending && !hasOverdue;
+                if (paymentStatusFilter === 'PAID') return allPaid;
+                
+                return true;
+            });
+    }, [users, searchTerm, paymentStatusFilter, isSuperAdmin, payments]);
 
     if (showUserForm) {
         return <UserFormPage editingUser={editingUser} initialFormData={initialFormData} initialActiveTab={initialFormTab} onSave={handleSaveUser} onCancel={() => setShowUserForm(false)} addToast={addToast} currentUserRole={currentUser.role} />;
@@ -360,7 +385,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-white">Gestão de Alunos & Equipe</h2>
                     <p className="text-slate-400 text-sm flex items-center gap-2">
@@ -368,23 +393,51 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                        Dica: Clique e arraste a tabela para o lado. O nome do aluno fica sempre visível.
                     </p>
                 </div>
-                {(isAdmin || isTrainer) && (
-                  <div className="flex gap-2">
-                    {isAdmin && (
-                        <button 
-                            onClick={handleSyncAllInstallments} 
-                            disabled={isSyncing}
-                            className="bg-dark-800 text-slate-300 px-6 py-3 rounded-2xl text-sm font-bold flex items-center border border-dark-700 hover:bg-dark-700 transition-all active:scale-95 disabled:opacity-50"
-                        >
-                            {isSyncing ? <Loader2 size={18} className="mr-2 animate-spin" /> : <Repeat size={18} className="mr-2" />} 
-                            Sincronizar Parcelas
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <div className="relative flex-1 md:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar por nome ou e-mail..." 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full bg-dark-900 border border-dark-800 rounded-2xl p-3 pl-10 text-white text-xs focus:border-brand-500 outline-none transition-all"
+                        />
+                    </div>
+                    <div className="flex bg-dark-900 p-1 rounded-2xl border border-dark-800">
+                        {[
+                            { id: 'ALL', label: 'Todos' },
+                            { id: 'PAID', label: 'Em Dia' },
+                            { id: 'PENDING', label: 'Pendentes' },
+                            { id: 'OVERDUE', label: 'Atrasados' }
+                        ].map(f => (
+                            <button 
+                                key={f.id}
+                                onClick={() => setPaymentStatusFilter(f.id as any)}
+                                className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${paymentStatusFilter === f.id ? 'bg-brand-600 text-white' : 'text-slate-500 hover:text-white'}`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
+                    {(isAdmin || isTrainer) && (
+                      <div className="flex gap-2">
+                        {isAdmin && (
+                            <button 
+                                onClick={handleSyncAllInstallments} 
+                                disabled={isSyncing}
+                                className="bg-dark-800 text-slate-300 px-4 py-3 rounded-2xl text-[10px] font-black uppercase flex items-center border border-dark-700 hover:bg-dark-700 transition-all active:scale-95 disabled:opacity-50"
+                            >
+                                {isSyncing ? <Loader2 size={14} className="mr-2 animate-spin" /> : <Repeat size={14} className="mr-2" />} 
+                                Sincronizar
+                            </button>
+                        )}
+                        <button onClick={() => handleOpenForm(null)} className="bg-brand-600 text-white px-4 py-3 rounded-2xl text-[10px] font-black uppercase flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all active:scale-95">
+                            <UserPlus size={14} className="mr-2" /> Novo
                         </button>
+                      </div>
                     )}
-                    <button onClick={() => handleOpenForm(null)} className="bg-brand-600 text-white px-6 py-3 rounded-2xl text-sm font-bold flex items-center shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all active:scale-95">
-                        <UserPlus size={18} className="mr-2" /> Novo Cadastro
-                    </button>
-                  </div>
-                )}
+                </div>
             </div>
 
             <div className="bg-dark-950 rounded-[2.5rem] border border-dark-800 overflow-hidden shadow-2xl relative">
