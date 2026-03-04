@@ -6,7 +6,8 @@ import { SettingsService } from '../services/settingsService';
 import { 
   Loader2, DollarSign, Receipt, Check, Download, CreditCard, 
   MessageCircle, AlertTriangle, X, CheckCheck, Info, BadgePercent,
-  QrCode, Copy, Smartphone, ArrowRight, Edit, Plus, Save, Trash2, Search, Repeat
+  QrCode, Copy, Smartphone, ArrowRight, Edit, Plus, Save, Trash2, Search, Repeat,
+  Calendar, Filter, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useToast, WhatsAppAutomation } from '../App'; 
 
@@ -19,6 +20,9 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
   const [payments, setPayments] = useState<any[]>([]);
   const [students, setStudents] = useState<User[]>([]); 
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PAID' | 'OVERDUE'>('ALL');
+  const [dateFilterType, setDateFilterType] = useState<'ALL' | 'DAY' | 'WEEK' | 'MONTH' | 'YEAR' | 'CUSTOM'>('MONTH');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [editingPayment, setEditingPayment] = useState<Partial<Payment> | null>(null);
@@ -55,23 +59,75 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
   }, [refreshData]);
 
   const stats = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getUTCMonth();
+    const currentYear = now.getUTCFullYear();
+
+    const currentMonthPayments = payments.filter(p => {
+      const d = new Date(p.dueDate);
+      return d.getUTCMonth() === currentMonth && d.getUTCFullYear() === currentYear;
+    });
+
     return {
       total: payments.reduce((acc, p) => acc + p.amount, 0),
       paid: payments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0),
       overdue: payments.filter(p => p.status === 'OVERDUE').reduce((acc, p) => acc + p.amount, 0),
+      currentMonth: {
+        total: currentMonthPayments.reduce((acc, p) => acc + p.amount, 0),
+        paid: currentMonthPayments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0),
+        pending: currentMonthPayments.filter(p => p.status !== 'PAID').reduce((acc, p) => acc + p.amount, 0),
+      }
     };
   }, [payments]);
 
   const filteredPayments = useMemo(() => {
     return payments
       .filter(p => filter === 'ALL' || p.status === filter)
+      .filter(p => {
+        if (dateFilterType === 'ALL') return true;
+        
+        const pDate = new Date(p.dueDate);
+        const sDate = new Date(selectedDate);
+
+        if (dateFilterType === 'DAY') {
+          return p.dueDate === selectedDate;
+        }
+
+        if (dateFilterType === 'WEEK') {
+          // Início da semana (Domingo)
+          const startOfWeek = new Date(sDate);
+          startOfWeek.setUTCDate(sDate.getUTCDate() - sDate.getUTCDay());
+          startOfWeek.setUTCHours(0, 0, 0, 0);
+
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setUTCDate(startOfWeek.getUTCDate() + 6);
+          endOfWeek.setUTCHours(23, 59, 59, 999);
+
+          return pDate >= startOfWeek && pDate <= endOfWeek;
+        }
+
+        if (dateFilterType === 'MONTH') {
+          return pDate.getUTCMonth() === sDate.getUTCMonth() && pDate.getUTCFullYear() === sDate.getUTCFullYear();
+        }
+
+        if (dateFilterType === 'YEAR') {
+          return pDate.getUTCFullYear() === sDate.getUTCFullYear();
+        }
+
+        if (dateFilterType === 'CUSTOM') {
+          if (!customRange.start || !customRange.end) return true;
+          return p.dueDate >= customRange.start && p.dueDate <= customRange.end;
+        }
+
+        return true;
+      })
       .filter(p => 
         isGlobalAdminView 
           ? (p as any).studentName?.toLowerCase().includes(searchTerm.toLowerCase())
           : true
       )
       .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-  }, [payments, filter, isGlobalAdminView, searchTerm]);
+  }, [payments, filter, dateFilterType, selectedDate, customRange, isGlobalAdminView, searchTerm]);
 
   const handleMarkPaidWithDiscount = async (payment: Payment, discount: number) => {
     setIsProcessing(payment.id);
@@ -148,18 +204,133 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-dark-950 p-6 rounded-2xl border border-dark-800 shadow-xl">
-          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">Total Recebido (Líquido)</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-dark-950 p-6 rounded-2xl border border-dark-800 shadow-xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+            <DollarSign size={48} />
+          </div>
+          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">Total Recebido (Geral)</p>
           <p className="text-2xl font-black text-emerald-500">R$ {stats.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
-        <div className="bg-dark-950 p-6 rounded-2xl border border-dark-800 shadow-xl">
-          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">A Receber</p>
+        
+        <div className="bg-dark-950 p-6 rounded-2xl border-2 border-brand-500/30 shadow-xl shadow-brand-500/5 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-10 text-brand-500">
+            <Calendar size={48} />
+          </div>
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-brand-400 text-[10px] font-bold uppercase tracking-widest">Este Mês ({new Date().toLocaleString('pt-BR', { month: 'long' })})</p>
+            <span className="bg-brand-500 text-white text-[8px] px-1.5 py-0.5 rounded font-black animate-pulse">DESTAQUE</span>
+          </div>
+          <p className="text-2xl font-black text-white">R$ {stats.currentMonth.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[10px] text-slate-500 mt-1 font-bold italic">Previsto: R$ {stats.currentMonth.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        </div>
+
+        <div className="bg-dark-950 p-6 rounded-2xl border border-dark-800 shadow-xl relative overflow-hidden group">
+          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">A Receber (Total)</p>
           <p className="text-2xl font-black text-amber-500">R$ {(stats.total - stats.paid).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
-        <div className="bg-brand-600 p-6 rounded-2xl shadow-xl shadow-brand-500/20 text-white">
-          <p className="text-brand-100 text-[10px] font-bold uppercase mb-1 tracking-widest">Em Atraso</p>
+
+        <div className="bg-brand-600 p-6 rounded-2xl shadow-xl shadow-brand-500/20 text-white relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-20">
+            <AlertTriangle size={48} />
+          </div>
+          <p className="text-brand-100 text-[10px] font-bold uppercase mb-1 tracking-widest">Total em Atraso</p>
           <p className="text-2xl font-black">R$ {stats.overdue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        </div>
+      </div>
+
+      {/* FILTROS AVANÇADOS */}
+      <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
+            <Filter size={14} className="text-brand-500 shrink-0" />
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mr-2 shrink-0">Filtrar por:</span>
+            {[
+              { id: 'ALL', label: 'Tudo' },
+              { id: 'DAY', label: 'Dia' },
+              { id: 'WEEK', label: 'Semana' },
+              { id: 'MONTH', label: 'Mês' },
+              { id: 'YEAR', label: 'Ano' },
+              { id: 'CUSTOM', label: 'Período' }
+            ].map(t => (
+              <button 
+                key={t.id} 
+                onClick={() => setDateFilterType(t.id as any)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${dateFilterType === t.id ? 'bg-brand-600 text-white' : 'bg-dark-900 text-slate-500 hover:text-white'}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            {dateFilterType !== 'ALL' && dateFilterType !== 'CUSTOM' && (
+              <div className="flex items-center bg-dark-900 rounded-xl border border-dark-800 p-1">
+                <button 
+                  onClick={() => {
+                    const d = new Date(selectedDate);
+                    if (dateFilterType === 'DAY') d.setUTCDate(d.getUTCDate() - 1);
+                    if (dateFilterType === 'WEEK') d.setUTCDate(d.getUTCDate() - 7);
+                    if (dateFilterType === 'MONTH') d.setUTCMonth(d.getUTCMonth() - 1);
+                    if (dateFilterType === 'YEAR') d.setUTCFullYear(d.getUTCFullYear() - 1);
+                    setSelectedDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="p-1.5 text-slate-500 hover:text-white"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                
+                <input 
+                  type={dateFilterType === 'MONTH' ? 'month' : dateFilterType === 'YEAR' ? 'number' : 'date'}
+                  value={dateFilterType === 'YEAR' ? new Date(selectedDate).getUTCFullYear() : (dateFilterType === 'MONTH' ? selectedDate.substring(0, 7) : selectedDate)}
+                  onChange={(e) => {
+                    if (dateFilterType === 'YEAR') {
+                      const d = new Date(selectedDate);
+                      d.setUTCFullYear(Number(e.target.value));
+                      setSelectedDate(d.toISOString().split('T')[0]);
+                    } else if (dateFilterType === 'MONTH') {
+                      setSelectedDate(`${e.target.value}-01`);
+                    } else {
+                      setSelectedDate(e.target.value);
+                    }
+                  }}
+                  className="bg-transparent text-white text-xs font-bold px-2 outline-none w-28 text-center"
+                />
+
+                <button 
+                  onClick={() => {
+                    const d = new Date(selectedDate);
+                    if (dateFilterType === 'DAY') d.setUTCDate(d.getUTCDate() + 1);
+                    if (dateFilterType === 'WEEK') d.setUTCDate(d.getUTCDate() + 7);
+                    if (dateFilterType === 'MONTH') d.setUTCMonth(d.getUTCMonth() + 1);
+                    if (dateFilterType === 'YEAR') d.setUTCFullYear(d.getUTCFullYear() + 1);
+                    setSelectedDate(d.toISOString().split('T')[0]);
+                  }}
+                  className="p-1.5 text-slate-500 hover:text-white"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+
+            {dateFilterType === 'CUSTOM' && (
+              <div className="flex items-center gap-2">
+                <input 
+                  type="date" 
+                  value={customRange.start}
+                  onChange={e => setCustomRange({...customRange, start: e.target.value})}
+                  className="bg-dark-900 border border-dark-800 rounded-xl p-2 text-white text-xs outline-none focus:border-brand-500"
+                />
+                <span className="text-slate-600 text-xs">até</span>
+                <input 
+                  type="date" 
+                  value={customRange.end}
+                  onChange={e => setCustomRange({...customRange, end: e.target.value})}
+                  className="bg-dark-900 border border-dark-800 rounded-xl p-2 text-white text-xs outline-none focus:border-brand-500"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
