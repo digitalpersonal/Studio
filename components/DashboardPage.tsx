@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
+import { HydrationWidget } from './HydrationWidget';
 
 interface DashboardPageProps {
   currentUser: User;
@@ -266,6 +267,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="space-y-6">
+            <HydrationWidget />
+        </div>
         <div className="lg:col-span-2 space-y-6">
             <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
               <Clock className="text-brand-500" size={24}/> Agenda de Hoje

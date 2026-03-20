@@ -58,28 +58,6 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
     SettingsService.getSettings().then(s => setAcademyPixKey(s.pixKey));
   }, [refreshData]);
 
-  const stats = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getUTCMonth();
-    const currentYear = now.getUTCFullYear();
-
-    const currentMonthPayments = payments.filter(p => {
-      const d = new Date(p.dueDate);
-      return d.getUTCMonth() === currentMonth && d.getUTCFullYear() === currentYear;
-    });
-
-    return {
-      total: payments.reduce((acc, p) => acc + p.amount, 0),
-      paid: payments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0),
-      overdue: payments.filter(p => p.status === 'OVERDUE').reduce((acc, p) => acc + p.amount, 0),
-      currentMonth: {
-        total: currentMonthPayments.reduce((acc, p) => acc + p.amount, 0),
-        paid: currentMonthPayments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0),
-        pending: currentMonthPayments.filter(p => p.status !== 'PAID').reduce((acc, p) => acc + p.amount, 0),
-      }
-    };
-  }, [payments]);
-
   const filteredPayments = useMemo(() => {
     return payments
       .filter(p => filter === 'ALL' || p.status === filter)
@@ -128,6 +106,28 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
       )
       .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
   }, [payments, filter, dateFilterType, selectedDate, customRange, isGlobalAdminView, searchTerm]);
+
+  const stats = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getUTCMonth();
+    const currentYear = now.getUTCFullYear();
+
+    const currentMonthPayments = payments.filter(p => {
+      const d = new Date(p.dueDate);
+      return d.getUTCMonth() === currentMonth && d.getUTCFullYear() === currentYear;
+    });
+
+    return {
+      total: filteredPayments.reduce((acc, p) => acc + p.amount, 0),
+      paid: filteredPayments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0),
+      overdue: filteredPayments.filter(p => p.status === 'OVERDUE').reduce((acc, p) => acc + p.amount, 0),
+      currentMonth: {
+        total: currentMonthPayments.reduce((acc, p) => acc + p.amount, 0),
+        paid: currentMonthPayments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0),
+        pending: currentMonthPayments.filter(p => p.status !== 'PAID').reduce((acc, p) => acc + p.amount, 0),
+      }
+    };
+  }, [filteredPayments, payments]);
 
   const handleMarkPaidWithDiscount = async (payment: Payment, discount: number) => {
     setIsProcessing(payment.id);
@@ -209,7 +209,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
           <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
             <DollarSign size={48} />
           </div>
-          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">Total Recebido (Geral)</p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">Total Recebido (Filtrado)</p>
           <p className="text-2xl font-black text-emerald-500">R$ {stats.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
         
@@ -226,7 +226,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         </div>
 
         <div className="bg-dark-950 p-6 rounded-2xl border border-dark-800 shadow-xl relative overflow-hidden group">
-          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">A Receber (Total)</p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">A Receber (Filtrado)</p>
           <p className="text-2xl font-black text-amber-500">R$ {(stats.total - stats.paid).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
         </div>
 

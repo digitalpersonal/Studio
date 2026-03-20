@@ -161,13 +161,14 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     };
 
     const handleSyncAllInstallments = async () => {
-        if (!confirm("Deseja sincronizar e CORRIGIR as parcelas de TODOS os alunos? O sistema removerá cobranças de Janeiro/2026 e anteriores, e garantirá que os planos comecem apenas a partir de Fevereiro/2026.")) return;
+        if (!confirm("Deseja sincronizar e CORRIGIR as parcelas de TODOS os alunos? O sistema moverá pagamentos de Janeiro para Fevereiro, removerá cobranças pendentes de Janeiro/2026 e anteriores, e garantirá que os planos comecem apenas a partir de Fevereiro/2026.")) return;
 
         setIsSyncing(true);
         try {
             const allStudents = users.filter(u => u.role === UserRole.STUDENT && u.planId && (u.planDuration || 0) > 0);
             let totalCreated = 0;
             let totalCleaned = 0;
+            let totalMoved = 0;
             const MIN_DATE_STR = '2026-02-01';
 
             const isSameMonthYear = (d1: string, d2: string) => {
@@ -179,6 +180,19 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
             for (const student of allStudents) {
                 const studentPayments = payments.filter(p => p.studentId === student.id);
                 
+                // 0. CORREÇÃO DE PAGOS EM JANEIRO:
+                // Mover pagamentos PAID de Janeiro (ou antes) para Fevereiro
+                const paidInJan = studentPayments.filter(p => p.status === 'PAID' && p.dueDate < MIN_DATE_STR);
+                for (const p of paidInJan) {
+                    const newDate = new Date(p.dueDate);
+                    newDate.setMonth(1); // Fevereiro (0-indexed)
+                    newDate.setFullYear(2026);
+                    const newDateStr = newDate.toISOString().split('T')[0];
+                    await SupabaseService.updatePayment({ ...p, dueDate: newDateStr });
+                    p.dueDate = newDateStr; // update local reference
+                    totalMoved++;
+                }
+
                 // 1. LIMPEZA: 
                 // - Remover parcelas PENDING/OVERDUE de Janeiro/2026 ou anterior
                 // - Remover parcelas PENDING/OVERDUE em meses que já possuem uma parcela PAID
@@ -245,7 +259,7 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 }
             }
 
-            addToast(`Sincronização concluída! ${totalCreated} novas parcelas geradas e ${totalCleaned} cobranças antigas/duplicadas removidas.`, "success");
+            addToast(`Sincronização concluída! ${totalMoved} pagamentos movidos para Fev, ${totalCreated} novas parcelas geradas e ${totalCleaned} cobranças antigas removidas.`, "success");
             refreshList();
         } catch (error: any) {
             addToast(`Erro na sincronização: ${error.message}`, "error");

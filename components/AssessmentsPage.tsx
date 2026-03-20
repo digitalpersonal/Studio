@@ -251,6 +251,8 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                 <MetricDisplay label="% Gordura" value={assessment.bodyFatPercentage} unit="%" color="text-brand-500" />
                 <MetricDisplay label="Massa Muscular" value={assessment.skeletalMuscleMass} unit="kg" color="text-emerald-500" />
                 <MetricDisplay label="Gord. Visceral" value={assessment.visceralFatLevel} unit="Nível" />
+                <MetricDisplay label="IMC" value={assessment.imc} unit="" />
+                <MetricDisplay label="Idade Metabólica" value={assessment.metabolicAge} unit="anos" />
               </div>
 
               <div className="mt-6 pt-6 border-t border-dark-800">

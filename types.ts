@@ -187,6 +187,8 @@ export interface Assessment {
   visceralFatLevel?: number;
   basalMetabolicRate?: number;
   hydrationPercentage?: number;
+  imc?: number;
+  metabolicAge?: number;
   abdominalTest?: number;
   squatMax?: number;
   horizontalJump?: number;
