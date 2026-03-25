@@ -502,6 +502,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       visceralFatLevel: 0,
       basalMetabolicRate: 0,
       hydrationPercentage: 0,
+      imc: 0,
+      metabolicAge: 0,
       abdominalTest: 0,
       horizontalJump: 0,
       verticalJump: 0,
@@ -619,6 +621,8 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                 <MetricInput label="Gord. Visc (Nível)" value={formData.visceralFatLevel} onChange={v => setFormData({...formData, visceralFatLevel: v})} />
                 <MetricInput label="TMB (kcal)" value={formData.basalMetabolicRate} onChange={v => setFormData({...formData, basalMetabolicRate: v})} />
                 <MetricInput label="Hidratação (%)" value={formData.hydrationPercentage} onChange={v => setFormData({...formData, hydrationPercentage: v})} step="0.1" />
+                <MetricInput label="IMC" value={formData.imc} onChange={v => setFormData({...formData, imc: v})} step="0.1" />
+                <MetricInput label="Idade Metabólica" value={formData.metabolicAge} onChange={v => setFormData({...formData, metabolicAge: v})} step="1" />
             </div>
         </section>
 
