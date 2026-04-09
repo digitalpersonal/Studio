@@ -10,6 +10,7 @@ export interface Notice {
   id: string;
   title: string;
   content: string;
+  imageUrl?: string;
   priority: 'INFO' | 'WARNING' | 'URGENT';
   createdAt: string;
 }
@@ -71,7 +72,7 @@ export interface Address {
 export interface Plan {
   id: string;
   title: string;
-  planType: 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'KIDS' | 'AVULSO';
+  planType: 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'AVULSO';
   frequency?: string;
   price: number;
   durationMonths: number;
@@ -191,6 +192,8 @@ export interface Assessment {
   metabolicAge?: number;
   abdominalTest?: number;
   squatMax?: number;
+  vo2Max?: number;
+  wallBallThrow?: number;
   horizontalJump?: number;
   verticalJump?: number;
   medicineBallThrow?: number;
@@ -216,12 +219,18 @@ export interface Assessment {
     waist?: number;
     abdomen?: number;
     hips?: number;
-    rightArm?: number;
-    leftArm?: number;
+    rightArmRelaxed?: number;
+    leftArmRelaxed?: number;
+    rightArmContracted?: number;
+    leftArmContracted?: number;
     rightForearm?: number;
     leftForearm?: number;
-    rightThigh?: number;
-    leftThigh?: number;
+    rightThighProximal?: number;
+    leftThighProximal?: number;
+    rightThighMedial?: number;
+    leftThighMedial?: number;
+    rightThighDistal?: number;
+    leftThighDistal?: number;
     rightCalf?: number;
     leftCalf?: number;
   };

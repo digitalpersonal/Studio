@@ -357,7 +357,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                       <p className="text-xs text-red-200 font-bold uppercase tracking-widest">Selecione um plano para continuar.</p>
                    </div>
                 )}
-                {['MENSAL', 'TRIMESTRAL', 'SEMESTRAL', 'KIDS', 'AVULSO'].map(type => (
+                {['MENSAL', 'TRIMESTRAL', 'SEMESTRAL', 'AVULSO'].map(type => (
                     plansByType[type] && (
                         <div key={type}>
                             <h4 className="font-black text-brand-500 uppercase tracking-widest text-xs mb-3">{type}</h4>

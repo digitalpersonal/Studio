@@ -19,7 +19,6 @@ const PlansSection = ({ onNavigate, academyPhone }: { onNavigate: () => void, ac
         { title: 'Plano Mensal Plus', price: '150', freq: '4x na semana', desc: 'Nosso plano mais popular para constância.', icon: Star, color: 'brand', popular: true },
         { title: 'Trimestral', price: '110', freq: '3x na semana', desc: 'Foco em resultados de médio prazo.', icon: CheckCircle2, color: 'emerald' },
         { title: 'Semestral', price: '105', freq: '3x na semana', desc: 'Para quem vive o estilo de vida Studio.', icon: CheckCircle2, color: 'emerald' },
-        { title: 'Treino Kids', price: '90', freq: '2x na semana', desc: 'Saúde e movimento para os pequenos.', icon: Star, color: 'purple' },
     ];
 
     // Formata o link do WhatsApp dinamicamente
@@ -127,7 +126,7 @@ const HoursSection = () => {
                         <div className="space-y-2 text-slate-300 font-bold">
                             <p className="text-2xl">05:00 <span className="text-slate-600 text-sm font-black uppercase">às</span> 10:00</p>
                             <div className="h-px bg-dark-800 w-12 mx-auto my-2 opacity-50"></div>
-                            <p className="text-2xl">16:00 <span className="text-slate-600 text-sm font-black uppercase">às</span> 21:00</p>
+                            <p className="text-2xl">14:00 <span className="text-slate-600 text-sm font-black uppercase">às</span> 21:00</p>
                         </div>
                     </div>
 

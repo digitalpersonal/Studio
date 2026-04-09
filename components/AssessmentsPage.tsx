@@ -251,6 +251,8 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                 <MetricDisplay label="% Gordura" value={assessment.bodyFatPercentage} unit="%" color="text-brand-500" />
                 <MetricDisplay label="Massa Muscular" value={assessment.skeletalMuscleMass} unit="kg" color="text-emerald-500" />
                 <MetricDisplay label="Gord. Visceral" value={assessment.visceralFatLevel} unit="Nível" />
+                <MetricDisplay label="TMB (Calorias)" value={assessment.basalMetabolicRate} unit="kcal" />
+                <MetricDisplay label="Hidratação" value={assessment.hydrationPercentage} unit="%" />
                 <MetricDisplay label="IMC" value={assessment.imc} unit="" />
                 <MetricDisplay label="Idade Metabólica" value={assessment.metabolicAge} unit="anos" />
               </div>
@@ -306,6 +308,9 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                                 <MetricDetail label="Salto Horiz." value={assessment.horizontalJump} unit="cm" />
                                 <MetricDetail label="Salto Vert." value={assessment.verticalJump} unit="cm" />
                                 <MetricDetail label="Med. Ball" value={assessment.medicineBallThrow} unit="m" />
+                                <MetricDetail label="VO2 Máx" value={assessment.vo2Max} unit="" />
+                                <MetricDetail label="Agachamento" value={assessment.squatMax} unit="kg" />
+                                <MetricDetail label="Wall Ball" value={assessment.wallBallThrow} unit="m" />
                             </div>
                         </div>
 
@@ -354,15 +359,21 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                                     </div>
                                     <div className="space-y-3">
                                         <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Superiores</p>
-                                        <div className="flex justify-between">Braço D: <span className="text-white font-bold">{assessment.circumferences.rightArm || 0}</span></div>
-                                        <div className="flex justify-between">Braço E: <span className="text-white font-bold">{assessment.circumferences.leftArm || 0}</span></div>
+                                        <div className="flex justify-between">Braço D (Rel): <span className="text-white font-bold">{assessment.circumferences.rightArmRelaxed || 0}</span></div>
+                                        <div className="flex justify-between">Braço E (Rel): <span className="text-white font-bold">{assessment.circumferences.leftArmRelaxed || 0}</span></div>
+                                        <div className="flex justify-between">Braço D (Con): <span className="text-white font-bold">{assessment.circumferences.rightArmContracted || 0}</span></div>
+                                        <div className="flex justify-between">Braço E (Con): <span className="text-white font-bold">{assessment.circumferences.leftArmContracted || 0}</span></div>
                                         <div className="flex justify-between">Ant.Braço D: <span className="text-white font-bold">{assessment.circumferences.rightForearm || 0}</span></div>
                                         <div className="flex justify-between">Ant.Braço E: <span className="text-white font-bold">{assessment.circumferences.leftForearm || 0}</span></div>
                                     </div>
                                     <div className="space-y-3">
                                         <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Inferiores</p>
-                                        <div className="flex justify-between">Coxa D: <span className="text-white font-bold">{assessment.circumferences.rightThigh || 0}</span></div>
-                                        <div className="flex justify-between">Coxa E: <span className="text-white font-bold">{assessment.circumferences.leftThigh || 0}</span></div>
+                                        <div className="flex justify-between">Coxa D (Prox): <span className="text-white font-bold">{assessment.circumferences.rightThighProximal || 0}</span></div>
+                                        <div className="flex justify-between">Coxa D (Med): <span className="text-white font-bold">{assessment.circumferences.rightThighMedial || 0}</span></div>
+                                        <div className="flex justify-between">Coxa D (Dist): <span className="text-white font-bold">{assessment.circumferences.rightThighDistal || 0}</span></div>
+                                        <div className="flex justify-between">Coxa E (Prox): <span className="text-white font-bold">{assessment.circumferences.leftThighProximal || 0}</span></div>
+                                        <div className="flex justify-between">Coxa E (Med): <span className="text-white font-bold">{assessment.circumferences.leftThighMedial || 0}</span></div>
+                                        <div className="flex justify-between">Coxa E (Dist): <span className="text-white font-bold">{assessment.circumferences.leftThighDistal || 0}</span></div>
                                         <div className="flex justify-between">Pant. D: <span className="text-white font-bold">{assessment.circumferences.rightCalf || 0}</span></div>
                                         <div className="flex justify-between">Pant. E: <span className="text-white font-bold">{assessment.circumferences.leftCalf || 0}</span></div>
                                     </div>
@@ -504,6 +515,9 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       hydrationPercentage: 0,
       imc: 0,
       metabolicAge: 0,
+      vo2Max: 0,
+      squatMax: 0,
+      wallBallThrow: 0,
       abdominalTest: 0,
       horizontalJump: 0,
       verticalJump: 0,
@@ -521,8 +535,13 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       },
       circumferences: {
         chest: 0, waist: 0, abdomen: 0, hips: 0,
-        rightArm: 0, leftArm: 0, rightForearm: 0, leftForearm: 0,
-        rightThigh: 0, leftThigh: 0, rightCalf: 0, leftCalf: 0
+        rightArmRelaxed: 0, leftArmRelaxed: 0,
+        rightArmContracted: 0, leftArmContracted: 0,
+        rightForearm: 0, leftForearm: 0,
+        rightThighProximal: 0, leftThighProximal: 0,
+        rightThighMedial: 0, leftThighMedial: 0,
+        rightThighDistal: 0, leftThighDistal: 0,
+        rightCalf: 0, leftCalf: 0
       },
     }
   );
@@ -619,7 +638,7 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                 <MetricInput label="% Gordura" value={formData.bodyFatPercentage} onChange={v => setFormData({...formData, bodyFatPercentage: v})} step="0.1" required />
                 <MetricInput label="Massa Musc (kg)" value={formData.skeletalMuscleMass} onChange={v => setFormData({...formData, skeletalMuscleMass: v})} step="0.1" />
                 <MetricInput label="Gord. Visc (Nível)" value={formData.visceralFatLevel} onChange={v => setFormData({...formData, visceralFatLevel: v})} />
-                <MetricInput label="TMB (kcal)" value={formData.basalMetabolicRate} onChange={v => setFormData({...formData, basalMetabolicRate: v})} />
+                <MetricInput label="TMB (Calorias)" value={formData.basalMetabolicRate} onChange={v => setFormData({...formData, basalMetabolicRate: v})} />
                 <MetricInput label="Hidratação (%)" value={formData.hydrationPercentage} onChange={v => setFormData({...formData, hydrationPercentage: v})} step="0.1" />
                 <MetricInput label="IMC" value={formData.imc} onChange={v => setFormData({...formData, imc: v})} step="0.1" />
                 <MetricInput label="Idade Metabólica" value={formData.metabolicAge} onChange={v => setFormData({...formData, metabolicAge: v})} step="1" />
@@ -634,6 +653,9 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                 <MetricInput label="Salto Horiz (cm)" value={formData.horizontalJump} onChange={v => setFormData({...formData, horizontalJump: v})} />
                 <MetricInput label="Salto Vert (cm)" value={formData.verticalJump} onChange={v => setFormData({...formData, verticalJump: v})} />
                 <MetricInput label="Med. Ball (m)" value={formData.medicineBallThrow} onChange={v => setFormData({...formData, medicineBallThrow: v})} step="0.1" />
+                <MetricInput label="VO2 Máx" value={formData.vo2Max} onChange={v => setFormData({...formData, vo2Max: v})} step="0.1" />
+                <MetricInput label="Agachamento Máx" value={formData.squatMax} onChange={v => setFormData({...formData, squatMax: v})} />
+                <MetricInput label="Wall Ball Throw" value={formData.wallBallThrow} onChange={v => setFormData({...formData, wallBallThrow: v})} step="0.1" />
             </div>
         </section>
 
@@ -684,16 +706,26 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
                   <MetricInput label="Quadril" value={formData.circumferences?.hips} onChange={v => handleCircumferenceChange('hips', String(v))} step="0.1" />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <MetricInput label="Braço D" value={formData.circumferences?.rightArm} onChange={v => handleCircumferenceChange('rightArm', String(v))} step="0.1" />
-                  <MetricInput label="Braço E" value={formData.circumferences?.leftArm} onChange={v => handleCircumferenceChange('leftArm', String(v))} step="0.1" />
-                  <MetricInput label="Ant.Braço D" value={formData.circumferences?.rightForearm} onChange={v => handleCircumferenceChange('rightForearm', String(v))} step="0.1" />
-                  <MetricInput label="Ant.Braço E" value={formData.circumferences?.leftForearm} onChange={v => handleCircumferenceChange('leftForearm', String(v))} step="0.1" />
+                  <MetricInput label="Braço D (Rel)" value={formData.circumferences?.rightArmRelaxed} onChange={v => handleCircumferenceChange('rightArmRelaxed', String(v))} step="0.1" />
+                  <MetricInput label="Braço E (Rel)" value={formData.circumferences?.leftArmRelaxed} onChange={v => handleCircumferenceChange('leftArmRelaxed', String(v))} step="0.1" />
+                  <MetricInput label="Braço D (Con)" value={formData.circumferences?.rightArmContracted} onChange={v => handleCircumferenceChange('rightArmContracted', String(v))} step="0.1" />
+                  <MetricInput label="Braço E (Con)" value={formData.circumferences?.leftArmContracted} onChange={v => handleCircumferenceChange('leftArmContracted', String(v))} step="0.1" />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <MetricInput label="Coxa D" value={formData.circumferences?.rightThigh} onChange={v => handleCircumferenceChange('rightThigh', String(v))} step="0.1" />
-                  <MetricInput label="Coxa E" value={formData.circumferences?.leftThigh} onChange={v => handleCircumferenceChange('leftThigh', String(v))} step="0.1" />
+                  <MetricInput label="Ant.Braço D" value={formData.circumferences?.rightForearm} onChange={v => handleCircumferenceChange('rightForearm', String(v))} step="0.1" />
+                  <MetricInput label="Ant.Braço E" value={formData.circumferences?.leftForearm} onChange={v => handleCircumferenceChange('leftForearm', String(v))} step="0.1" />
                   <MetricInput label="Panturrilha D" value={formData.circumferences?.rightCalf} onChange={v => handleCircumferenceChange('rightCalf', String(v))} step="0.1" />
                   <MetricInput label="Panturrilha E" value={formData.circumferences?.leftCalf} onChange={v => handleCircumferenceChange('leftCalf', String(v))} step="0.1" />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <MetricInput label="Coxa D (Prox)" value={formData.circumferences?.rightThighProximal} onChange={v => handleCircumferenceChange('rightThighProximal', String(v))} step="0.1" />
+                  <MetricInput label="Coxa D (Med)" value={formData.circumferences?.rightThighMedial} onChange={v => handleCircumferenceChange('rightThighMedial', String(v))} step="0.1" />
+                  <MetricInput label="Coxa D (Dist)" value={formData.circumferences?.rightThighDistal} onChange={v => handleCircumferenceChange('rightThighDistal', String(v))} step="0.1" />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                  <MetricInput label="Coxa E (Prox)" value={formData.circumferences?.leftThighProximal} onChange={v => handleCircumferenceChange('leftThighProximal', String(v))} step="0.1" />
+                  <MetricInput label="Coxa E (Med)" value={formData.circumferences?.leftThighMedial} onChange={v => handleCircumferenceChange('leftThighMedial', String(v))} step="0.1" />
+                  <MetricInput label="Coxa E (Dist)" value={formData.circumferences?.leftThighDistal} onChange={v => handleCircumferenceChange('leftThighDistal', String(v))} step="0.1" />
               </div>
           </div>
         </section>

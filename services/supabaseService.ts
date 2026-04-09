@@ -25,6 +25,7 @@ const mapNoticeFromDb = (n: any): Notice => ({
   id: n.id,
   title: n.title,
   content: n.content,
+  imageUrl: n.image_url,
   priority: n.priority as 'INFO' | 'WARNING' | 'URGENT',
   createdAt: n.created_at
 });
@@ -131,6 +132,9 @@ const mapAssessmentFromDb = (a: any): Assessment => ({
   hydrationPercentage: Number(a.hydration_percentage) || 0,
   imc: Number(a.imc) || 0,
   metabolicAge: Number(a.metabolic_age) || 0,
+  vo2Max: Number(a.vo2_max) || 0,
+  squatMax: Number(a.squat_max) || 0,
+  wallBallThrow: Number(a.wall_ball_throw) || 0,
   abdominalTest: Number(a.abdominal_test) || 0,
   horizontalJump: Number(a.horizontal_jump) || 0,
   verticalJump: Number(a.vertical_jump) || 0,
@@ -193,6 +197,7 @@ export const SupabaseService = {
       const { data, error } = await supabase.from('notices').insert([{
         title: n.title, 
         content: n.content, 
+        image_url: n.imageUrl,
         priority: n.priority
       }]).select().single();
       
@@ -208,11 +213,12 @@ export const SupabaseService = {
     if (!supabase) throw new Error("Sem conexão com o banco");
     try {
       const { data, error } = await supabase.from('notices').update({
-        title: n.title, 
-        content: n.content, 
+        title: n.title,
+        content: n.content,
+        image_url: n.imageUrl,
         priority: n.priority
       }).eq('id', n.id).select().single();
-      
+
       if (error) throw error;
       invalidateCache();
       return mapNoticeFromDb(data);
@@ -563,6 +569,9 @@ export const SupabaseService = {
       hydration_percentage: a.hydrationPercentage, 
       imc: a.imc,
       metabolic_age: a.metabolicAge,
+      vo2_max: a.vo2Max,
+      squat_max: a.squatMax,
+      wall_ball_throw: a.wallBallThrow,
       abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow, 
@@ -586,6 +595,9 @@ export const SupabaseService = {
       hydration_percentage: a.hydrationPercentage, 
       imc: a.imc,
       metabolic_age: a.metabolicAge,
+      vo2_max: a.vo2Max,
+      squat_max: a.squatMax,
+      wall_ball_throw: a.wallBallThrow,
       abdominal_test: a.abdominalTest,
       horizontal_jump: a.horizontalJump, vertical_jump: a.verticalJump,
       medicine_ball_throw: a.medicineBallThrow, 
@@ -796,5 +808,16 @@ export const SupabaseService = {
         isActive: p.is_active,
         displayOrder: p.display_order,
     }));
+  },
+
+  uploadFile: async (bucket: string, path: string, file: File): Promise<string> => {
+    if (!supabase) throw new Error("Sem conexão com o banco");
+    const { data, error } = await supabase.storage.from(bucket).upload(path, file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+    if (error) throw error;
+    const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(data.path);
+    return publicData.publicUrl;
   },
 };

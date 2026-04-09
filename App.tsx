@@ -115,6 +115,11 @@ export const WhatsAppAutomation = {
     const message = `Olá ${String(student.name).split(' ')[0]}! 👋\n\n${customMessage}`;
     const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
+  },
+  sendBirthdayMessage: (student: User) => {
+    const message = `Parabéns, ${String(student.name).split(' ')[0]}! 🎂🎈 Desejamos a você um dia incrível, repleto de saúde, alegria e muitos treinos! Que este novo ciclo seja de grandes conquistas. Feliz aniversário! 🎉🔥`;
+    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
   }
 };
 

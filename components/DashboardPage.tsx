@@ -5,7 +5,7 @@ import { SupabaseService } from '../services/supabaseService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
   CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag, Dumbbell,
-  User as UserIcon, Download, List, CheckCheck, Award, Plus, Edit, Trash2, X, Info, Megaphone
+  User as UserIcon, Download, List, CheckCheck, Award, Plus, Edit, Trash2, X, Info, Megaphone, Upload
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
@@ -213,6 +213,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
               notice.priority === 'WARNING' ? 'bg-amber-500/10 border-amber-500/30' :
               'bg-blue-500/10 border-blue-500/30'
             }`}>
+              {notice.imageUrl && (
+                <div className="mb-4 rounded-2xl overflow-hidden border border-dark-800">
+                  <img src={notice.imageUrl} alt={notice.title} className="w-full h-40 object-cover" referrerPolicy="no-referrer" />
+                </div>
+              )}
               <div className="flex justify-between items-start mb-4">
                 <div className={`p-2.5 rounded-xl ${
                   notice.priority === 'URGENT' ? 'bg-red-500 text-white' :
@@ -313,7 +318,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                             <p className="text-[9px] text-brand-500 font-black uppercase">Dia {parseInt(u.birthDate!.split('-')[2], 10)}</p>
                         </div>
                     </div>
-                    <button onClick={() => WhatsAppAutomation.sendGenericMessage(u, "Parabéns pelo seu aniversário! 🎉")} className="p-2 bg-brand-500/10 text-brand-500 rounded-xl hover:bg-brand-500 hover:text-white transition-all no-print">
+                    <button onClick={() => WhatsAppAutomation.sendBirthdayMessage(u)} className="p-2 bg-brand-500/10 text-brand-500 rounded-xl hover:bg-brand-500 hover:text-white transition-all no-print">
                       <MessageCircle size={14} />
                     </button>
                 </div>
@@ -340,12 +345,69 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
 };
 
 const NoticeForm = ({ initialData, onSave, onCancel }: any) => {
-  const [formData, setFormData] = useState(initialData || { title: '', content: '', priority: 'INFO' });
+  const [formData, setFormData] = useState(initialData || { title: '', content: '', imageUrl: '', priority: 'INFO' });
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const fileName = `${Date.now()}-${file.name}`;
+      const publicUrl = await SupabaseService.uploadFile('app-assets', `notices/${fileName}`, file);
+      setFormData({ ...formData, imageUrl: publicUrl });
+    } catch (error) {
+      console.error("Erro no upload:", error);
+      alert("Erro ao enviar imagem. Tente novamente.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSave(formData); }} className="space-y-6">
       <div>
         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Título</label>
         <input required className="w-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white outline-none font-bold" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+      </div>
+      <div>
+        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Imagem do Comunicado</label>
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <label className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-dark-800 rounded-2xl p-6 hover:border-brand-500 transition-colors cursor-pointer bg-dark-950 group">
+              <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+              {isUploading ? (
+                <Loader2 className="animate-spin text-brand-500" size={24} />
+              ) : (
+                <>
+                  <Upload className="text-slate-500 group-hover:text-brand-500 mb-2" size={24} />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest group-hover:text-brand-500">Upload de Imagem</span>
+                </>
+              )}
+            </label>
+            <div className="flex-1">
+              <input 
+                className="w-full h-full bg-dark-950 border border-dark-800 rounded-2xl p-4 text-white outline-none font-bold text-xs" 
+                placeholder="Ou cole a URL da imagem..." 
+                value={formData.imageUrl || ''} 
+                onChange={e => setFormData({ ...formData, imageUrl: e.target.value })} 
+              />
+            </div>
+          </div>
+          {formData.imageUrl && (
+            <div className="relative rounded-2xl overflow-hidden border border-dark-800 h-32 bg-dark-950">
+              <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              <button 
+                type="button" 
+                onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
       <div>
         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Prioridade</label>
