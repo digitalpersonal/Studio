@@ -90,35 +90,44 @@ const ToastContainer = ({ toasts, removeToast }: { toasts: Toast[], removeToast:
 /*                                   SERVIÇOS                                 */
 /* -------------------------------------------------------------------------- */
 
+export const getWhatsAppUrl = (phone: string, text: string) => {
+  const cleanPhone = phone.replace(/\D/g, '');
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+  }
+  return `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
+};
+
 export const WhatsAppAutomation = {
   sendPlanSold: (student: User) => {
     const message = `Boas-vindas ao Studio, ${String(student.name).split(' ')[0]}! 🎉🔥 Seu plano de ${student.planDuration} meses foi ativado com sucesso! Valor mensal: R$ ${student.planValue?.toFixed(2)}. Estamos muito felizes em ter você conosco. Rumo à sua melhor versão! 💪🚀`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    const url = getWhatsAppUrl(String(student.phoneNumber), message);
     window.open(url, '_blank');
   },
   sendPaymentReminder: (student: User, payment: Payment) => {
     const message = `Olá ${String(student.name).split(' ')[0]}! 👋 Passando para lembrar que sua mensalidade vence em breve (${payment.dueDate}). Valor: R$ ${payment.amount.toFixed(2)}. Evite juros e mantenha seu acesso liberado! 🏃‍♂️💨`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    const url = getWhatsAppUrl(String(student.phoneNumber), message);
     window.open(url, '_blank');
   },
   sendOverdueNotice: (student: User, payment: Payment) => {
     const message = `Olá ${String(student.name).split(' ')[0]}! 🚨 Notamos um débito em aberto referente à mensalidade com vencimento em ${payment.dueDate}, no valor de R$ ${payment.amount.toFixed(2)}. Por favor, regularize sua situação para evitar a suspensão do acesso. Se já pagou, desconsidere.`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    const url = getWhatsAppUrl(String(student.phoneNumber), message);
     window.open(url, '_blank');
   },
   sendConfirmation: (student: User, payment: Payment) => {
     const message = `Olá ${String(student.name).split(' ')[0]}! Recebemos seu pagamento de R$ ${payment.amount.toFixed(2)} referente a ${payment.description}. Obrigado e bom treino! 🔥`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    const url = getWhatsAppUrl(String(student.phoneNumber), message);
     window.open(url, '_blank');
   },
   sendGenericMessage: (student: User, customMessage: string) => {
     const message = `Olá ${String(student.name).split(' ')[0]}! 👋\n\n${customMessage}`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    const url = getWhatsAppUrl(String(student.phoneNumber), message);
     window.open(url, '_blank');
   },
   sendBirthdayMessage: (student: User) => {
     const message = `Parabéns, ${String(student.name).split(' ')[0]}! 🎂🎈 Desejamos a você um dia incrível, repleto de saúde, alegria e muitos treinos! Que este novo ciclo seja de grandes conquistas. Feliz aniversário! 🎉🔥`;
-    const url = `https://wa.me/${String(student.phoneNumber)?.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+    const url = getWhatsAppUrl(String(student.phoneNumber), message);
     window.open(url, '_blank');
   }
 };

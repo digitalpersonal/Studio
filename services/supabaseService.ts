@@ -739,7 +739,11 @@ export const SupabaseService = {
         const { data, error } = await supabase.from('payments').select('amount, status, due_date').gte('due_date', `${year}-01-01`).lte('due_date', `${year}-12-31`);
         if (error) throw error;
         return months.map((month, idx) => {
-            const monthPayments = (data || []).filter(p => new Date(p.due_date).getMonth() === idx);
+            const monthPayments = (data || []).filter(p => {
+                const date = new Date(p.due_date);
+                // Usar UTC para evitar problemas de fuso horário com strings YYYY-MM-DD
+                return date.getUTCMonth() === idx;
+            });
             return {
                 name: month,
                 revenue: monthPayments.filter(p => p.status === 'PAID').reduce((acc, curr) => acc + Number(curr.amount), 0),

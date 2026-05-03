@@ -80,16 +80,33 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostCaption.trim() && !compressedImageBase64) {
+    if (!newPostCaption.trim() && !fileInputRef.current?.files?.[0]) {
       addToast("Escreva algo ou anexe uma foto.", "info");
       return;
     }
     
     setPostSubmitting(true);
     try {
+      let imageUrl = '';
+      const file = fileInputRef.current?.files?.[0];
+
+      if (file) {
+        addToast("Otimizando e enviando foto...", "info");
+        // Compressão antes do upload
+        const base64 = await ImageService.compressImage(file, 1080, 0.7);
+        const blob = ImageService.base64ToBlob(base64);
+        const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+
+        const fileName = `post_${currentUser.id}_${Date.now()}.jpg`;
+        const path = `feed/${currentUser.id}/${fileName}`;
+        
+        // Upload para o storage
+        imageUrl = await SupabaseService.uploadFile('app-assets', path, compressedFile);
+      }
+
       const addedPost = await SupabaseService.addPost({
         userId: currentUser.id,
-        imageUrl: compressedImageBase64 || '',
+        imageUrl: imageUrl,
         caption: newPostCaption,
         timestamp: new Date().toISOString(), 
       });
@@ -97,9 +114,11 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
       setPosts(prev => [addedPost, ...prev]);
       setNewPostCaption(''); 
       setCompressedImageBase64(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
       addToast("Publicado no mural!", "success");
     } catch (error: any) {
-      addToast(`Falha ao publicar.`, "error");
+      console.error("Erro ao criar post:", error);
+      addToast(`Falha ao publicar. ${error.message || ''}`, "error");
     } finally {
       setPostSubmitting(false);
     }

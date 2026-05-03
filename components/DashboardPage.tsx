@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, UserRole, ClassSession, Payment, Challenge, AttendanceRecord, ViewState, Notice } from '../types';
 import { SupabaseService } from '../services/supabaseService';
+import { ImageService } from '../services/imageService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
   CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag, Dumbbell,
@@ -234,8 +235,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                   </div>
                 )}
               </div>
-              <h4 className="text-white font-black text-base uppercase mb-2 tracking-tight line-clamp-1">{notice.title}</h4>
-              <p className="text-slate-400 text-sm leading-relaxed mb-6 line-clamp-3 min-h-[3rem]">{notice.content}</p>
+              <h4 className="text-white font-black text-base uppercase mb-2 tracking-tight break-words">{notice.title}</h4>
+              <div className="text-slate-400 text-sm leading-relaxed mb-6 whitespace-pre-wrap break-words">{notice.content}</div>
               <div className="pt-4 border-t border-dark-800/50 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <Calendar size={12} className="text-slate-600" />
@@ -354,12 +355,17 @@ const NoticeForm = ({ initialData, onSave, onCancel }: any) => {
 
     setIsUploading(true);
     try {
-      const fileName = `${Date.now()}-${file.name}`;
-      const publicUrl = await SupabaseService.uploadFile('app-assets', `notices/${fileName}`, file);
+      // Otimização pré-upload
+      const base64 = await ImageService.compressImage(file, 1500, 0.7);
+      const blob = ImageService.base64ToBlob(base64);
+      const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+
+      const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+      const publicUrl = await SupabaseService.uploadFile('app-assets', `notices/${fileName}`, compressedFile);
       setFormData({ ...formData, imageUrl: publicUrl });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro no upload:", error);
-      alert("Erro ao enviar imagem. Tente novamente.");
+      alert("Erro ao enviar imagem: " + (error.message || "Tente novamente."));
     } finally {
       setIsUploading(false);
     }

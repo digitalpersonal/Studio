@@ -103,14 +103,27 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
     const loaderId = `${assessment.id}_${type}`;
     setUpdatingPhoto(loaderId);
     try {
-      const base64 = await ImageService.compressImage(file, 1200, 0.6);
-      const updatedAssessment = { ...assessment, [type]: base64 };
+      addToast("Otimizando e enviando foto...", "info");
+      
+      // Compressão antes do upload
+      const base64 = await ImageService.compressImage(file, 1200, 0.7);
+      const blob = ImageService.base64ToBlob(base64);
+      const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+
+      const fileName = `assessment_${assessment.id}_${type}_${Date.now()}.jpg`;
+      const path = `assessments/${assessment.studentId}/${fileName}`;
+      
+      // Upload para o storage
+      const publicUrl = await SupabaseService.uploadFile('app-assets', path, compressedFile);
+      
+      const updatedAssessment = { ...assessment, [type]: publicUrl };
       await SupabaseService.updateAssessment(updatedAssessment);
       
       setAssessments(prev => prev.map(a => a.id === assessment.id ? updatedAssessment : a));
       addToast("Foto atualizada com sucesso!", "success");
-    } catch (e) {
-      addToast("Erro ao processar imagem.", "error");
+    } catch (e: any) {
+      console.error("Erro no upload:", e);
+      addToast(`Erro ao enviar foto: ${e.message || 'Verifique sua conexão.'}`, "error");
     } finally {
       setUpdatingPhoto(null);
     }
@@ -556,11 +569,22 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
   const handleFileUpload = async (type: 'photoFrontUrl' | 'photoSideUrl' | 'photoBackUrl', file: File) => {
     setCompressing(true);
     try {
-      // Uso do novo ImageService para compressão profissional
-      const base64 = await ImageService.compressImage(file, 1200, 0.6);
-      setFormData(prev => ({ ...prev, [type]: base64 }));
-    } catch (e) {
-      console.error("Erro ao otimizar imagem:", e);
+      // Compressão profissional antes do upload
+      const base64 = await ImageService.compressImage(file, 1200, 0.7);
+      const blob = ImageService.base64ToBlob(base64);
+      const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+
+      // Usar um nome único baseado no timestamp e no aluno
+      const fileName = `new_assessment_${type}_${Date.now()}.jpg`;
+      const path = `assessments/${formData.studentId || 'temp'}/${fileName}`;
+      
+      // Upload para o storage em vez de base64
+      const publicUrl = await SupabaseService.uploadFile('app-assets', path, compressedFile);
+      
+      setFormData(prev => ({ ...prev, [type]: publicUrl }));
+    } catch (e: any) {
+      console.error("Erro ao enviar imagem:", e);
+      alert("Erro ao enviar imagem: " + (e.message || "Verifique o tamanho do arquivo."));
     } finally {
       setFormData(prev => ({ ...prev })); // Force update UI
       setCompressing(false);

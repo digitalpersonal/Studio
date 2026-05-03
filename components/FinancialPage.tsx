@@ -125,6 +125,10 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         total: currentMonthPayments.reduce((acc, p) => acc + p.amount, 0),
         paid: currentMonthPayments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0),
         pending: currentMonthPayments.filter(p => p.status !== 'PAID').reduce((acc, p) => acc + p.amount, 0),
+      },
+      global: {
+        totalPaid: payments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0),
+        totalOverdue: payments.filter(p => p.status === 'OVERDUE').reduce((acc, p) => acc + p.amount, 0),
       }
     };
   }, [filteredPayments, payments]);
@@ -209,8 +213,9 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
           <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
             <DollarSign size={48} />
           </div>
-          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">Total Recebido (Filtrado)</p>
-          <p className="text-2xl font-black text-emerald-500">R$ {stats.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">Total Geral Recebido</p>
+          <p className="text-2xl font-black text-emerald-500">R$ {stats.global.totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[9px] text-slate-600 mt-1 uppercase font-bold tracking-widest">Histórico Completo</p>
         </div>
         
         <div className="bg-dark-950 p-6 rounded-2xl border-2 border-brand-500/30 shadow-xl shadow-brand-500/5 relative overflow-hidden group">
@@ -219,7 +224,6 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
           </div>
           <div className="flex items-center gap-2 mb-1">
             <p className="text-brand-400 text-[10px] font-bold uppercase tracking-widest">Este Mês ({new Date().toLocaleString('pt-BR', { month: 'long' })})</p>
-            <span className="bg-brand-500 text-white text-[8px] px-1.5 py-0.5 rounded font-black animate-pulse">DESTAQUE</span>
           </div>
           <p className="text-2xl font-black text-white">R$ {stats.currentMonth.paid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           <p className="text-[10px] text-slate-500 mt-1 font-bold italic">Previsto: R$ {stats.currentMonth.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -228,14 +232,16 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         <div className="bg-dark-950 p-6 rounded-2xl border border-dark-800 shadow-xl relative overflow-hidden group">
           <p className="text-slate-500 text-[10px] font-bold uppercase mb-1 tracking-widest">A Receber (Filtrado)</p>
           <p className="text-2xl font-black text-amber-500">R$ {(stats.total - stats.paid).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[9px] text-slate-600 mt-1 uppercase font-bold tracking-widest">Conforme filtros aplicados</p>
         </div>
 
         <div className="bg-brand-600 p-6 rounded-2xl shadow-xl shadow-brand-500/20 text-white relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-2 opacity-20">
             <AlertTriangle size={48} />
           </div>
-          <p className="text-brand-100 text-[10px] font-bold uppercase mb-1 tracking-widest">Total em Atraso</p>
-          <p className="text-2xl font-black">R$ {stats.overdue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-brand-100 text-[10px] font-bold uppercase mb-1 tracking-widest">Total Geral em Atraso</p>
+          <p className="text-2xl font-black">R$ {stats.global.totalOverdue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <p className="text-[9px] text-brand-200 mt-1 uppercase font-bold tracking-widest">Toda a base de alunos</p>
         </div>
       </div>
 

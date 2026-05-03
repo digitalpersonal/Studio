@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { SupabaseService } from '../services/supabaseService';
+import { getWhatsAppUrl } from '../App';
 import { Loader2, ArrowRight, Eye, EyeOff, UserPlus, MoveRight, Clock, Flag, CheckCircle2, Star, Zap, MessageCircle, Code } from 'lucide-react';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
@@ -24,7 +25,7 @@ const PlansSection = ({ onNavigate, academyPhone }: { onNavigate: () => void, ac
     // Formata o link do WhatsApp dinamicamente
     const cleanPhone = academyPhone?.replace(/\D/g, '') || '5535991048020';
     const waNumber = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
-    const waUrl = `https://wa.me/${waNumber}?text=${encodeURIComponent("Olá! Gostaria de saber mais sobre os planos do Studio.")}`;
+    const waUrl = getWhatsAppUrl(waNumber, "Olá! Gostaria de saber mais sobre os planos do Studio.");
 
     return (
         <section className="py-24 px-8 bg-dark-950">
@@ -314,13 +315,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onNavigateToR
 
           <footer className="py-12 bg-dark-900 text-center border-t border-dark-800">
              <div className="flex justify-center gap-8 mb-8">
-                <a href={`https://wa.me/${waNumber}`} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-emerald-500 transition-colors group">
+                <a href={getWhatsAppUrl(waNumber, "")} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-emerald-500 transition-colors group">
                     <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-emerald-500 group-hover:bg-emerald-500/10 transition-all">
                         <MessageCircle size={20} />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-widest">Suporte</span>
                 </a>
-                <a href="https://wa.me/5535991048020?text=Olá! Gostaria de falar com o desenvolvedor do app Studio." target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-brand-500 transition-colors group">
+                <a href={getWhatsAppUrl("5535991048020", "Olá! Gostaria de falar com o desenvolvedor do app Studio.")} target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 text-slate-500 hover:text-brand-500 transition-colors group">
                     <div className="p-3 bg-dark-950 rounded-full border border-dark-800 group-hover:border-brand-500 group-hover:bg-brand-500/10 transition-all">
                         <Code size={20} />
                     </div>

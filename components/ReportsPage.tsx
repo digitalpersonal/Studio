@@ -28,7 +28,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
 
   const availableYears = useMemo(() => {
     const year = new Date().getFullYear();
-    return [year + 1, year];
+    const years = [];
+    // Mostrar de 2024 até o próximo ano
+    for (let i = year + 1; i >= 2024; i--) {
+      years.push(i);
+    }
+    return years;
   }, []);
 
   useEffect(() => {
@@ -55,27 +60,42 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
   // Cálculos de Controle Administrativo
   const stats = useMemo(() => {
     const activeStudents = students.length;
-    const paidPayments = allPayments.filter(p => p.status === 'PAID');
-    const overduePayments = allPayments.filter(p => p.status === 'OVERDUE');
     
-    const totalRevenue = paidPayments.reduce((acc, p) => acc + p.amount, 0);
-    const totalOverdue = overduePayments.reduce((acc, p) => acc + p.amount, 0);
+    // Filtrar pagamentos pelo ano selecionado para KPIs de "Ano"
+    const yearPayments = allPayments.filter(p => {
+        const d = new Date(p.dueDate);
+        return d.getUTCFullYear() === currentYear;
+    });
+
+    const paidInYear = yearPayments.filter(p => p.status === 'PAID');
+    const overdueInYear = yearPayments.filter(p => p.status === 'OVERDUE');
+    
+    const revenueInYear = paidInYear.reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0);
+    const overdueInYearTotal = overdueInYear.reduce((acc, p) => acc + p.amount, 0);
+    
+    // Globais (Histórico Completo)
+    const totalHistoricalRevenue = allPayments.filter(p => p.status === 'PAID').reduce((acc, p) => acc + (p.amount - (p.discount || 0)), 0);
+    const allOverdue = allPayments.filter(p => p.status === 'OVERDUE');
+    const totalOverdueOverall = allOverdue.reduce((acc, p) => acc + p.amount, 0);
+
     const mrr = students.reduce((acc, s) => acc + (s.planValue || 0), 0);
     const avgTicket = activeStudents > 0 ? mrr / activeStudents : 0;
     
-    // Eficiência: Pagos / (Pagos + Atrasados + Pendentes do mês atual)
-    const efficiency = totalRevenue > 0 ? (totalRevenue / (totalRevenue + totalOverdue)) * 100 : 0;
+    // Eficiência do ano: Pagos / (Pagos + Atrasados)
+    const efficiency = revenueInYear > 0 ? (revenueInYear / (revenueInYear + overdueInYearTotal)) * 100 : 0;
 
     return {
-      totalRevenue,
-      totalOverdue,
+      revenueInYear,
+      overdueInYearTotal,
+      totalHistoricalRevenue,
+      totalOverdueOverall,
       mrr,
       activeStudents,
       avgTicket,
       efficiency,
-      overdueList: overduePayments.slice(0, 5) // Top 5 inadimplentes para ação rápida
+      overdueList: allOverdue.slice(0, 10) // Top 10 inadimplentes globais
     };
-  }, [allPayments, students]);
+  }, [allPayments, students, currentYear]);
 
   const COLORS = ['#f97316', '#a855f7', '#0ea5e9', '#84cc16', '#f59e0b', '#f43f5e', '#64748b'];
 
@@ -111,32 +131,32 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
       {/* KPIs de Gestão Superior */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPIBox 
-          label="MRR (Faturamento Previsto)" 
-          value={`R$ ${stats.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
-          sub="Receita mensal recorrente ativa"
-          icon={Repeat}
-          color="blue"
-        />
-        <KPIBox 
           label="Receita Realizada (Ano)" 
-          value={`R$ ${stats.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
-          sub="Total efetivamente pago"
+          value={`R$ ${stats.revenueInYear.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+          sub={`Total pago em ${currentYear}`}
           icon={TrendingUp}
           color="emerald"
         />
         <KPIBox 
-          label="Ticket Médio" 
-          value={`R$ ${stats.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
-          sub="Valor médio por aluno ativo"
-          icon={Users}
+          label="Total Histórico" 
+          value={`R$ ${stats.totalHistoricalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+          sub="Soma de todos os tempos"
+          icon={DollarSign}
+          color="blue"
+        />
+        <KPIBox 
+          label="MRR (Mensal Recorrente)" 
+          value={`R$ ${stats.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+          sub="Potencial faturamento mensal"
+          icon={Repeat}
           color="purple"
         />
         <KPIBox 
-          label="Eficiência de Cobrança" 
-          value={`${stats.efficiency.toFixed(1)}%`} 
-          sub="Relação Pago vs. Inadimplente"
-          icon={ShieldCheck}
-          color={stats.efficiency > 90 ? 'emerald' : stats.efficiency > 70 ? 'amber' : 'red'}
+          label="Inadimplência Geral" 
+          value={`R$ ${stats.totalOverdueOverall.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+          sub="Total em atraso (Histórico)"
+          icon={AlertTriangle}
+          color={stats.totalOverdueOverall === 0 ? 'emerald' : 'red'}
         />
       </div>
 

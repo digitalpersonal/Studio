@@ -226,7 +226,10 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
         <AttendanceModal 
           classSession={showAttendanceModal} 
           students={students.filter(s => showAttendanceModal.enrolledStudentIds.includes(s.id))}
-          onClose={() => setShowAttendanceModal(null)}
+          onClose={() => {
+            setShowAttendanceModal(null);
+            refreshData();
+          }}
           addToast={addToast}
         />
       )}
@@ -383,6 +386,33 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
       }
 
       addToast("Chamada salva com sucesso!", "success");
+
+      // Limpar a aula para uma nova sessão ou remover se for única
+      try {
+        if (classSession.date) {
+          // Aula com data específica (única) - remover após realizada
+          await SupabaseService.deleteClass(classSession.id);
+          addToast("Aula única finalizada e removida da agenda.", "info");
+        } else {
+          // Aula recorrente - limpar lista de inscritos e WOD para a próxima semana
+          await SupabaseService.updateClass({
+            ...classSession,
+            enrolledStudentIds: [],
+            waitlistStudentIds: [],
+            wod: '',
+            workoutDetails: '',
+            mainWorkout: '',
+            referenceWorkouts: '',
+            weekFocus: '',
+            weekObjective: ''
+          });
+          addToast("Agenda limpa para as novas inscrições da próxima aula.", "info");
+        }
+      } catch (err) {
+        console.error("Erro ao limpar agenda:", err);
+        // Não bloqueia o sucesso da chamada, mas avisa
+      }
+
       onClose();
     } catch (e: any) {
       addToast(`Erro ao salvar chamada: ${e.message}`, "error");
