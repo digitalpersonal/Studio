@@ -238,7 +238,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({ currentUser, addToas
 };
 
 const AttendanceModal = ({ classSession, students, onClose, addToast }: { classSession: ClassSession, students: User[], onClose: () => void, addToast: any }) => {
-  const today = new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendance, setAttendance] = useState<Record<string, Partial<AttendanceRecord>>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -276,7 +276,7 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
     const fetchExistingAttendance = async () => {
       setLoading(true);
       try {
-        const records = await SupabaseService.getAttendanceByClassAndDate(classSession.id, today);
+        const records = await SupabaseService.getAttendanceByClassAndDate(classSession.id, selectedDate);
         const map: Record<string, Partial<AttendanceRecord>> = {};
         records.forEach(r => { map[r.studentId] = r; });
         students.forEach(s => {
@@ -292,7 +292,7 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
       }
     };
     fetchExistingAttendance();
-  }, [classSession.id, today, students]);
+  }, [classSession.id, selectedDate, students]);
   
   const updateStudentAttendance = <K extends keyof AttendanceRecord>(studentId: string, field: K, value: AttendanceRecord[K]) => {
     setAttendance(prev => {
@@ -349,7 +349,7 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
         const record: Omit<AttendanceRecord, 'id'> = {
           classId: classSession.id,
           studentId: s.id,
-          date: today,
+          date: selectedDate,
           isPresent: !!studentAttendance?.isPresent,
           totalTimeSeconds: studentAttendance?.totalTimeSeconds || undefined,
           averagePace: studentAttendance?.averagePace || undefined,
@@ -387,14 +387,14 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
 
       addToast("Chamada salva com sucesso!", "success");
 
-      // Limpar a aula para uma nova sessão ou remover se for única
+      // Limpeza da agenda para a próxima sessão
       try {
         if (classSession.date) {
-          // Aula com data específica (única) - remover após realizada
+          // Aula com data específica (evento único)
           await SupabaseService.deleteClass(classSession.id);
-          addToast("Aula única finalizada e removida da agenda.", "info");
+          addToast("Evento concluído com sucesso.", "info");
         } else {
-          // Aula recorrente - limpar lista de inscritos e WOD para a próxima semana
+          // Aula recorrente - limpa inscritos e campos de treino para a semana que vem
           await SupabaseService.updateClass({
             ...classSession,
             enrolledStudentIds: [],
@@ -406,11 +406,10 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
             weekFocus: '',
             weekObjective: ''
           });
-          addToast("Agenda limpa para as novas inscrições da próxima aula.", "info");
+          addToast("Lista de presença e treinos limpos para a próxima semana.", "success");
         }
       } catch (err) {
-        console.error("Erro ao limpar agenda:", err);
-        // Não bloqueia o sucesso da chamada, mas avisa
+        console.error("Erro ao processar limpeza pós-aula:", err);
       }
 
       onClose();
@@ -430,8 +429,17 @@ const AttendanceModal = ({ classSession, students, onClose, addToast }: { classS
               <h3 className="text-2xl font-black text-white uppercase tracking-tighter">Chamada / Performance</h3>
               <button onClick={onClose} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full"><X size={20}/></button>
            </div>
-           <div className="flex items-center gap-4">
-              <p className="text-brand-500 font-bold text-[10px] uppercase tracking-widest">{classSession.title} • {new Date().toLocaleDateString('pt-BR')}</p>
+           <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-slate-500 font-black uppercase">Data da Aula:</span>
+                  <input 
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="bg-dark-800 border border-dark-700 rounded-lg p-1 text-white text-[10px] font-bold"
+                  />
+              </div>
+              <p className="text-brand-500 font-bold text-[10px] uppercase tracking-widest">{classSession.title}</p>
               {classSession.type === 'RUNNING' ? (
                   <span className="bg-emerald-600 text-white px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest">
                       Aula Corrida

@@ -89,8 +89,15 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
     };
 
     const canManageUser = (targetUser: User) => {
-        if (targetUser.id === currentUser.id) return false;
-        return roleRank[currentUser.role] > roleRank[targetUser.role];
+        if (targetUser.id === currentUser.id) return true; // Permitir editar a si mesmo
+        // SUPER_ADMIN pode gerenciar todos
+        if (currentUser.role === UserRole.SUPER_ADMIN) return true;
+        // ADMIN pode gerenciar outros ADMINS, TRAINERS e STUDENTS
+        if (currentUser.role === UserRole.ADMIN) {
+            return targetUser.role !== UserRole.SUPER_ADMIN;
+        }
+        // TRAINER não gerencia usuários
+        return false;
     };
 
     const toggleSuspension = async (user: User) => {
@@ -378,7 +385,11 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
             })
             .filter(u => {
                 if (paymentStatusFilter === 'ALL') return true;
-                if (u.role !== UserRole.STUDENT) return paymentStatusFilter === 'ALL';
+                // Equipe (Admin, Trainer) sempre aparece se o filtro for ALL, 
+                // mas se houver filtro de pagamento, eles só aparecem se não houver filtro ou se formos específicos.
+                // Como eles não têm pagamentos, se o filtro for diferente de ALL, eles seriam ocultados.
+                // Correção: Se não for aluno, eles "passam" pelo filtro de pagamento se estiverem visíveis.
+                if (u.role !== UserRole.STUDENT) return true;
 
                 const sPayments = payments.filter(p => p.studentId === u.id);
                 const hasOverdue = sPayments.some(p => p.status === 'OVERDUE');
@@ -498,6 +509,11 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-white font-bold text-base truncate">{String(s.name)}</p>
                                                         {isSuspended && <span className="shrink-0 bg-red-500/20 text-red-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-red-500/30">Suspenso</span>}
+                                                        {s.role !== UserRole.STUDENT && (
+                                                            <span className={`shrink-0 ${s.role === UserRole.SUPER_ADMIN ? 'bg-amber-500/20 text-amber-500 border-amber-500/30' : 'bg-blue-500/20 text-blue-500 border-blue-500/30'} text-[8px] font-black uppercase px-2 py-0.5 rounded-full border`}>
+                                                                {getRoleLabel(s.role)}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">{getRoleLabel(s.role)}</p>
                                                 </div>

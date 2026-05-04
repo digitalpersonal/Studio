@@ -72,7 +72,6 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         }
 
         if (dateFilterType === 'WEEK') {
-          // Início da semana (Domingo)
           const startOfWeek = new Date(sDate);
           startOfWeek.setUTCDate(sDate.getUTCDate() - sDate.getUTCDay());
           startOfWeek.setUTCHours(0, 0, 0, 0);
@@ -245,7 +244,6 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
         </div>
       </div>
 
-      {/* FILTROS AVANÇADOS */}
       <div className="bg-dark-950 p-4 rounded-2xl border border-dark-800 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
@@ -357,48 +355,33 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                 </div>
              )}
              <div className="flex gap-2">
-               {isStaff && selectedStudentId && (
-                 <button 
+                {isStaff && selectedStudentId && (
+                  <button 
                     onClick={async () => {
                         const student = students.find(s => s.id === selectedStudentId);
                         if (student) {
                             setIsProcessing('sync');
                             try {
-                                const MIN_DATE_STR = '2026-02-01';
                                 const isSameMonthYear = (d1: string, d2: string) => {
                                     const date1 = new Date(d1);
                                     const date2 = new Date(d2);
                                     return date1.getUTCMonth() === date2.getUTCMonth() && date1.getUTCFullYear() === date2.getUTCFullYear();
                                 };
 
-                                // 1. LIMPEZA: 
-                                // - Remover parcelas PENDING/OVERDUE de Janeiro/2026 ou anterior
-                                // - Remover parcelas PENDING/OVERDUE em meses que já possuem uma parcela PAID
                                 const paidPayments = payments.filter(p => p.status === 'PAID');
                                 const duplicatesToRemove = payments.filter(p => {
                                     if (p.status === 'PAID') return false;
-                                    
-                                    const isBeforeFeb = p.dueDate < MIN_DATE_STR;
                                     const isAlreadyPaidMonth = paidPayments.some(pp => isSameMonthYear(pp.dueDate, p.dueDate));
-                                    
-                                    return isBeforeFeb || isAlreadyPaidMonth;
+                                    return isAlreadyPaidMonth;
                                 });
 
                                 for (const dup of duplicatesToRemove) {
                                     await SupabaseService.deletePayment(dup.id);
                                 }
 
-                                // Atualizar lista local para geração
                                 const updatedPayments = payments.filter(p => !duplicatesToRemove.find(d => d.id === p.id));
-
-                                // 2. GERAÇÃO
                                 let baseDate = new Date(student.planStartDate || student.joinDate || new Date().toISOString());
-                                const minDate = new Date(MIN_DATE_STR + 'T12:00:00Z');
                                 
-                                if (baseDate < minDate) {
-                                    baseDate = minDate;
-                                }
-
                                 const paymentsToCreate: Omit<Payment, 'id'>[] = [];
                                 const existingInstallmentNumbers = updatedPayments.map(p => p.installmentNumber || 0);
                                 const existingDates = updatedPayments.map(p => p.dueDate);
@@ -450,11 +433,11 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                     }}
                     disabled={isProcessing === 'sync'}
                     className="px-3 py-1.5 bg-dark-800 text-slate-400 rounded-lg text-[10px] font-black uppercase border border-dark-700 hover:text-white transition-all flex items-center gap-2"
-                 >
+                  >
                     {isProcessing === 'sync' ? <Loader2 size={12} className="animate-spin" /> : <Repeat size={12} />}
                     Sincronizar Plano
-                 </button>
-               )}
+                  </button>
+                )}
                {['ALL', 'PENDING', 'OVERDUE', 'PAID'].map(f => (
                  <button key={f} onClick={() => setFilter(f as any)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all whitespace-nowrap ${filter === f ? 'bg-brand-600 text-white' : 'bg-dark-800 text-slate-500 hover:text-white'}`}>
                    {f === 'ALL' ? 'Todas' : f === 'PENDING' ? 'Pendentes' : f === 'OVERDUE' ? 'Atrasadas' : 'Pagas'}
@@ -628,7 +611,6 @@ const ManualPaymentModal = ({ payment, onConfirm, onCancel, isProcessing }: { pa
     );
 };
 
-// MODAIS
 const PaymentFormModal = ({ payment, students, onSave, onCancel, isProcessing }: { payment: Partial<Payment>, students: User[], onSave: (p: Partial<Payment>) => void, onCancel: () => void, isProcessing: boolean }) => {
   const [formData, setFormData] = useState(payment);
   const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
