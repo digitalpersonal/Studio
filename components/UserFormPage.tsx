@@ -47,6 +47,29 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
   };
 
   const [birthDateMasked, setBirthDateMasked] = useState(formatIsoToBr(initialFormData.birthDate));
+  const [phoneNumberMasked, setPhoneNumberMasked] = useState(initialFormData.phoneNumber || '');
+  const [emergencyPhoneMasked, setEmergencyPhoneMasked] = useState(initialFormData.anamnesis?.emergencyContactPhone || '');
+
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    let masked = digits;
+    if (digits.length > 2) masked = "(" + digits.slice(0, 2) + ") " + digits.slice(2);
+    if (digits.length > 7) masked = masked.slice(0, 10) + "-" + digits.slice(7, 11);
+    return masked.slice(0, 15);
+  };
+
+  const handlePhoneMask = (value: string, field: 'phoneNumber' | 'emergencyContactPhone') => {
+    const masked = formatPhone(value);
+    const digits = masked.replace(/\D/g, "");
+    
+    if (field === 'phoneNumber') {
+      setPhoneNumberMasked(masked);
+      setFormData(prev => ({ ...prev, phoneNumber: digits }));
+    } else {
+      setEmergencyPhoneMasked(masked);
+      handleAnamnesisChange('emergencyContactPhone', digits);
+    }
+  };
 
   const [formData, setFormData] = useState<Partial<User>>(() => ({
     ...initialFormData,
@@ -258,7 +281,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   </div>
                   <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="WhatsApp"/></label>
-                    <input className={`w-full bg-dark-900 border ${!formData.phoneNumber?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white font-bold outline-none transition-all`} placeholder="(00) 00000-0000" value={formData.phoneNumber || ''} onChange={e => setFormData({...formData, phoneNumber: e.target.value})} />
+                    <input className={`w-full bg-dark-900 border ${!formData.phoneNumber?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white font-bold outline-none transition-all`} placeholder="(00) 00000-0000" value={phoneNumberMasked} onChange={e => handlePhoneMask(e.target.value, 'phoneNumber')} />
                   </div>
                   
                   <div className="relative group">
@@ -402,7 +425,7 @@ export const UserFormPage: React.FC<UserFormPageProps> = ({
                   </div>
                   <div>
                     <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1"><RequiredLabel text="Telefone"/></label>
-                    <input className={`w-full bg-dark-900 border ${!formData.anamnesis?.emergencyContactPhone?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white font-bold outline-none transition-all`} value={formData.anamnesis?.emergencyContactPhone || ''} onChange={e => handleAnamnesisChange('emergencyContactPhone', e.target.value)} />
+                    <input className={`w-full bg-dark-900 border ${!formData.anamnesis?.emergencyContactPhone?.trim() ? 'border-dark-700 focus:border-brand-500' : 'border-emerald-500/30'} rounded-xl p-3 text-white font-bold outline-none transition-all`} placeholder="(00) 00000-0000" value={emergencyPhoneMasked} onChange={e => handlePhoneMask(e.target.value, 'emergencyContactPhone')} />
                   </div>
                 </div>
               </div>

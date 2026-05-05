@@ -29,10 +29,34 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [phoneNumberMasked, setPhoneNumberMasked] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
     const [birthDateMasked, setBirthDateMasked] = useState('');
     const [cpf, setCpf] = useState('');
     const [rg, setRg] = useState('');
+
+    const [emergencyPhoneMasked, setEmergencyPhoneMasked] = useState('');
+
+    const formatPhone = (value: string) => {
+        const digits = value.replace(/\D/g, "");
+        let masked = digits;
+        if (digits.length > 2) masked = "(" + digits.slice(0, 2) + ") " + digits.slice(2);
+        if (digits.length > 7) masked = masked.slice(0, 10) + "-" + digits.slice(7, 11);
+        return masked.slice(0, 15);
+    };
+
+    const handlePhoneMask = (value: string, field: 'phoneNumber' | 'emergencyContactPhone') => {
+        const masked = formatPhone(value);
+        const digits = masked.replace(/\D/g, "");
+        
+        if (field === 'phoneNumber') {
+            setPhoneNumberMasked(masked);
+            setPhoneNumber(digits);
+        } else {
+            setEmergencyPhoneMasked(masked);
+            handleAnamnesisChange('emergencyContactPhone', digits);
+        }
+    };
 
     // 3. Planos
     const [plans, setPlans] = useState<Plan[]>([]);
@@ -253,7 +277,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                             </div>
                             <div>
                                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">WhatsApp</label>
-                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" type="tel" placeholder="(00) 00000-0000" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
+                                <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" type="tel" placeholder="(00) 00000-0000" value={phoneNumberMasked} onChange={e => handlePhoneMask(e.target.value, 'phoneNumber')} />
                             </div>
                             
                             <div className="relative">
@@ -337,7 +361,7 @@ export const RegistrationPage: React.FC<RegistrationPageProps> = ({ onLogin, onC
                                 </div>
                                 <div>
                                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">WhatsApp Emergência</label>
-                                    <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" value={anamnesis.emergencyContactPhone} onChange={e => handleAnamnesisChange('emergencyContactPhone', e.target.value)} />
+                                    <input className="w-full bg-slate-100 border-2 border-slate-200 rounded-2xl p-4 text-black text-sm font-bold focus:border-brand-500 outline-none" placeholder="(00) 00000-0000" value={emergencyPhoneMasked} onChange={e => handlePhoneMask(e.target.value, 'emergencyContactPhone')} />
                                 </div>
                             </div>
                         </div>

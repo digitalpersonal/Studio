@@ -314,7 +314,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
                     <div className="flex items-center gap-3">
                         <img src={u.avatarUrl || `https://ui-avatars.com/api/?name=${u.name}`} className="w-10 h-10 rounded-xl border-2 border-dark-800 object-cover" />
                         <div>
-                            <p className="text-white font-bold text-xs">{u.name.split(' ')[0]}</p>
+                            <p className="text-white font-bold text-xs">{u.name}</p>
                             {/* CORREÇÃO VISUAL: Exibe o dia lido diretamente da string do banco */}
                             <p className="text-[9px] text-brand-500 font-black uppercase">Dia {parseInt(u.birthDate!.split('-')[2], 10)}</p>
                         </div>
