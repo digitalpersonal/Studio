@@ -22,14 +22,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
   const [financialHistory, setFinancialHistory] = useState<any[]>([]);
   const [allPayments, setAllPayments] = useState<any[]>([]);
   const [students, setStudents] = useState<User[]>([]);
+  const [attendance, setAttendance] = useState<any[]>([]);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedAttendanceStudentId, setSelectedAttendanceStudentId] = useState<string>('ALL');
 
   const availableYears = useMemo(() => {
     const year = new Date().getFullYear();
     const years = [];
-    // Mostrar de 2024 até o próximo ano
     for (let i = year + 1; i >= 2024; i--) {
       years.push(i);
     }
@@ -40,14 +40,16 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [history, payments, users] = await Promise.all([
+        const [history, payments, users, attRecords] = await Promise.all([
           SupabaseService.getFinancialReport(currentYear),
           SupabaseService.getPayments(),
-          SupabaseService.getAllStudents()
+          SupabaseService.getAllStudents(),
+          SupabaseService.getAllAttendance(currentYear)
         ]);
         setFinancialHistory(history);
         setAllPayments(payments);
         setStudents(users);
+        setAttendance(attRecords);
       } catch (error: any) {
         addToast(`Erro ao carregar dados financeiros.`, "error");
       } finally {
@@ -56,6 +58,25 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
     };
     fetchData();
   }, [currentYear, addToast]);
+
+  const attendanceData = useMemo(() => {
+    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const data = months.map(m => ({ name: m, presencas: 0 }));
+    
+    attendance.forEach(record => {
+      if (selectedAttendanceStudentId !== 'ALL' && record.studentId !== selectedAttendanceStudentId) {
+        return;
+      }
+      if (record.date) {
+        const date = new Date(record.date);
+        if (date.getUTCFullYear() === currentYear) {
+            const m = date.getUTCMonth();
+            data[m].presencas += 1;
+        }
+      }
+    });
+    return data;
+  }, [attendance, currentYear, selectedAttendanceStudentId]);
 
   // Cálculos de Controle Administrativo
   const stats = useMemo(() => {
@@ -203,7 +224,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
                 <h3 className="text-xl font-black text-white uppercase tracking-tighter flex items-center gap-2">
                     <AlertTriangle className="text-red-500" size={24}/> Alerta de Risco
                 </h3>
-                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Inadimplência acumulada: R$ {stats.totalOverdue.toLocaleString('pt-BR')}</p>
+                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-1">Inadimplência acumulada: R$ {stats.totalOverdueOverall.toLocaleString('pt-BR')}</p>
             </div>
             
             <div className="flex-1 space-y-4">
@@ -267,9 +288,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
                     <PieChart>
                         <Pie
                             data={[
-                                { name: 'Pagas', value: stats.totalRevenue },
+                                { name: 'Pagas', value: stats.totalHistoricalRevenue },
                                 { name: 'Pendentes', value: 1000 },
-                                { name: 'Atrasadas', value: stats.totalOverdue },
+                                { name: 'Atrasadas', value: stats.totalOverdueOverall },
                             ]}
                             cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value"
                         >
@@ -283,6 +304,44 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ currentUser, addToast 
                 </ResponsiveContainer>
             </div>
         </div>
+      </div>
+
+      {/* Frequência Mensal de Alunos */}
+      <div className="bg-dark-950 p-8 rounded-[2.5rem] border border-dark-800 shadow-2xl space-y-6 mt-8">
+          <div className="flex justify-between items-center whitespace-nowrap gap-4">
+              <h3 className="text-xl font-black text-white uppercase tracking-tighter">Frequência Mensal de Alunos</h3>
+              
+              <div className="flex items-center gap-4 w-full justify-end">
+                <select 
+                    className="bg-dark-900 border border-dark-800 rounded-xl p-2 text-white text-xs font-bold w-1/3 max-w-[250px] outline-none hover:border-dark-700 transition-all focus:border-brand-500"
+                    value={selectedAttendanceStudentId}
+                    onChange={(e) => setSelectedAttendanceStudentId(e.target.value)}
+                >
+                    <option value="ALL">Todos os Alunos</option>
+                    {students.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-[#0ea5e9]">
+                    <Users size={14} /> Presenças (Aulas e Desafios)
+                </div>
+              </div>
+          </div>
+          <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={attendanceData} barSize={32}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <XAxis dataKey="name" stroke="#475569" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} />
+                      <YAxis stroke="#475569" fontSize={10} fontWeight="bold" axisLine={false} tickLine={false} />
+                      <Tooltip 
+                          contentStyle={{ backgroundColor: '#020617', border: '1px solid #1e293b', borderRadius: '16px' }}
+                          itemStyle={{ fontWeight: 'bold', fontSize: '12px', color: '#0ea5e9' }}
+                          cursor={{ fill: '#1e293b', opacity: 0.4 }}
+                      />
+                      <Bar dataKey="presencas" name="Presenças" fill="#0ea5e9" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+              </ResponsiveContainer>
+          </div>
       </div>
     </div>
   );

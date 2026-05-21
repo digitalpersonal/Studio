@@ -91,11 +91,18 @@ const ToastContainer = ({ toasts, removeToast }: { toasts: Toast[], removeToast:
 /* -------------------------------------------------------------------------- */
 
 export const getWhatsAppUrl = (phone: string, text: string) => {
-  const cleanPhone = phone.replace(/\D/g, '');
+  let cleanPhone = phone.replace(/\D/g, '');
+  
+  // Se o número tiver 10 ou 11 dígitos e não começar com 55, assumimos que é do Brasil e falta o 55
+  if ((cleanPhone.length === 10 || cleanPhone.length === 11) && !cleanPhone.startsWith('55')) {
+    cleanPhone = '55' + cleanPhone;
+  }
+  
   const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
   if (isMobile) {
-    return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
+    return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
   }
+  // No computador, forçamos o WhatsApp Web para evitar prompts de instalação
   return `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
 };
 
@@ -183,6 +190,20 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
   const isStravaConfigured = !!(settings?.stravaClientId && settings?.stravaClientSecret);
   const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN; 
 
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    let masked = digits;
+    if (digits.length > 2) masked = "(" + digits.slice(0, 2) + ") " + digits.slice(2);
+    if (digits.length > 7) masked = masked.slice(0, 10) + "-" + digits.slice(7, 11);
+    return masked.slice(0, 15);
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const masked = formatPhone(value);
+    const digits = masked.replace(/\D/g, "");
+    setSettings({...settings!, phone: digits});
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!settings) return;
@@ -258,7 +279,7 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
                 <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Telefone / WhatsApp Comercial</label>
                 <div className="relative">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18}/>
-                  <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-brand-500 outline-none" value={settings.phone} onChange={e => setSettings({...settings, phone: e.target.value})} placeholder="(00) 00000-0000" />
+                  <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 pl-12 text-white focus:border-brand-500 outline-none" value={formatPhone(settings.phone || '')} onChange={e => handlePhoneChange(e.target.value)} placeholder="(00) 00000-0000" />
                 </div>
               </div>
               <div>

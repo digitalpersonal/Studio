@@ -506,8 +506,23 @@ export const SupabaseService = {
     } catch (e) { return []; }
   },
 
+  getAllAttendance: async (year: number): Promise<AttendanceRecord[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('is_present', true)
+        .gte('date', `${year}-01-01`)
+        .lte('date', `${year}-12-31`);
+      if (error) throw error;
+      return (data || []).map(mapAttendanceFromDb);
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  },
+
   getAttendanceForStudentInDateRange: async (studentId: string, startDate: string, endDate: string): Promise<(AttendanceRecord & { classDetails?: ClassSession })[]> => {
-    if (!supabase) return [];
     try {
       let query = supabase.from('attendance').select('*, class:classes!inner(*)').eq('student_id', studentId).eq('is_present', true).gte('date', formatDateForDb(startDate)).lte('date', formatDateForDb(endDate)).order('date', { ascending: true });
       const { data, error } = await query;
