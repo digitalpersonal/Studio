@@ -80,7 +80,7 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
 
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPostCaption.trim() && !fileInputRef.current?.files?.[0]) {
+    if (!newPostCaption.trim() && !compressedImageBase64) {
       addToast("Escreva algo ou anexe uma foto.", "info");
       return;
     }
@@ -88,14 +88,11 @@ export const FeedPage: React.FC<FeedPageProps> = ({ currentUser, addToast }) => 
     setPostSubmitting(true);
     try {
       let imageUrl = '';
-      const file = fileInputRef.current?.files?.[0];
 
-      if (file) {
-        addToast("Otimizando e enviando foto...", "info");
-        // Compressão antes do upload
-        const base64 = await ImageService.compressImage(file, 1080, 0.7);
-        const blob = ImageService.base64ToBlob(base64);
-        const compressedFile = new File([blob], file.name, { type: 'image/jpeg' });
+      if (compressedImageBase64) {
+        addToast("Enviando foto...", "info");
+        const blob = ImageService.base64ToBlob(compressedImageBase64);
+        const compressedFile = new File([blob], `post_${currentUser.id}_${Date.now()}.jpg`, { type: 'image/jpeg' });
 
         const fileName = `post_${currentUser.id}_${Date.now()}.jpg`;
         const path = `feed/${currentUser.id}/${fileName}`;
