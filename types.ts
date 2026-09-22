@@ -293,6 +293,7 @@ export interface Payment {
   description: string;
   installmentNumber?: number;
   total_installments?: number;
+  notes?: string;
 }
 
 export type ViewState = 

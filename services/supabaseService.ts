@@ -94,15 +94,29 @@ const mapClassFromDb = (c: any): ClassSession => ({
   distanceKm: c.distance_km,
 });
 
-const mapPaymentFromDb = (p: any): Payment => ({
-  ...p,
-  studentId: p.student_id,
-  dueDate: p.due_date,
-  amount: Number(p.amount) || 0,
-  discount: Number(p.discount) || 0,
-  installmentNumber: p.installment_number,
-  total_installments: p.total_installments
-});
+const mapPaymentFromDb = (p: any): Payment => {
+  let notes = p.notes || '';
+  let description = p.description || '';
+  if (!notes && description && description.includes('[Obs:')) {
+    const match = description.match(/\[Obs:\s*([^\]]+)\]/);
+    if (match) {
+      notes = match[1];
+      description = description.replace(/\s*\[Obs:\s*[^\]]+\]/, '').trim();
+    }
+  }
+
+  return {
+    ...p,
+    studentId: p.student_id,
+    dueDate: p.due_date,
+    amount: Number(p.amount) || 0,
+    discount: Number(p.discount) || 0,
+    description: description,
+    notes: notes,
+    installmentNumber: p.installment_number,
+    total_installments: p.total_installments
+  };
+};
 
 const mapAttendanceFromDb = (r: any): AttendanceRecord => ({
   id: r.id,
@@ -377,7 +391,7 @@ export const SupabaseService = {
                 studentPhone: p.users?.phone_number
             };
             
-            if (payment.status === 'PENDING') {
+            if (payment.status === 'PENDING' && payment.amount > 0) {
                 const dueDate = new Date(payment.dueDate);
                 dueDate.setHours(0, 0, 0, 0);
                 if (dueDate < today) {
@@ -407,11 +421,30 @@ export const SupabaseService = {
 
   addPayment: async (p: Omit<Payment, 'id'>): Promise<Payment> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('payments').insert([{
-      student_id: p.studentId, amount: p.amount, status: p.status, 
-      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount || 0,
-      installment_number: p.installmentNumber, total_installments: p.total_installments
-    }]).select().single();
+    const payload: any = {
+      student_id: p.studentId, 
+      amount: p.amount, 
+      status: p.amount === 0 ? 'PAID' : p.status, 
+      due_date: formatDateForDb(p.dueDate), 
+      description: p.description, 
+      discount: p.discount || 0,
+      installment_number: p.installmentNumber, 
+      total_installments: p.total_installments
+    };
+    if (p.notes !== undefined && p.notes !== null) {
+      payload.notes = p.notes;
+    }
+
+    let { data, error } = await supabase.from('payments').insert([payload]).select().single();
+    if (error && (error.message?.includes('notes') || error.code === 'PGRST204' || error.code === '42703')) {
+      delete payload.notes;
+      if (p.notes && p.notes.trim()) {
+        payload.description = `${p.description || ''} [Obs: ${p.notes.trim()}]`.trim();
+      }
+      const fallback = await supabase.from('payments').insert([payload]).select().single();
+      data = fallback.data;
+      error = fallback.error;
+    }
     if (error) throw error;
     invalidateCache();
     return mapPaymentFromDb(data);
@@ -419,10 +452,28 @@ export const SupabaseService = {
 
   updatePayment: async (p: Payment): Promise<Payment> => {
     if (!supabase) throw new Error("Sem conexão");
-    const { data, error } = await supabase.from('payments').update({
-      student_id: p.studentId, amount: p.amount, status: p.status, 
-      due_date: formatDateForDb(p.dueDate), description: p.description, discount: p.discount
-    }).eq('id', p.id).select().single();
+    const payload: any = {
+      student_id: p.studentId, 
+      amount: p.amount, 
+      status: p.status, 
+      due_date: formatDateForDb(p.dueDate), 
+      description: p.description, 
+      discount: p.discount || 0
+    };
+    if (p.notes !== undefined && p.notes !== null) {
+      payload.notes = p.notes;
+    }
+
+    let { data, error } = await supabase.from('payments').update(payload).eq('id', p.id).select().single();
+    if (error && (error.message?.includes('notes') || error.code === 'PGRST204' || error.code === '42703')) {
+      delete payload.notes;
+      if (p.notes && p.notes.trim()) {
+        payload.description = `${p.description || ''} [Obs: ${p.notes.trim()}]`.trim();
+      }
+      const fallback = await supabase.from('payments').update(payload).eq('id', p.id).select().single();
+      data = fallback.data;
+      error = fallback.error;
+    }
     if (error) throw error;
     invalidateCache();
     return mapPaymentFromDb(data);

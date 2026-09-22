@@ -127,10 +127,14 @@ CREATE TABLE IF NOT EXISTS public.payments (
     status TEXT NOT NULL DEFAULT 'PENDING', -- 'PAID', 'PENDING', 'OVERDUE'
     due_date DATE NOT NULL,
     description TEXT,
+    notes TEXT,
     installment_number INT,
     total_installments INT,
     created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Garantir coluna notes em instalações existentes
+ALTER TABLE public.payments ADD COLUMN IF NOT EXISTS notes TEXT;
 
 -- 7. Tabela de Avaliações Físicas
 CREATE TABLE IF NOT EXISTS public.assessments (
@@ -276,10 +280,47 @@ ALTER TABLE public.routes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenges DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenge_entries DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personalized_workouts DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.posts DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.post_comments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.cycle_summaries DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notices DISABLE ROW LEVEL SECURITY;
+
+-- Configurar Políticas Dinâmicas de RLS para posts e post_comments (Comunidade)
+ALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.post_comments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Permitir leitura de posts" ON public.posts;
+DROP POLICY IF EXISTS "Permitir inserção de posts" ON public.posts;
+DROP POLICY IF EXISTS "Permitir atualização de posts" ON public.posts;
+DROP POLICY IF EXISTS "Permitir exclusão de posts" ON public.posts;
+
+DROP POLICY IF EXISTS "Permitir leitura de comentários" ON public.post_comments;
+DROP POLICY IF EXISTS "Permitir inserção de comentários" ON public.post_comments;
+DROP POLICY IF EXISTS "Permitir atualização de comentários" ON public.post_comments;
+DROP POLICY IF EXISTS "Permitir exclusão de comentários" ON public.post_comments;
+
+CREATE POLICY "Permitir leitura de posts" ON public.posts FOR SELECT TO public USING (true);
+CREATE POLICY "Permitir inserção de posts" ON public.posts FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Permitir atualização de posts" ON public.posts FOR UPDATE TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir exclusão de posts" ON public.posts FOR DELETE TO public USING (true);
+
+CREATE POLICY "Permitir leitura de comentários" ON public.post_comments FOR SELECT TO public USING (true);
+CREATE POLICY "Permitir inserção de comentários" ON public.post_comments FOR INSERT TO public WITH CHECK (true);
+CREATE POLICY "Permitir atualização de comentários" ON public.post_comments FOR UPDATE TO public USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir exclusão de comentários" ON public.post_comments FOR DELETE TO public USING (true);
+
+-- Configurar Storage para Imagens do Feed ('app-assets')
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('app-assets', 'app-assets', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Acesso público de leitura para app-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir inserção de imagens no bucket app-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir atualização de imagens no bucket app-assets" ON storage.objects;
+DROP POLICY IF EXISTS "Permitir exclusão de imagens no bucket app-assets" ON storage.objects;
+
+CREATE POLICY "Acesso público de leitura para app-assets" ON storage.objects FOR SELECT TO public USING (bucket_id = 'app-assets');
+CREATE POLICY "Permitir inserção de imagens no bucket app-assets" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'app-assets');
+CREATE POLICY "Permitir atualização de imagens no bucket app-assets" ON storage.objects FOR UPDATE TO public USING (bucket_id = 'app-assets') WITH CHECK (bucket_id = 'app-assets');
+CREATE POLICY "Permitir exclusão de imagens no bucket app-assets" ON storage.objects FOR DELETE TO public USING (bucket_id = 'app-assets');
 
 -- =================================================================================================
 -- CARGA INICIAL DE DADOS

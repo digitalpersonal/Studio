@@ -7,7 +7,7 @@ import {
   Loader2, DollarSign, Receipt, Check, Download, CreditCard, 
   MessageCircle, AlertTriangle, X, CheckCheck, Info, BadgePercent,
   QrCode, Copy, Smartphone, ArrowRight, Edit, Plus, Save, Trash2, Search, Repeat,
-  Calendar, Filter, ChevronLeft, ChevronRight
+  Calendar, Filter, ChevronLeft, ChevronRight, Gift, MessageSquare, FileText
 } from 'lucide-react';
 import { useToast, WhatsAppAutomation } from '../App'; 
 
@@ -473,7 +473,7 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                         <img src={String(p.studentAvatar || `https://ui-avatars.com/api/?name=${String(p.studentName)}`)} className="w-8 h-8 rounded-full border border-dark-800" />
                         <div>
                           <p className="text-white font-bold">{String(p.studentName || user.name)}</p>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-[10px] text-slate-500">{String(p.description)}</p>
                             {p.installmentNumber && (
                               <span className="text-[8px] bg-dark-800 text-slate-400 px-1.5 py-0.5 rounded border border-dark-700 font-black uppercase tracking-widest">
@@ -481,41 +481,66 @@ export const FinancialPage = ({ user, selectedStudentId }: FinancialPageProps) =
                               </span>
                             )}
                           </div>
+                          {p.notes && (
+                            <div className="flex items-center gap-1.5 mt-1 text-[10px] text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 w-fit">
+                              <MessageSquare size={10} className="shrink-0 text-amber-400" />
+                              <span className="truncate max-w-[260px]" title={p.notes}>Obs: {p.notes}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 font-mono text-xs font-bold">{String(p.dueDate)}</td>
-                    <td className="px-6 py-4 text-slate-500 font-bold">R$ {p.amount.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-bold">
+                      {p.amount === 0 ? (
+                        <div className="flex flex-col">
+                          <span className="text-purple-400 font-black">R$ 0,00</span>
+                          <span className="text-[8px] text-purple-400/80 font-black uppercase tracking-widest">Isento</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-500">R$ {p.amount.toFixed(2)}</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 font-black text-white">
                         {p.status === 'PAID' ? (
-                            <div className="flex flex-col">
-                                <span>R$ {paidValue.toFixed(2)}</span>
-                                {p.discount ? <span className="text-[8px] text-emerald-500 uppercase font-black tracking-widest">Desc. R$ {p.discount.toFixed(2)}</span> : null}
-                            </div>
+                            p.amount === 0 ? (
+                              <span className="text-purple-400 text-xs font-black uppercase tracking-wider">R$ 0,00 (Isento)</span>
+                            ) : (
+                              <div className="flex flex-col">
+                                  <span>R$ {paidValue.toFixed(2)}</span>
+                                  {p.discount ? <span className="text-[8px] text-emerald-500 uppercase font-black tracking-widest">Desc. R$ {p.discount.toFixed(2)}</span> : null}
+                              </div>
+                            )
                         ) : '--'}
                     </td>
                     <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${
-                            p.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                            p.status === 'OVERDUE' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                        }`}>
-                            {p.status === 'PAID' ? 'Pago' : p.status === 'OVERDUE' ? 'Atrasado' : 'Pendente'}
-                        </span>
+                        {p.amount === 0 ? (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase border bg-purple-500/10 text-purple-400 border-purple-500/20 flex items-center gap-1 w-fit">
+                            <Gift size={10} /> Isento
+                          </span>
+                        ) : (
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase border ${
+                              p.status === 'PAID' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                              p.status === 'OVERDUE' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                              'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                          }`}>
+                              {p.status === 'PAID' ? 'Pago' : p.status === 'OVERDUE' ? 'Atrasado' : 'Pendente'}
+                          </span>
+                        )}
                     </td>
                     <td className="px-6 py-4 text-right">
                        <div className="flex justify-end gap-2">
-                          {p.status !== 'PAID' && !isStaff && (
+                          {p.status !== 'PAID' && p.amount > 0 && !isStaff && (
                              <button onClick={() => setShowPixModal(true)} className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-500 text-[10px] font-black uppercase shadow-lg shadow-emerald-600/20"><QrCode size={14}/> Pagar com Pix</button>
                           )}
                           {isStaff && (
                               <>
-                                {p.status !== 'PAID' && (
+                                {p.status !== 'PAID' && p.amount > 0 && (
                                     <button onClick={() => setManualPaymentModal(p)} disabled={isProcessing === p.id} className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg hover:bg-emerald-500 hover:text-white" title="Dar Baixa no Pagamento">
                                         {isProcessing === p.id ? <Loader2 className="animate-spin" size={16}/> : <CheckCheck size={16}/>}
                                     </button>
                                 )}
-                                <button onClick={() => setEditingPayment(p)} disabled={isProcessing === p.id} className="p-2 bg-dark-800 text-slate-500 rounded-lg hover:text-white"><Edit size={16}/></button>
+                                <button onClick={() => setEditingPayment(p)} disabled={isProcessing === p.id} className="p-2 bg-dark-800 text-slate-500 rounded-lg hover:text-white" title="Editar Fatura"><Edit size={16}/></button>
                                 <button onClick={() => handleDeletePayment(p.id)} disabled={isProcessing === p.id} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white">{isProcessing === p.id ? <Loader2 className="animate-spin"/> : <Trash2 size={16}/>}</button>
                               </>
                           )}
@@ -612,13 +637,62 @@ const ManualPaymentModal = ({ payment, onConfirm, onCancel, isProcessing }: { pa
 };
 
 const PaymentFormModal = ({ payment, students, onSave, onCancel, isProcessing }: { payment: Partial<Payment>, students: User[], onSave: (p: Partial<Payment>) => void, onCancel: () => void, isProcessing: boolean }) => {
-  const [formData, setFormData] = useState(payment);
-  const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(formData); };
+  const [formData, setFormData] = useState<Partial<Payment>>({
+    ...payment,
+    notes: payment.notes || ''
+  });
+  const [amountStr, setAmountStr] = useState<string>(
+    payment.amount !== undefined && payment.amount !== null ? String(payment.amount) : '0'
+  );
+
+  const parsedAmount = parseFloat(amountStr);
+  const isZeroAmount = amountStr === '0' || amountStr === '0.00' || (!isNaN(parsedAmount) && parsedAmount === 0);
+
+  const handleAmountChange = (val: string) => {
+    setAmountStr(val);
+    const parsed = parseFloat(val);
+    if (!isNaN(parsed)) {
+      setFormData(prev => ({
+        ...prev,
+        amount: Math.max(0, parsed),
+        status: parsed === 0 ? 'PAID' : prev.status
+      }));
+    }
+  };
+
+  const handleSetZero = () => {
+    setAmountStr('0');
+    setFormData(prev => ({
+      ...prev,
+      amount: 0,
+      status: 'PAID',
+      notes: prev.notes || 'Isenção concedida / Parcela abonada'
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalAmount = amountStr.trim() === '' ? 0 : parseFloat(amountStr);
+    const numAmount = isNaN(finalAmount) ? 0 : Math.max(0, finalAmount);
+    
+    onSave({
+      ...formData,
+      amount: numAmount,
+      status: numAmount === 0 ? 'PAID' : (formData.status || 'PENDING')
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-6 pt-10 animate-fade-in overflow-y-auto">
         <div className="bg-dark-900 border border-dark-700 p-8 rounded-[3rem] shadow-2xl max-w-md w-full space-y-6 relative overflow-hidden h-auto mb-10">
-            <div className="flex justify-between items-center"><h3 className="text-xl font-bold text-white flex items-center gap-2"><Receipt size={22} className="text-brand-500" /> {payment.id ? 'Editar Fatura' : 'Nova Fatura'}</h3><button onClick={onCancel} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full"><X size={20} /></button></div>
+            <div className="flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Receipt size={22} className="text-brand-500" /> {payment.id ? 'Editar Fatura' : 'Nova Fatura'}
+              </h3>
+              <button onClick={onCancel} className="text-slate-500 hover:text-white p-2 bg-dark-800 rounded-full">
+                <X size={20} />
+              </button>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-4">
                 {!formData.id && !formData.studentId && (
                   <div>
@@ -629,15 +703,118 @@ const PaymentFormModal = ({ payment, students, onSave, onCancel, isProcessing }:
                     </select>
                   </div>
                 )}
-                <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Descrição</label><input type="text" required className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} /></div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Vencimento</label><input type="date" required className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.dueDate || ''} onChange={e => setFormData({...formData, dueDate: e.target.value})} /></div>
-                    <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Valor (R$)</label><input type="number" step="0.01" required className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.amount || ''} onChange={e => setFormData({...formData, amount: Number(e.target.value)})} /></div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Descrição</label>
+                  <input type="text" required className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.description || ''} onChange={e => setFormData({...formData, description: e.target.value})} />
                 </div>
-                <div><label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Status</label><select className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.status || 'PENDING'} onChange={e => setFormData({...formData, status: e.target.value as any})}><option value="PENDING">Pendente</option><option value="OVERDUE">Atrasado</option><option value="PAID">Pago</option></select></div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Vencimento</label>
+                      <input type="date" required className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" value={formData.dueDate || ''} onChange={e => setFormData({...formData, dueDate: e.target.value})} />
+                    </div>
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Valor (R$)</label>
+                        <button
+                          type="button"
+                          onClick={handleSetZero}
+                          className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border transition-all flex items-center gap-1 ${
+                            isZeroAmount 
+                              ? 'bg-purple-500 text-white border-purple-400 shadow-md shadow-purple-500/20' 
+                              : 'text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border-purple-500/30'
+                          }`}
+                          title="Zerar valor da parcela e conceder isenção"
+                        >
+                          <Gift size={9} /> {isZeroAmount ? 'Isento (R$ 0)' : 'Zerar'}
+                        </button>
+                      </div>
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        min="0"
+                        required 
+                        className={`w-full bg-dark-950 border rounded-xl p-3 text-white focus:border-brand-500 outline-none transition-colors ${
+                          isZeroAmount ? 'border-purple-500/60 text-purple-300 font-black' : 'border-dark-800'
+                        }`} 
+                        value={amountStr} 
+                        onChange={e => handleAmountChange(e.target.value)} 
+                        placeholder="0.00"
+                      />
+                    </div>
+                </div>
+
+                {isZeroAmount && (
+                  <div className="bg-purple-500/10 border border-purple-500/30 rounded-2xl p-3.5 flex items-start gap-3 animate-fade-in">
+                    <Gift size={18} className="text-purple-400 shrink-0 mt-0.5" />
+                    <div className="text-[11px] text-purple-200">
+                      <p className="font-bold text-white uppercase tracking-tight text-[11px]">Parcela com Valor Zerado (Isenção)</p>
+                      <p className="text-purple-300/80 text-[10px] mt-0.5 leading-relaxed">
+                        Esta parcela não gerará cobrança para o aluno e será registrada como quitada/isenta. Informe o motivo no campo abaixo para prestação de contas.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Status</label>
+                  <select 
+                    className="w-full bg-dark-950 border border-dark-800 rounded-xl p-3 text-white focus:border-brand-500 outline-none" 
+                    value={formData.status || (isZeroAmount ? 'PAID' : 'PENDING')} 
+                    onChange={e => setFormData({...formData, status: e.target.value as any})}
+                  >
+                    <option value="PAID">{isZeroAmount ? 'Pago / Isento (R$ 0,00)' : 'Pago'}</option>
+                    <option value="PENDING">Pendente</option>
+                    <option value="OVERDUE">Atrasado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                      <MessageSquare size={12} className="text-brand-500" /> Observação {isZeroAmount ? '(Motivo da Isenção)' : '(Opcional)'}
+                    </label>
+                    {isZeroAmount && (
+                      <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                        Justificativa
+                      </span>
+                    )}
+                  </div>
+                  <textarea
+                    rows={2}
+                    className={`w-full bg-dark-950 border rounded-xl p-3 text-white focus:border-brand-500 outline-none text-xs transition-colors ${
+                      isZeroAmount && !formData.notes?.trim() 
+                        ? 'border-amber-500/40 placeholder:text-amber-500/50' 
+                        : 'border-dark-800'
+                    }`}
+                    placeholder={isZeroAmount ? "Ex: Aluno em férias, bônus promocional, compensação de treinos, bolsa..." : "Observações adicionais desta fatura..."}
+                    value={formData.notes || ''}
+                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                  {isZeroAmount && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      <span className="text-[9px] text-slate-500 font-bold">Sugestões rápidas:</span>
+                      {['Férias do Aluno', 'Bônus de Matrícula', 'Acordo Comercial', 'Abono da Diretoria'].map(tag => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => setFormData(prev => ({
+                            ...prev,
+                            notes: prev.notes && !prev.notes.includes(tag) ? `${prev.notes} - ${tag}` : tag
+                          }))}
+                          className="text-[9px] font-bold bg-dark-800 hover:bg-dark-700 text-slate-300 hover:text-white px-2 py-0.5 rounded-lg border border-dark-700 transition-colors"
+                        >
+                          + {tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-3 pt-4">
                     <button type="button" onClick={onCancel} className="py-4 bg-dark-800 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-700">Cancelar</button>
-                    <button type="submit" disabled={isProcessing} className="py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 flex items-center justify-center gap-2">{isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Salvar</button>
+                    <button type="submit" disabled={isProcessing} className="py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 flex items-center justify-center gap-2">
+                      {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Salvar
+                    </button>
                 </div>
             </form>
         </div>

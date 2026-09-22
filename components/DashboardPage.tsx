@@ -109,7 +109,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
     const students = allUsers.filter(u => u.role === UserRole.STUDENT);
     const activeStudents = students.filter(u => u.status !== 'SUSPENDED');
     const todayClasses = classes.filter(c => c.dayOfWeek === todayName).sort((a,b) => a.startTime.localeCompare(b.startTime));
-    const overdue = payments.filter(p => p.status === 'OVERDUE');
+    const overdue = payments.filter(p => p.status === 'OVERDUE' && p.amount > 0);
     
     const runningAttendance = attendance.filter(a => a.classDetails?.type === 'RUNNING');
     const lastRunPerformance = runningAttendance.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];

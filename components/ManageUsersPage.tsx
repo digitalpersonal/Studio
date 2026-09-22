@@ -392,9 +392,9 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                 if (u.role !== UserRole.STUDENT) return true;
 
                 const sPayments = payments.filter(p => p.studentId === u.id);
-                const hasOverdue = sPayments.some(p => p.status === 'OVERDUE');
-                const hasPending = sPayments.some(p => p.status === 'PENDING');
-                const allPaid = sPayments.length > 0 && sPayments.every(p => p.status === 'PAID');
+                const hasOverdue = sPayments.some(p => p.status === 'OVERDUE' && p.amount > 0);
+                const hasPending = sPayments.some(p => p.status === 'PENDING' && p.amount > 0);
+                const allPaid = sPayments.length > 0 && sPayments.every(p => p.status === 'PAID' || p.amount === 0);
 
                 if (paymentStatusFilter === 'OVERDUE') return hasOverdue;
                 if (paymentStatusFilter === 'PENDING') return hasPending && !hasOverdue;
@@ -488,8 +488,8 @@ export const ManageUsersPage = ({ currentUser, onNavigate }: { currentUser: User
                             {filteredUsers.map(s => {
                                 const isContractReady = !!(s.cpf && s.rg && s.address?.zipCode);
                                 const sPayments = payments.filter(p => p.studentId === s.id);
-                                const hasDebt = sPayments.some(p => p.status === 'OVERDUE');
-                                const paidCount = sPayments.filter(p => p.status === 'PAID').length;
+                                const hasDebt = sPayments.some(p => p.status === 'OVERDUE' && p.amount > 0);
+                                const paidCount = sPayments.filter(p => p.status === 'PAID' || p.amount === 0).length;
                                 const nextDue = sPayments.filter(p => p.status === 'PENDING').sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
                                 const latestDebt = sPayments.filter(p => p.status === 'OVERDUE').sort((a,b) => new Date(b.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
                                 const enrolledCount = classes.filter(c => c.enrolledStudentIds.includes(s.id)).length;
