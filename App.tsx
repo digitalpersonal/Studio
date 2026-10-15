@@ -26,8 +26,6 @@ import { SettingsService } from './services/settingsService';
 import { UserFormPage } from './components/UserFormPage';
 import { SchedulePage } from './components/SchedulePage';
 import { AssessmentsPage } from './components/AssessmentsPage';
-import { RankingPage } from './components/RankingPage';
-import { RoutesPage } from './components/RoutesPage';
 import { PersonalWorkoutsPage } from './components/PersonalWorkoutsPage';
 import { FeedPage } from './components/FeedPage';
 import { ReportsPage } from './components/ReportsPage';
@@ -39,7 +37,6 @@ import { DashboardPage } from './components/DashboardPage';
 import { RunningEvolutionPage } from './components/RunningEvolutionPage';
 import { LandingPage } from './components/LandingPage';
 import { HelpCenterPage } from './components/HelpCenterPage';
-import { StravaPage } from './components/StravaPage';
 
 const LOGO_URL = "https://digitalfreeshop.com.br/logostudio/logo.jpg";
 
@@ -187,7 +184,6 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
     fetchSettings();
   }, [addToast]);
 
-  const isStravaConfigured = !!(settings?.stravaClientId && settings?.stravaClientSecret);
   const isSuperAdmin = currentUser.role === UserRole.SUPER_ADMIN; 
 
   const formatPhone = (value: string) => {
@@ -312,26 +308,6 @@ const SettingsPage = ({ currentUser }: { currentUser: User }) => {
             </div>
           </section>
 
-          <section className="space-y-6">
-            <h3 className="text-white font-bold flex items-center gap-2 border-b border-dark-800 pb-4 uppercase text-xs tracking-widest">
-               <Share2 className="text-[#FC4C02]" size={16}/> Integração Strava (Clube de Corrida)
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-[#FC4C02]/5 p-6 rounded-3xl border border-[#FC4C02]/20">
-               <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Strava Client ID (Obrigatório)</label>
-                <input className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-[#FC4C02] outline-none font-mono text-xs" placeholder="Ex: 123456" value={settings.stravaClientId || ''} onChange={e => setSettings({...settings, stravaClientId: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-slate-500 text-[10px] font-bold uppercase mb-1">Strava Client Secret</label>
-                <input type="password" className="w-full bg-dark-900 border border-dark-700 rounded-xl p-4 text-white focus:border-[#FC4C02] outline-none font-mono text-xs" placeholder="Segredo da API" value={settings.stravaClientSecret || ''} onChange={e => setSettings({...settings, stravaClientSecret: e.target.value})} />
-              </div>
-              <div className="md:col-span-2">
-                <div className={`p-4 rounded-xl border text-[10px] font-bold uppercase flex items-center gap-3 ${isStravaConfigured ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'}`}>
-                   <Info size={16}/> {isStravaConfigured ? 'Strava configurado! Os alunos já podem conectar suas contas.' : 'Configuração pendente. Sem o Client ID, o botão de conexão com o Strava não funcionará.'}
-                </div>
-              </div>
-            </div>
-          </section>
 
           {isSuperAdmin && ( 
             <section className="space-y-6">
@@ -466,14 +442,11 @@ export function App() {
           {currentView === 'FINANCIAL' && <FinancialPage user={currentUser} selectedStudentId={navParams.studentId} />}
           {currentView === 'MANAGE_USERS' && <ManageUsersPage currentUser={currentUser} onNavigate={handleNavigate} />}
           {currentView === 'SETTINGS' && <SettingsPage currentUser={currentUser} />}
-          {currentView === 'RANKING' && <RankingPage currentUser={currentUser} addToast={addToast} />}
-          {currentView === 'ROUTES' && <RoutesPage currentUser={currentUser} addToast={addToast} />}
           {currentView === 'PERSONAL_WORKOUTS' && <PersonalWorkoutsPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'FEED' && <FeedPage currentUser={currentUser} addToast={addToast} />}
           {currentView === 'REPORTS' && <ReportsPage currentUser={currentUser} addToast={addToast} />}
           {currentView === 'RUNNING_EVOLUTION' && <RunningEvolutionPage currentUser={currentUser} addToast={addToast} initialStudentId={navParams.studentId} />}
           {currentView === 'HELP_CENTER' && <HelpCenterPage currentUser={currentUser} />}
-          {currentView === 'STRAVA_CONNECT' && <StravaPage currentUser={currentUser} onUpdateUser={handleUpdateUser} addToast={addToast} />}
           {currentView === 'COMPLETE_PROFILE' && <DashboardPage currentUser={currentUser} onNavigate={handleNavigate} addToast={addToast} />}
         </Layout>
         <ToastContainer toasts={toasts} removeToast={removeToast} />

@@ -6,7 +6,7 @@ import { ImageService } from '../services/imageService';
 import { 
   Users, Calendar, AlertTriangle, DollarSign, ArrowRight, 
   CheckCircle2, Clock, Trophy, Loader2, TrendingUp, Activity, Zap, Cake, Bell, Gift, MessageCircle, Sparkles, ZapOff, Flag, Dumbbell,
-  User as UserIcon, Download, List, CheckCheck, Award, Plus, Edit, Trash2, X, Info, Megaphone, Upload
+  User as UserIcon, Download, List, CheckCheck, Award, Plus, Edit, Trash2, X, Info, Megaphone, Upload, Eye
 } from 'lucide-react';
 import { DAYS_OF_WEEK } from '../constants';
 import { WhatsAppAutomation } from '../App';
@@ -31,6 +31,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
 
   const [showNoticeForm, setShowNoticeForm] = useState(false);
   const [editingNotice, setEditingNotice] = useState<Notice | null>(null);
+  const [selectedNoticeImage, setSelectedNoticeImage] = useState<string | null>(null);
 
   const isAdmin = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPER_ADMIN;
   const isTrainer = currentUser.role === UserRole.TRAINER;
@@ -207,46 +208,79 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
           )}
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="space-y-6">
           {notices.length > 0 ? notices.map(notice => (
-            <div key={notice.id} className={`p-6 rounded-[2.5rem] border relative group transition-all duration-300 transform hover:-translate-y-1 ${
+            <div key={notice.id} className={`p-6 md:p-8 rounded-[2.5rem] border relative group transition-all duration-300 transform hover:-translate-y-1 shadow-xl flex flex-col justify-between ${
               notice.priority === 'URGENT' ? 'bg-red-500/10 border-red-500/30' :
               notice.priority === 'WARNING' ? 'bg-amber-500/10 border-amber-500/30' :
               'bg-blue-500/10 border-blue-500/30'
             }`}>
-              {notice.imageUrl && (
-                <div className="mb-4 rounded-2xl overflow-hidden border border-dark-800">
-                  <img src={notice.imageUrl} alt={notice.title} className="w-full h-40 object-cover" referrerPolicy="no-referrer" />
+              <div>
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl ${
+                      notice.priority === 'URGENT' ? 'bg-red-500 text-white' :
+                      notice.priority === 'WARNING' ? 'bg-amber-500 text-white' :
+                      'bg-blue-500 text-white'
+                    }`}>
+                      {notice.priority === 'URGENT' ? <AlertTriangle size={18}/> : 
+                       notice.priority === 'WARNING' ? <Bell size={18}/> : <Info size={18}/>}
+                    </div>
+                    <div>
+                      <span className={`text-[10px] font-black uppercase tracking-wider ${
+                        notice.priority === 'URGENT' ? 'text-red-400' :
+                        notice.priority === 'WARNING' ? 'text-amber-400' :
+                        'text-blue-400'
+                      }`}>
+                        {notice.priority === 'URGENT' ? 'Comunicado Urgente' :
+                         notice.priority === 'WARNING' ? 'Aviso Importante' : 'Informativo'}
+                      </span>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-1.5 opacity-90 md:opacity-0 md:group-hover:opacity-100 transition-opacity no-print">
+                      <button onClick={() => { setEditingNotice(notice); setShowNoticeForm(true); }} className="p-2.5 bg-dark-800/80 text-slate-400 rounded-xl hover:text-white hover:bg-dark-700 transition-colors" title="Editar comunicado"><Edit size={16}/></button>
+                      <button onClick={() => handleDeleteNotice(notice.id)} className="p-2.5 bg-red-600 text-white rounded-xl hover:bg-red-500 transition-colors" title="Excluir comunicado"><Trash2 size={16}/></button>
+                    </div>
+                  )}
                 </div>
-              )}
-              <div className="flex justify-between items-start mb-4">
-                <div className={`p-2.5 rounded-xl ${
-                  notice.priority === 'URGENT' ? 'bg-red-500 text-white' :
-                  notice.priority === 'WARNING' ? 'bg-amber-500 text-white' :
-                  'bg-blue-500 text-white'
-                }`}>
-                  {notice.priority === 'URGENT' ? <AlertTriangle size={18}/> : 
-                   notice.priority === 'WARNING' ? <Bell size={18}/> : <Info size={18}/>}
-                </div>
-                {isAdmin && (
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity no-print">
-                    <button onClick={() => { setEditingNotice(notice); setShowNoticeForm(true); }} className="p-2 bg-dark-800/80 text-slate-400 rounded-lg hover:text-white"><Edit size={14}/></button>
-                    <button onClick={() => handleDeleteNotice(notice.id)} className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-500"><Trash2 size={14}/></button>
+
+                <h4 className="text-white font-black text-xl md:text-2xl uppercase mb-3 tracking-tight break-words">{notice.title}</h4>
+                {notice.content && (
+                  <div className="text-slate-200 text-sm md:text-base leading-relaxed mb-5 whitespace-pre-wrap break-words font-medium">{notice.content}</div>
+                )}
+
+                {notice.imageUrl && (
+                  <div 
+                    onClick={() => setSelectedNoticeImage(notice.imageUrl!)}
+                    className="w-full rounded-[2rem] overflow-hidden bg-dark-950 border border-dark-800 cursor-pointer relative group/img shadow-2xl flex items-center justify-center my-4"
+                    title="Clique para ver a imagem completa"
+                  >
+                    <img 
+                      src={notice.imageUrl} 
+                      alt={notice.title} 
+                      className="w-full h-auto object-contain transition-transform duration-500 group-hover/img:scale-[1.01]" 
+                      referrerPolicy="no-referrer" 
+                      loading="lazy" 
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover/img:opacity-100">
+                      <span className="bg-dark-900/95 text-white text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-xl border border-dark-700 shadow-2xl flex items-center gap-2">
+                        <Eye size={16} /> Ver imagem em tela cheia
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
-              <h4 className="text-white font-black text-base uppercase mb-2 tracking-tight break-words">{notice.title}</h4>
-              <div className="text-slate-400 text-sm leading-relaxed mb-6 whitespace-pre-wrap break-words">{notice.content}</div>
-              <div className="pt-4 border-t border-dark-800/50 flex justify-between items-center">
+              <div className="pt-4 border-t border-dark-800/50 flex justify-between items-center mt-2">
                 <div className="flex items-center gap-2">
-                    <Calendar size={12} className="text-slate-600" />
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{new Date(notice.createdAt).toLocaleDateString('pt-BR')}</span>
+                    <Calendar size={13} className="text-slate-500" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(notice.createdAt).toLocaleDateString('pt-BR')}</span>
                 </div>
-                <span className="text-[9px] font-black uppercase text-slate-500">{notice.priority}</span>
+                <span className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Publicado pelo Studio</span>
               </div>
             </div>
           )) : (
-            <div className="col-span-full py-12 text-center bg-dark-950/30 rounded-[3rem] border-2 border-dashed border-dark-800">
+            <div className="py-12 text-center bg-dark-950/30 rounded-[3rem] border-2 border-dashed border-dark-800">
                <p className="text-slate-600 font-bold uppercase text-[10px] tracking-widest">Nenhum aviso importante hoje.</p>
             </div>
           )}
@@ -332,12 +366,33 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ currentUser, onNav
 
       {showNoticeForm && (
         <div className="fixed inset-0 z-[120] flex items-start justify-center bg-black/95 backdrop-blur-md p-4 pt-16 animate-fade-in no-print overflow-y-auto">
-          <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-lg shadow-2xl p-8 mb-10">
+          <div className="bg-dark-900 border border-dark-700 rounded-[2.5rem] w-full max-w-2xl shadow-2xl p-8 mb-10">
              <div className="flex justify-between items-center mb-8">
                 <h3 className="text-xl font-black text-white uppercase">Novo Comunicado</h3>
                 <button onClick={() => setShowNoticeForm(false)} className="text-slate-500 p-2 bg-dark-800 rounded-full"><X size={20}/></button>
              </div>
              <NoticeForm initialData={editingNotice} onSave={handleSaveNotice} onCancel={() => setShowNoticeForm(false)} />
+          </div>
+        </div>
+      )}
+
+      {selectedNoticeImage && (
+        <div 
+          onClick={() => setSelectedNoticeImage(null)} 
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fade-in cursor-pointer no-print"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
+            <img 
+              src={selectedNoticeImage} 
+              alt="Comunicado em tela cheia" 
+              className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-3xl border border-dark-800 shadow-2xl" 
+            />
+            <button 
+              onClick={() => setSelectedNoticeImage(null)} 
+              className="absolute top-4 right-4 p-3 bg-dark-950/80 hover:bg-dark-900 text-white rounded-full border border-dark-700 shadow-xl transition-all"
+            >
+              <X size={20} />
+            </button>
           </div>
         </div>
       )}
@@ -402,14 +457,15 @@ const NoticeForm = ({ initialData, onSave, onCancel }: any) => {
             </div>
           </div>
           {formData.imageUrl && (
-            <div className="relative rounded-2xl overflow-hidden border border-dark-800 h-32 bg-dark-950">
-              <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            <div className="relative rounded-2xl overflow-hidden border border-dark-800 bg-dark-950 p-2 flex items-center justify-center max-h-80">
+              <img src={formData.imageUrl} alt="Preview" className="w-full h-auto max-h-72 object-contain rounded-xl" referrerPolicy="no-referrer" />
               <button 
                 type="button" 
                 onClick={() => setFormData({ ...formData, imageUrl: '' })}
-                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                className="absolute top-4 right-4 p-2 bg-red-500/90 hover:bg-red-500 text-white rounded-full shadow-lg transition-colors"
+                title="Remover imagem"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
             </div>
           )}

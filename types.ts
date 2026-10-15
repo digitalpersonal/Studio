@@ -306,14 +306,11 @@ export type ViewState =
   | 'FINANCIAL' 
   | 'MANAGE_USERS'
   | 'SETTINGS'
-  | 'RANKING'
-  | 'ROUTES'
   | 'PERSONAL_WORKOUTS'
   | 'FEED'
   | 'REPORTS'
   | 'RUNNING_EVOLUTION'
-  | 'HELP_CENTER'
-  | 'STRAVA_CONNECT';
+  | 'HELP_CENTER';
 
 export interface AppNavParams {
   studentId?: string;
