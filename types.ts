@@ -219,20 +219,24 @@ export interface Assessment {
     waist?: number;
     abdomen?: number;
     hips?: number;
+    rightArm?: number;
+    leftArm?: number;
+    rightForearm?: number;
+    leftForearm?: number;
+    rightThigh?: number;
+    leftThigh?: number;
+    rightCalf?: number;
+    leftCalf?: number;
     rightArmRelaxed?: number;
     leftArmRelaxed?: number;
     rightArmContracted?: number;
     leftArmContracted?: number;
-    rightForearm?: number;
-    leftForearm?: number;
     rightThighProximal?: number;
     leftThighProximal?: number;
     rightThighMedial?: number;
     leftThighMedial?: number;
     rightThighDistal?: number;
     leftThighDistal?: number;
-    rightCalf?: number;
-    leftCalf?: number;
   };
 }
 
