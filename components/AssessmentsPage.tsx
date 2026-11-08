@@ -362,37 +362,27 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
                                 <Ruler size={16} className="text-brand-500" /> Perímetros (cm)
                             </h5>
                             {assessment.circumferences ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 p-8 bg-dark-900/30 rounded-[2.5rem] border border-dark-800 text-[11px]">
-                                    <div className="space-y-3">
-                                        <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Tronco</p>
-                                        <div className="flex justify-between">Tórax: <span className="text-white font-bold">{assessment.circumferences.chest || 0}</span></div>
-                                        <div className="flex justify-between">Cintura: <span className="text-white font-bold">{assessment.circumferences.waist || 0}</span></div>
-                                        <div className="flex justify-between">Abdômen: <span className="text-white font-bold">{assessment.circumferences.abdomen || 0}</span></div>
-                                        <div className="flex justify-between">Quadril: <span className="text-white font-bold">{assessment.circumferences.hips || 0}</span></div>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-6 bg-dark-900/30 rounded-[2.5rem] border border-dark-800 text-xs">
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Tronco</p>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Tórax: <span className="text-white font-bold">{assessment.circumferences.chest || 0} cm</span></div>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Cintura: <span className="text-white font-bold">{assessment.circumferences.waist || 0} cm</span></div>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Abdômen: <span className="text-white font-bold">{assessment.circumferences.abdomen || 0} cm</span></div>
+                                        <div className="flex justify-between py-1">Quadril: <span className="text-white font-bold">{assessment.circumferences.hips || 0} cm</span></div>
                                     </div>
-                                    <div className="space-y-3">
-                                        <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Superiores</p>
-                                        <div className="flex justify-between">Braço D (Rel): <span className="text-white font-bold">{assessment.circumferences.rightArmRelaxed || 0}</span></div>
-                                        <div className="flex justify-between">Braço E (Rel): <span className="text-white font-bold">{assessment.circumferences.leftArmRelaxed || 0}</span></div>
-                                        <div className="flex justify-between">Braço D (Con): <span className="text-white font-bold">{assessment.circumferences.rightArmContracted || 0}</span></div>
-                                        <div className="flex justify-between">Braço E (Con): <span className="text-white font-bold">{assessment.circumferences.leftArmContracted || 0}</span></div>
-                                        <div className="flex justify-between">Ant.Braço D: <span className="text-white font-bold">{assessment.circumferences.rightForearm || 0}</span></div>
-                                        <div className="flex justify-between">Ant.Braço E: <span className="text-white font-bold">{assessment.circumferences.leftForearm || 0}</span></div>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Membros Superiores</p>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Braço Direito: <span className="text-white font-bold">{assessment.circumferences.rightArm || assessment.circumferences.rightArmRelaxed || 0} cm</span></div>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Braço Esquerdo: <span className="text-white font-bold">{assessment.circumferences.leftArm || assessment.circumferences.leftArmRelaxed || 0} cm</span></div>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Antebraço Direito: <span className="text-white font-bold">{assessment.circumferences.rightForearm || 0} cm</span></div>
+                                        <div className="flex justify-between py-1">Antebraço Esquerdo: <span className="text-white font-bold">{assessment.circumferences.leftForearm || 0} cm</span></div>
                                     </div>
-                                    <div className="space-y-3">
-                                        <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Inferiores</p>
-                                        <div className="flex justify-between">Coxa D (Prox): <span className="text-white font-bold">{assessment.circumferences.rightThighProximal || 0}</span></div>
-                                        <div className="flex justify-between">Coxa D (Med): <span className="text-white font-bold">{assessment.circumferences.rightThighMedial || 0}</span></div>
-                                        <div className="flex justify-between">Coxa D (Dist): <span className="text-white font-bold">{assessment.circumferences.rightThighDistal || 0}</span></div>
-                                        <div className="flex justify-between">Coxa E (Prox): <span className="text-white font-bold">{assessment.circumferences.leftThighProximal || 0}</span></div>
-                                        <div className="flex justify-between">Coxa E (Med): <span className="text-white font-bold">{assessment.circumferences.leftThighMedial || 0}</span></div>
-                                        <div className="flex justify-between">Coxa E (Dist): <span className="text-white font-bold">{assessment.circumferences.leftThighDistal || 0}</span></div>
-                                        <div className="flex justify-between">Pant. D: <span className="text-white font-bold">{assessment.circumferences.rightCalf || 0}</span></div>
-                                        <div className="flex justify-between">Pant. E: <span className="text-white font-bold">{assessment.circumferences.leftCalf || 0}</span></div>
-                                    </div>
-                                    <div className="space-y-3">
-                                        <p className="text-[9px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Observações</p>
-                                        <p className="text-slate-400 italic leading-relaxed text-[10px]">{assessment.notes || 'Sem observações extras.'}</p>
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Membros Inferiores</p>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Coxa Direita: <span className="text-white font-bold">{assessment.circumferences.rightThigh || assessment.circumferences.rightThighMedial || 0} cm</span></div>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Coxa Esquerda: <span className="text-white font-bold">{assessment.circumferences.leftThigh || assessment.circumferences.leftThighMedial || 0} cm</span></div>
+                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Panturrilha Direita: <span className="text-white font-bold">{assessment.circumferences.rightCalf || 0} cm</span></div>
+                                        <div className="flex justify-between py-1">Panturrilha Esquerda: <span className="text-white font-bold">{assessment.circumferences.leftCalf || 0} cm</span></div>
                                     </div>
                                 </div>
                             ) : (
@@ -419,9 +409,9 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
 };
 
 const MetricDisplay = ({ label, value, unit, color = "text-white" }: any) => (
-    <div className="bg-dark-900/50 p-5 rounded-2xl border border-dark-800">
-        <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">{label}</p>
-        <p className={`text-xl font-black ${color}`}>{value || '--'}<span className="text-[10px] text-slate-600 ml-1 font-bold">{unit}</span></p>
+    <div className="bg-dark-900/80 p-5 rounded-2xl border border-dark-800 shadow-lg">
+        <p className="text-[11px] font-black text-slate-300 uppercase tracking-widest mb-1.5">{label}</p>
+        <p className={`text-2xl sm:text-3xl font-black ${color}`}>{value !== undefined && value !== null && value !== 0 ? value : '--'}<span className="text-xs text-slate-400 ml-1.5 font-bold">{unit}</span></p>
     </div>
 );
 
@@ -548,12 +538,9 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
       },
       circumferences: {
         chest: 0, waist: 0, abdomen: 0, hips: 0,
-        rightArmRelaxed: 0, leftArmRelaxed: 0,
-        rightArmContracted: 0, leftArmContracted: 0,
+        rightArm: 0, leftArm: 0,
         rightForearm: 0, leftForearm: 0,
-        rightThighProximal: 0, leftThighProximal: 0,
-        rightThighMedial: 0, leftThighMedial: 0,
-        rightThighDistal: 0, leftThighDistal: 0,
+        rightThigh: 0, leftThigh: 0,
         rightCalf: 0, leftCalf: 0
       },
     }
@@ -722,34 +709,24 @@ const AssessmentForm: React.FC<AssessmentFormProps> = ({ assessment, studentId, 
         {/* PERIMETROS */}
         <section className="pt-10 border-t border-dark-800 space-y-8">
           <h4 className="text-brand-500 font-black text-xs uppercase tracking-widest flex items-center gap-2"><Ruler size={18}/> Perímetros (cm)</h4>
-          <div className="bg-dark-900/40 p-8 rounded-[2.5rem] border border-dark-800 space-y-12">
+          <div className="bg-dark-900/40 p-8 rounded-[2.5rem] border border-dark-800 space-y-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <MetricInput label="Tórax" value={formData.circumferences?.chest} onChange={v => handleCircumferenceChange('chest', String(v))} step="0.1" />
-                  <MetricInput label="Abdômen" value={formData.circumferences?.abdomen} onChange={v => handleCircumferenceChange('abdomen', String(v))} step="0.1" />
                   <MetricInput label="Cintura" value={formData.circumferences?.waist} onChange={v => handleCircumferenceChange('waist', String(v))} step="0.1" />
+                  <MetricInput label="Abdômen" value={formData.circumferences?.abdomen} onChange={v => handleCircumferenceChange('abdomen', String(v))} step="0.1" />
                   <MetricInput label="Quadril" value={formData.circumferences?.hips} onChange={v => handleCircumferenceChange('hips', String(v))} step="0.1" />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <MetricInput label="Braço D (Rel)" value={formData.circumferences?.rightArmRelaxed} onChange={v => handleCircumferenceChange('rightArmRelaxed', String(v))} step="0.1" />
-                  <MetricInput label="Braço E (Rel)" value={formData.circumferences?.leftArmRelaxed} onChange={v => handleCircumferenceChange('leftArmRelaxed', String(v))} step="0.1" />
-                  <MetricInput label="Braço D (Con)" value={formData.circumferences?.rightArmContracted} onChange={v => handleCircumferenceChange('rightArmContracted', String(v))} step="0.1" />
-                  <MetricInput label="Braço E (Con)" value={formData.circumferences?.leftArmContracted} onChange={v => handleCircumferenceChange('leftArmContracted', String(v))} step="0.1" />
+                  <MetricInput label="Braço Direito" value={formData.circumferences?.rightArm} onChange={v => handleCircumferenceChange('rightArm', String(v))} step="0.1" />
+                  <MetricInput label="Braço Esquerdo" value={formData.circumferences?.leftArm} onChange={v => handleCircumferenceChange('leftArm', String(v))} step="0.1" />
+                  <MetricInput label="Antebraço Direito" value={formData.circumferences?.rightForearm} onChange={v => handleCircumferenceChange('rightForearm', String(v))} step="0.1" />
+                  <MetricInput label="Antebraço Esquerdo" value={formData.circumferences?.leftForearm} onChange={v => handleCircumferenceChange('leftForearm', String(v))} step="0.1" />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <MetricInput label="Ant.Braço D" value={formData.circumferences?.rightForearm} onChange={v => handleCircumferenceChange('rightForearm', String(v))} step="0.1" />
-                  <MetricInput label="Ant.Braço E" value={formData.circumferences?.leftForearm} onChange={v => handleCircumferenceChange('leftForearm', String(v))} step="0.1" />
-                  <MetricInput label="Panturrilha D" value={formData.circumferences?.rightCalf} onChange={v => handleCircumferenceChange('rightCalf', String(v))} step="0.1" />
-                  <MetricInput label="Panturrilha E" value={formData.circumferences?.leftCalf} onChange={v => handleCircumferenceChange('leftCalf', String(v))} step="0.1" />
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                  <MetricInput label="Coxa D (Prox)" value={formData.circumferences?.rightThighProximal} onChange={v => handleCircumferenceChange('rightThighProximal', String(v))} step="0.1" />
-                  <MetricInput label="Coxa D (Med)" value={formData.circumferences?.rightThighMedial} onChange={v => handleCircumferenceChange('rightThighMedial', String(v))} step="0.1" />
-                  <MetricInput label="Coxa D (Dist)" value={formData.circumferences?.rightThighDistal} onChange={v => handleCircumferenceChange('rightThighDistal', String(v))} step="0.1" />
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                  <MetricInput label="Coxa E (Prox)" value={formData.circumferences?.leftThighProximal} onChange={v => handleCircumferenceChange('leftThighProximal', String(v))} step="0.1" />
-                  <MetricInput label="Coxa E (Med)" value={formData.circumferences?.leftThighMedial} onChange={v => handleCircumferenceChange('leftThighMedial', String(v))} step="0.1" />
-                  <MetricInput label="Coxa E (Dist)" value={formData.circumferences?.leftThighDistal} onChange={v => handleCircumferenceChange('leftThighDistal', String(v))} step="0.1" />
+                  <MetricInput label="Coxa Direita" value={formData.circumferences?.rightThigh} onChange={v => handleCircumferenceChange('rightThigh', String(v))} step="0.1" />
+                  <MetricInput label="Coxa Esquerda" value={formData.circumferences?.leftThigh} onChange={v => handleCircumferenceChange('leftThigh', String(v))} step="0.1" />
+                  <MetricInput label="Panturrilha Direita" value={formData.circumferences?.rightCalf} onChange={v => handleCircumferenceChange('rightCalf', String(v))} step="0.1" />
+                  <MetricInput label="Panturrilha Esquerda" value={formData.circumferences?.leftCalf} onChange={v => handleCircumferenceChange('leftCalf', String(v))} step="0.1" />
               </div>
           </div>
         </section>
