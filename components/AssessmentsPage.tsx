@@ -8,7 +8,7 @@ import {
   Plus, Edit, Trash2, Activity, Loader2, Award, Heart, Ruler, Scale, 
   ChevronDown, ChevronUp, FileText, CalendarCheck, Zap, ClipboardList, 
   X, Gauge, TrendingUp, Users, AlertCircle, Camera, Image as ImageIcon,
-  Upload, CheckCircle2, RotateCcw, Sparkles, Save, RefreshCw
+  Upload, CheckCircle2, RotateCcw, Sparkles, Save, RefreshCw, Share2
 } from 'lucide-react';
 
 interface AssessmentsPageProps {
@@ -218,182 +218,169 @@ export const AssessmentsPage: React.FC<AssessmentsPageProps> = ({ currentUser, a
 
       <div className="space-y-4">
         {selectedStudentId && assessments.length > 0 ? (
-          assessments.map(assessment => (
-            <div key={assessment.id} className="bg-dark-950 p-6 rounded-[2.5rem] border border-dark-800 shadow-xl overflow-hidden relative group hover:border-brand-500/30 transition-all">
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-brand-600/10 rounded-2xl border border-brand-600/20 text-brand-500">
-                    <Activity size={24} />
-                  </div>
-                  <div>
-                    <h4 className="text-white font-black text-lg uppercase tracking-tighter">Ficha: {new Date(assessment.date).toLocaleDateString('pt-BR')}</h4>
-                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Avaliação Concluída</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                    <button 
-                        onClick={() => handleAnalyzeIA(assessment)}
-                        disabled={analyzingIA === assessment.id}
-                        className="p-2 bg-brand-600/10 text-brand-500 rounded-xl hover:bg-brand-600 hover:text-white transition-all disabled:opacity-50"
-                        title="Analisar com IA"
-                    >
-                        {analyzingIA === assessment.id ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                    </button>
-                    {isStaff && (
-                      <>
-                        <button onClick={() => { setEditingAssessment(assessment); setShowForm(true); }} className="p-2 bg-dark-800 text-slate-400 rounded-xl hover:text-white transition-colors">
-                          <Edit size={16} />
+          assessments.map(assessment => {
+            const student = students.find(s => s.id === assessment.studentId) || currentUser;
+            return (
+              <div key={assessment.id} className="bg-dark-950 p-6 md:p-10 rounded-[3rem] border border-dark-800 shadow-2xl overflow-hidden relative group hover:border-brand-500/30 transition-all space-y-8">
+                {/* HEADER */}
+                <div className="text-center border-b border-dark-800 pb-6 relative">
+                    <div className="absolute top-0 right-0 flex gap-2 no-print">
+                        <button 
+                            onClick={() => handleAnalyzeIA(assessment)}
+                            disabled={analyzingIA === assessment.id}
+                            className="p-2.5 bg-brand-600/10 text-brand-500 rounded-xl hover:bg-brand-600 hover:text-white transition-all disabled:opacity-50"
+                            title="Analisar com IA"
+                        >
+                            {analyzingIA === assessment.id ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
                         </button>
-                        <button onClick={() => handleDeleteAssessment(assessment.id)} className="p-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors">
-                          <Trash2 size={16} />
-                        </button>
-                      </>
-                    )}
-                </div>
-              </div>
-
-              {iaFeedback[assessment.id] && (
-                  <div className="mb-6 p-6 bg-brand-500/5 border border-brand-500/20 rounded-[2rem] animate-fade-in">
-                      <p className="text-[9px] font-black text-brand-500 uppercase flex items-center gap-2 mb-2"><Sparkles size={14}/> Laudo Técnico IA</p>
-                      <p className="text-sm text-brand-100 leading-relaxed italic">"{iaFeedback[assessment.id]}"</p>
-                  </div>
-              )}
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <MetricDisplay label="Peso" value={assessment.weight} unit="kg" />
-                <MetricDisplay label="% Gordura" value={assessment.bodyFatPercentage} unit="%" color="text-brand-500" />
-                <MetricDisplay label="Massa Muscular" value={assessment.skeletalMuscleMass} unit="kg" color="text-emerald-500" />
-                <MetricDisplay label="Gord. Visceral" value={assessment.visceralFatLevel} unit="Nível" />
-                <MetricDisplay label="TMB (Calorias)" value={assessment.basalMetabolicRate} unit="kcal" />
-                <MetricDisplay label="Hidratação" value={assessment.hydrationPercentage} unit="%" />
-                <MetricDisplay label="IMC" value={assessment.imc} unit="" />
-                <MetricDisplay label="Idade Metabólica" value={assessment.metabolicAge} unit="anos" />
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-dark-800">
-                  <button 
-                      onClick={() => setExpandedAssessment(expandedAssessment === assessment.id ? null : assessment.id)}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-dark-900 hover:bg-dark-800 text-brand-500 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all border border-dark-800 hover:border-brand-500/30"
-                  >
-                      {expandedAssessment === assessment.id ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-                      {expandedAssessment === assessment.id ? 'Ocultar Detalhes' : 'Ver Ficha Completa (FMS / Fotos)'}
-                  </button>
-
-                  {expandedAssessment === assessment.id && (
-                    <div className="mt-8 space-y-10 animate-fade-in">
-                        {/* FOTOS */}
-                        <div className="space-y-4">
-                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
-                                <Camera size={16} className="text-brand-500" /> Evolução Visual
-                            </h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <PhotoDisplay 
-                                    label="Frontal" 
-                                    url={assessment.photoFrontUrl} 
-                                    isStaff={isStaff} 
-                                    isUploading={updatingPhoto === `${assessment.id}_photoFrontUrl`}
-                                    onUpdate={(file) => handleQuickPhotoUpdate(assessment, 'photoFrontUrl', file)} 
-                                />
-                                <PhotoDisplay 
-                                    label="Lateral" 
-                                    url={assessment.photoSideUrl} 
-                                    isStaff={isStaff} 
-                                    isUploading={updatingPhoto === `${assessment.id}_photoSideUrl`}
-                                    onUpdate={(file) => handleQuickPhotoUpdate(assessment, 'photoSideUrl', file)} 
-                                />
-                                <PhotoDisplay 
-                                    label="Costas" 
-                                    url={assessment.photoBackUrl} 
-                                    isStaff={isStaff} 
-                                    isUploading={updatingPhoto === `${assessment.id}_photoBackUrl`}
-                                    onUpdate={(file) => handleQuickPhotoUpdate(assessment, 'photoBackUrl', file)} 
-                                />
+                        {isStaff && (
+                          <>
+                            <button onClick={() => { setEditingAssessment(assessment); setShowForm(true); }} className="p-2.5 bg-dark-900 text-slate-400 rounded-xl hover:text-white transition-colors border border-dark-800" title="Editar">
+                              <Edit size={16} />
+                            </button>
+                            <button onClick={() => handleDeleteAssessment(assessment.id)} className="p-2.5 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-colors" title="Excluir">
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
+                    </div>
+                    <h3 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter">Studio Saúde em Movimento</h3>
+                    <p className="text-brand-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Método S.E.M.</p>
+                    
+                    <div className="flex flex-col sm:flex-row justify-between items-center bg-dark-900/60 p-4 rounded-2xl border border-dark-800 mt-6 gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-brand-600/20 text-brand-500 flex items-center justify-center font-bold">
+                                <Users size={20}/>
+                            </div>
+                            <div className="text-left">
+                                <p className="text-white font-black text-sm uppercase tracking-tight">{student.name || 'Aluno'}</p>
+                                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">Aluno {student.age ? `• ${student.age} anos` : ''}</p>
                             </div>
                         </div>
-
-                        {/* PERFORMANCE */}
-                        <div className="space-y-4">
-                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
-                                <Zap size={16} className="text-brand-500" /> Testes de Potência
-                            </h5>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                <MetricDetail label="Abdominal" value={assessment.abdominalTest} unit="reps" />
-                                <MetricDetail label="Salto Horiz." value={assessment.horizontalJump} unit="cm" />
-                                <MetricDetail label="Salto Vert." value={assessment.verticalJump} unit="cm" />
-                                <MetricDetail label="Med. Ball" value={assessment.medicineBallThrow} unit="m" />
-                                <MetricDetail label="VO2 Máx" value={assessment.vo2Max} unit="" />
-                                <MetricDetail label="Agachamento" value={assessment.squatMax} unit="kg" />
-                                <MetricDetail label="Wall Ball" value={assessment.wallBallThrow} unit="m" />
-                            </div>
-                        </div>
-
-                        {/* FMS */}
-                        <div className="space-y-4">
-                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
-                                <ClipboardList size={16} className="text-brand-500" /> Protocolo FMS
-                            </h5>
-                            <div className="bg-dark-900/30 rounded-[2rem] p-8 border border-dark-800">
-                                {assessment.fms ? (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                                        <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 gap-8 pb-6 border-b border-dark-800/30">
-                                            <FMSScore label="Agachamento Profundo" score={assessment.fms.deepSquat} />
-                                            <FMSScore label="Estabilidade de Tronco" score={assessment.fms.trunkStability} />
-                                        </div>
-                                        <FMSScore label="Passo Barreira (E)" score={assessment.fms.hurdleStep_L} />
-                                        <FMSScore label="Passo Barreira (D)" score={assessment.fms.hurdleStep_R} />
-                                        <FMSScore label="Avanço Linha (E)" score={assessment.fms.inlineLunge_L} />
-                                        <FMSScore label="Avanço Linha (D)" score={assessment.fms.inlineLunge_R} />
-                                        <FMSScore label="Mobilidade Ombro (E)" score={assessment.fms.shoulderMobility_L} />
-                                        <FMSScore label="Mobilidade Ombro (D)" score={assessment.fms.shoulderMobility_R} />
-                                        <FMSScore label="Elevação Perna (E)" score={assessment.fms.activeStraightLegRaise_L} />
-                                        <FMSScore label="Elevação Perna (D)" score={assessment.fms.activeStraightLegRaise_R} />
-                                        <FMSScore label="Est. Rotacional (E)" score={assessment.fms.rotationalStability_L} />
-                                        <FMSScore label="Est. Rotacional (D)" score={assessment.fms.rotationalStability_R} />
-                                    </div>
-                                ) : (
-                                    <p className="text-slate-600 text-xs italic">Nenhum dado FMS registrado.</p>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* PERÍMETROS */}
-                        <div className="space-y-4">
-                            <h5 className="text-white font-black text-xs uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
-                                <Ruler size={16} className="text-brand-500" /> Perímetros (cm)
-                            </h5>
-                            {assessment.circumferences ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-6 bg-dark-900/30 rounded-[2.5rem] border border-dark-800 text-xs">
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Tronco</p>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Tórax: <span className="text-white font-bold">{assessment.circumferences.chest || 0} cm</span></div>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Cintura: <span className="text-white font-bold">{assessment.circumferences.waist || 0} cm</span></div>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Abdômen: <span className="text-white font-bold">{assessment.circumferences.abdomen || 0} cm</span></div>
-                                        <div className="flex justify-between py-1">Quadril: <span className="text-white font-bold">{assessment.circumferences.hips || 0} cm</span></div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Membros Superiores</p>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Braço Direito: <span className="text-white font-bold">{assessment.circumferences.rightArm || assessment.circumferences.rightArmRelaxed || 0} cm</span></div>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Braço Esquerdo: <span className="text-white font-bold">{assessment.circumferences.leftArm || assessment.circumferences.leftArmRelaxed || 0} cm</span></div>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Antebraço Direito: <span className="text-white font-bold">{assessment.circumferences.rightForearm || 0} cm</span></div>
-                                        <div className="flex justify-between py-1">Antebraço Esquerdo: <span className="text-white font-bold">{assessment.circumferences.leftForearm || 0} cm</span></div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-[10px] font-black text-brand-500 uppercase border-b border-dark-800 pb-1">Membros Inferiores</p>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Coxa Direita: <span className="text-white font-bold">{assessment.circumferences.rightThigh || assessment.circumferences.rightThighMedial || 0} cm</span></div>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Coxa Esquerda: <span className="text-white font-bold">{assessment.circumferences.leftThigh || assessment.circumferences.leftThighMedial || 0} cm</span></div>
-                                        <div className="flex justify-between py-1 border-b border-dark-800/20">Panturrilha Direita: <span className="text-white font-bold">{assessment.circumferences.rightCalf || 0} cm</span></div>
-                                        <div className="flex justify-between py-1">Panturrilha Esquerda: <span className="text-white font-bold">{assessment.circumferences.leftCalf || 0} cm</span></div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="text-slate-600 text-xs italic">Nenhum perímetro registrado.</p>
-                            )}
+                        <div className="flex items-center gap-2 bg-dark-950 px-4 py-2 rounded-xl border border-dark-800">
+                            <CalendarCheck size={16} className="text-brand-500" />
+                            <span className="text-xs font-black text-white uppercase tracking-wider">Data da Avaliação: {new Date(assessment.date).toLocaleDateString('pt-BR')}</span>
                         </div>
                     </div>
-                  )}
+                </div>
+
+                {iaFeedback[assessment.id] && (
+                    <div className="p-6 bg-brand-500/5 border border-brand-500/20 rounded-[2rem] animate-fade-in">
+                        <p className="text-[9px] font-black text-brand-500 uppercase flex items-center gap-2 mb-2"><Sparkles size={14}/> Laudo Técnico IA</p>
+                        <p className="text-sm text-brand-100 leading-relaxed italic">"{iaFeedback[assessment.id]}"</p>
+                    </div>
+                )}
+
+                {/* DADOS CORPORAIS */}
+                <div className="space-y-4">
+                    <h4 className="text-xs font-black text-brand-500 uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
+                        <Scale size={16} className="text-brand-500" /> Dados Corporais
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <MetricDisplay label="Peso" value={assessment.weight} unit="kg" />
+                        <MetricDisplay label="Altura" value={assessment.height} unit="m" />
+                        <MetricDisplay label="Percentual de Gordura" value={assessment.bodyFatPercentage} unit="%" color="text-brand-500" />
+                        <MetricDisplay label="Massa Muscular" value={assessment.skeletalMuscleMass} unit="kg" color="text-emerald-500" />
+                        <MetricDisplay label="IMC" value={assessment.imc} unit="" />
+                        <MetricDisplay label="Idade Metabólica" value={assessment.metabolicAge} unit="anos" />
+                    </div>
+                </div>
+
+                {/* TESTES FUNCIONAIS */}
+                <div className="space-y-4">
+                    <h4 className="text-xs font-black text-brand-500 uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
+                        <Zap size={16} className="text-brand-500" /> Testes Funcionais
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <MetricDetail label="Abdominal" value={assessment.abdominalTest} unit="reps" />
+                        <MetricDetail label="Prancha" value={assessment.horizontalJump ? `${assessment.horizontalJump}s` : '--'} unit="tempo sustentado" />
+                        <MetricDetail label="Mobilidade de Ombro" value={assessment.verticalJump || assessment.fms?.shoulderMobility_R || '--'} unit="escala 0-3" />
+                        <MetricDetail label="Avanço" value={assessment.medicineBallThrow || '--'} unit="escala 0-3" />
+                    </div>
+                </div>
+
+                {/* CIRCUNFERÊNCIAS */}
+                <div className="space-y-4">
+                    <h4 className="text-xs font-black text-brand-500 uppercase tracking-widest flex items-center gap-2 border-l-2 border-brand-500 pl-3">
+                        <Ruler size={16} className="text-brand-500" /> Circunferências
+                    </h4>
+                    {assessment.circumferences ? (
+                        <div className="bg-dark-900/40 rounded-[2rem] p-6 border border-dark-800 divide-y divide-dark-800/50">
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Tórax</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.chest || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Cintura</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.waist || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Abdômen</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.abdomen || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Braço Direito</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.rightArm || assessment.circumferences.rightArmRelaxed || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Braço Esquerdo</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.leftArm || assessment.circumferences.leftArmRelaxed || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Antebraço Direito</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.rightForearm || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Antebraço Esquerdo</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.leftForearm || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Coxa Direita</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.rightThigh || assessment.circumferences.rightThighMedial || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Coxa Esquerda</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.leftThigh || assessment.circumferences.leftThighMedial || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Panturrilha Direita</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.rightCalf || 0}cm</span>
+                            </div>
+                            <div className="flex justify-between items-center py-3 px-2">
+                                <span className="text-slate-400 font-bold text-xs uppercase">Panturrilha Esquerda</span>
+                                <span className="text-white font-black text-sm">{assessment.circumferences.leftCalf || 0}cm</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="text-slate-600 text-xs italic">Nenhuma circunferência registrada.</p>
+                    )}
+                </div>
+
+                {/* BOTÕES DE AÇÃO INFERIORES */}
+                <div className="pt-6 border-t border-dark-800 flex gap-4 no-print">
+                    <button 
+                        onClick={() => window.print()}
+                        className="flex-1 py-4 bg-brand-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-brand-600/20 hover:bg-brand-500 transition-all flex items-center justify-center gap-2"
+                    >
+                        <FileText size={16} /> Gerar PDF
+                    </button>
+                    <button 
+                        onClick={() => {
+                            if (navigator.share) {
+                                navigator.share({ title: 'Ficha de Avaliação - Studio', text: `Avaliação física de ${student.name} em ${new Date(assessment.date).toLocaleDateString('pt-BR')}` }).catch(() => {});
+                            } else {
+                                navigator.clipboard.writeText(window.location.href);
+                                addToast("Link da avaliação copiado para a área de transferência!", "success");
+                            }
+                        }}
+                        className="flex-1 py-4 bg-dark-900 border border-dark-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-dark-800 transition-all flex items-center justify-center gap-2"
+                    >
+                        <Share2 size={16} /> Compartilhar
+                    </button>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="py-24 text-center bg-dark-950 rounded-[3rem] border border-dashed border-dark-800 shadow-inner">
              <div className="w-20 h-20 bg-dark-900 rounded-full flex items-center justify-center mx-auto mb-6 border border-dark-800 shadow-xl">
